@@ -36,13 +36,6 @@ directory = "./frontend"
 #   ALLOWED_ORIGIN — Your Cloudflare Pages URL, e.g. "https://copelandos.pages.dev"
 
 # Optional: model overrides
-[vars]
-CEREBRAS_MODEL = "llama-4-scout-17b-16e-instruct"
-GROQ_MODEL = "llama-4-scout-17b-16e-instruct"
-GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
-OPENROUTER_MODEL = "qwen/qwen3-coder:free"
-VAULT_ROOT = "Vault"
-VAULT_BRANCH = "main"
 
 # KV namespace for caching search results (optional, reduces API calls)
 # Create with: wrangler kv namespace create CACHE
