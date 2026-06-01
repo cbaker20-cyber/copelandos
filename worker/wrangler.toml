@@ -1,0 +1,48 @@
+name = "copelandos-worker"
+main = "index.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Environment Variables ──
+# Set these in Cloudflare Dashboard → Workers → Settings → Variables
+# OR use: wrangler secret put VARIABLE_NAME
+#
+# Required for AI:
+#   CEREBRAS_KEY    — from cloud.cerebras.ai (free, 1M tokens/day)
+#   GROQ_KEY        — from console.groq.com (free)
+#   GEMINI_KEY      — from aistudio.google.com (free)
+#   OPENROUTER_KEY  — from openrouter.ai (free)
+#
+# Required for Web Search (pick one or both):
+#   SERPER_KEY      — from serper.dev (2,500 free searches)
+#   GOOGLE_CSE_KEY  — from console.cloud.google.com (100/day free)
+#   GOOGLE_CSE_ID   — from programmablesearchengine.google.com
+#
+# Required for Gmail:
+#   GMAIL_CLIENT_ID       — from Google Cloud Console OAuth 2.0
+#   GMAIL_CLIENT_SECRET   — from Google Cloud Console OAuth 2.0
+#   GMAIL_REFRESH_TOKEN   — generated at /auth/gmail (after OAuth flow)
+#
+# Required for Obsidian/GitHub sync:
+#   GITHUB_TOKEN   — GitHub Personal Access Token (repo scope)
+#   GITHUB_REPO    — e.g. "copeland/obsidian-vault"
+#   VAULT_ROOT     — e.g. "Vault" (folder in repo, default: "Vault")
+#   VAULT_BRANCH   — e.g. "main" (default: "main")
+#
+# Security:
+#   ALLOWED_ORIGIN — Your Cloudflare Pages URL, e.g. "https://copelandos.pages.dev"
+
+# Optional: model overrides
+[vars]
+CEREBRAS_MODEL = "llama-4-scout-17b-16e-instruct"
+GROQ_MODEL = "llama-4-scout-17b-16e-instruct"
+GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
+OPENROUTER_MODEL = "qwen/qwen3-coder:free"
+VAULT_ROOT = "Vault"
+VAULT_BRANCH = "main"
+
+# KV namespace for caching search results (optional, reduces API calls)
+# Create with: wrangler kv namespace create CACHE
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-id-here"
