@@ -425,7 +425,7 @@ async function checkHealth(){
     if(!r.ok)throw new Error(r.status);
     const d=await r.json();
     const caps=d.capabilities;
-    setMbadge(`Worker OK · ${caps.ai_providers.join('+')}${caps.search?' · 🔍':''}${caps.gmail?' · 📬':''}${caps.obsidian?' · 📁':''}`);
+    setMbadge(`Worker OK · ${(caps.ai_providers||caps.providers||[]).join('+')}${caps.search?' · 🔍':''}${caps.gmail?' · 📬':''}${caps.obsidian?' · 📁':''}`);
     if(caps.gmail){fetchMailCount();}
     return d;
   }catch(e){setMbadge('Worker unreachable');return null;}
@@ -762,7 +762,7 @@ async function checkWorkerHealth(){
     el.innerHTML=`<div class="status-row">
       <span class="status-dot ok"></span>
       <div class="status-label">Worker connected</div>
-      <span class="status-sub">AI: ${caps.ai_providers.join(', ')||'none'} · Search: ${caps.search?'✓':'✗'} · Gmail: ${caps.gmail?'✓':'✗'} · Vault: ${caps.obsidian?'✓':'✗'}</span>
+      <span class="status-sub">AI: ${(caps.ai_providers||caps.providers||[]).join(', ')||'none'} · Search: ${caps.search?'✓':'✗'} · Gmail: ${caps.gmail?'✓':'✗'} · Vault: ${caps.obsidian?'✓':'✗'}</span>
     </div>`;
   }catch(e){
     el.innerHTML=`<div class="status-row"><span class="status-dot err"></span><span class="status-label">Can't reach worker: ${e.message}</span></div>`;
