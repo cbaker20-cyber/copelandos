@@ -3,6 +3,9 @@ main = "worker.js"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[assets]
+directory = "./frontend"
+
 # ── Environment Variables ──
 # Set these in Cloudflare Dashboard → Workers → Settings → Variables
 # OR use: wrangler secret put VARIABLE_NAME
