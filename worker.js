@@ -32,7 +32,7 @@ export default {
             search: !!env.SERPER_KEY,
             gmail: !!env.GMAIL_REFRESH_TOKEN,
             obsidian: !!(env.GITHUB_TOKEN && env.GITHUB_REPO),
-            providers: ['cerebras','groq','gemini','openrouter']
+            ai_providers: ['cerebras','groq','gemini','openrouter']
               .filter(p => env[p.toUpperCase()+'_KEY']),
           }
         });
