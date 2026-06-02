@@ -19,8 +19,7 @@ export default {
 
     // Serve frontend HTML for root
     if (path === '/' || path === '/index.html') {
-      if (env.ASSETS) return env.ASSETS.fetch(request);
-      return new Response('CopelandOS worker running. Open index.html to use the app.', {status: 200});
+      return new Response('CopelandOS worker running. Open your Pages URL to use the app.', {status: 200});
     }
 
     try {
@@ -264,8 +263,8 @@ Expand this raw idea into an actionable note:
         return new Response('OAuth failed: ' + JSON.stringify(d), { status: 400 });
       }
 
-      // Fallback — serve static assets
-      return env.ASSETS.fetch(request);
+      // Fallback
+      return new Response(JSON.stringify({status:'ok'}), {headers:{'Content-Type':'application/json',...cors}});
 
     } catch(e) {
       return json({ error: e.message }, 500);
