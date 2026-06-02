@@ -19,7 +19,8 @@ export default {
 
     // Serve frontend HTML for root
     if (path === '/' || path === '/index.html') {
-      return env.ASSETS.fetch(request);
+      if (env.ASSETS) return env.ASSETS.fetch(request);
+      return new Response('CopelandOS worker running. Open index.html to use the app.', {status: 200});
     }
 
     try {
