@@ -27,7 +27,7 @@ export default {
       if (path === '/api/health') {
         return json({
           ok: true,
-          capabilities: {
+          caps: {
             ai: !!(env.CEREBRAS_KEY || env.GROQ_KEY || env.GEMINI_KEY),
             search: !!env.SERPER_KEY,
             gmail: !!env.GMAIL_REFRESH_TOKEN,
