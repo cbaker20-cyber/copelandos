@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "allowedUrlOrigins": [
+    "https://github.com",
+    "https://cursor.com"
+  ],
+  "repositories": [
+    {
+      "id": "copelandos",
+      "path": "C:\\path\\to\\copelandos",
+      "testCommands": [
+        { "id": "node-tests", "command": "npm.cmd", "args": ["test"] }
+      ]
+    }
+  ],
+  "applications": {
+    "cursor": { "enabled": false, "executable": "C:\\path\\to\\Cursor.exe", "args": [] },
+    "vscodeTunnel": { "enabled": false, "executable": "C:\\path\\to\\code.exe", "args": ["tunnel"] }
+  },
+  "vault": {
+    "enabled": false,
+    "path": "C:\\path\\to\\CopelandVault"
+  }
+}
