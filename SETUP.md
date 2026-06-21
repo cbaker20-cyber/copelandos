@@ -6,7 +6,7 @@
 Your Browser (index.html on Cloudflare Pages)
        │
        ▼
-Cloudflare Worker  ←── runs at edge, holds all your secrets
+Cloudflare Worker (`worker.js`)  ←── canonical API; holds secrets
        │
        ├── AI Providers (Cerebras, Groq, Gemini, OpenRouter)
        ├── Web Search (Serper → Google CSE fallback)
@@ -29,9 +29,8 @@ Your repo already exists. Add these files to it:
 your-repo/
 ├── frontend/
 │   └── index.html      ← the UI (deploy to Cloudflare Pages)
-└── worker/
-    ├── index.js        ← the backend
-    └── wrangler.toml   ← worker config
+├── worker.js          ← canonical backend
+└── wrangler.toml      ← Worker + static asset config
 ```
 
 ---
@@ -46,7 +45,6 @@ wrangler login
 
 ### Deploy
 ```powershell
-cd worker
 wrangler deploy
 ```
 
@@ -105,7 +103,7 @@ Your frontend will be at: `https://copelandos.pages.dev` (or similar)
 ### 5b. Create OAuth credentials
 1. APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID
 2. Application type: **Web application**
-3. Authorized redirect URIs: `https://copelandos-worker.YOUR-SUBDOMAIN.workers.dev/auth/callback`
+3. Authorized redirect URIs: `https://copelandos-worker.YOUR-SUBDOMAIN.workers.dev/api/auth/callback`
 4. Copy the Client ID and Client Secret
 
 ### 5c. Add to Worker
@@ -117,7 +115,7 @@ wrangler secret put GMAIL_CLIENT_SECRET  # paste client secret
 ### 5d. Run OAuth flow
 Open in browser:
 ```
-https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=https://copelandos-worker.YOUR-SUBDOMAIN.workers.dev/auth/callback&response_type=code&scope=https://www.googleapis.com/auth/gmail.modify&access_type=offline&prompt=consent
+https://copelandos-worker.YOUR-SUBDOMAIN.workers.dev/api/auth/gmail
 ```
 
 Sign in with your Gmail account. You'll be redirected back and shown a **refresh token**.
@@ -127,7 +125,7 @@ Sign in with your Gmail account. You'll be redirected back and shown a **refresh
 wrangler secret put GMAIL_REFRESH_TOKEN  # paste the token shown
 ```
 
-Gmail is now connected. ✓
+Gmail is now connected for inbox access and draft creation. CopelandOS does not send mail; review and send saved drafts in Gmail. ✓
 
 ---
 

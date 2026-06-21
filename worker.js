@@ -3,13 +3,16 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const cors = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
+    const cors = corsHeaders(request, env);
 
-    if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
+    if (!isOriginAllowed(request, env)) {
+      return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', Vary: 'Origin' },
+      });
+    }
+
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     const json = (data, status = 200) =>
       new Response(JSON.stringify(data), {
@@ -121,16 +124,18 @@ export default {
 
       // ── /api/mail/send ────────────────────────────────────
       if (path === '/api/mail/send') {
+        if (!body.to || !body.subject || !body.body) return json({ error: 'to, subject, body required' }, 400);
         const token = await getGmailToken(env);
         const raw = [`To: ${body.to}`, `Subject: ${body.subject}`, 'Content-Type: text/plain; charset=utf-8', '', body.body].join('\r\n');
         const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,'-').replace(/\//g,'_');
-        const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw: encoded }),
+          body: JSON.stringify({ message: { raw: encoded } }),
         });
-        if (!r.ok) return json({ error: 'Gmail send failed: ' + await r.text() }, 500);
-        return json({ success: true });
+        if (!r.ok) return json({ error: 'Gmail draft failed: ' + r.status }, 502);
+        const draft = await r.json();
+        return json({ success: true, draft: true, id: draft.id });
       }
 
       // ── /api/obsidian/save ────────────────────────────────
@@ -271,6 +276,24 @@ Expand this raw idea into an actionable note:
     }
   }
 };
+
+function isOriginAllowed(request, env) {
+  const origin = request.headers.get('Origin');
+  if (!origin) return true;
+  const allowed = (env.ALLOWED_ORIGIN || '').trim();
+  return Boolean(allowed) && origin === allowed;
+}
+
+function corsHeaders(request, env) {
+  const headers = {
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    Vary: 'Origin',
+  };
+  const origin = request.headers.get('Origin');
+  if (origin && isOriginAllowed(request, env)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
+}
 
 // ── AI PROVIDERS ─────────────────────────────────────────
 async function callCerebras(messages, system, key, env) {
