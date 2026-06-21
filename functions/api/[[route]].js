@@ -5,25 +5,27 @@
  * Cloudflare auto-deploys it when you push to GitHub.
  */
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const route = url.pathname.replace('/api/', '');
+  const cors = corsHeaders(request, env);
+
+  if (!isOriginAllowed(request, env)) {
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', Vary: 'Origin' },
+    });
+  }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS });
+    return new Response(null, { status: 204, headers: cors });
   }
 
   const json = (data, status = 200) =>
     new Response(JSON.stringify(data), {
       status,
-      headers: { 'Content-Type': 'application/json', ...CORS },
+      headers: { 'Content-Type': 'application/json', ...cors },
     });
 
   try {
@@ -75,7 +77,7 @@ export async function onRequest(context) {
     if (route === 'auth/gmail') return gmailAuthRedirect(request, env);
 
     // ── GET /api/auth/callback ────────────────────────────
-    if (route === 'auth/callback') return gmailAuthCallback(request, env, CORS);
+    if (route === 'auth/callback') return gmailAuthCallback(request, env, cors);
 
     return json({ error: 'Unknown route: ' + route }, 404);
 
@@ -83,6 +85,24 @@ export async function onRequest(context) {
     console.error(e);
     return json({ error: e.message }, 500);
   }
+}
+
+function isOriginAllowed(request, env) {
+  const origin = request.headers.get('Origin');
+  if (!origin) return true;
+  const allowed = (env.ALLOWED_ORIGIN || '').trim();
+  return Boolean(allowed) && origin === allowed;
+}
+
+function corsHeaders(request, env) {
+  const headers = {
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    Vary: 'Origin',
+  };
+  const origin = request.headers.get('Origin');
+  if (origin && isOriginAllowed(request, env)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
 }
 
 // ═══════════════════════════════════════
@@ -284,17 +304,17 @@ async function handleMailSend({ to, subject, body, threadId }, env) {
   const raw = [`To: ${to}`, `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('\r\n');
   const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,'-').replace(/\//g,'_');
 
-  const payload = { raw: encoded };
-  if (threadId) payload.threadId = threadId;
+  const message = { raw: encoded };
+  if (threadId) message.threadId = threadId;
 
-  const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+  const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ message }),
   });
-  if (!r.ok) throw new Error(`Gmail send ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Gmail draft ${r.status}`);
   const d = await r.json();
-  return { success: true, id: d.id };
+  return { success: true, draft: true, id: d.id };
 }
 
 function gmailAuthRedirect(request, env) {

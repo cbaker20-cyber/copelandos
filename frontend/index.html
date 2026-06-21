@@ -270,7 +270,7 @@ code{background:var(--bg4);border:1px solid var(--b1);border-radius:3px;padding:
 
     <div class="sh">Gmail Setup</div>
     <div class="note">
-      <strong>One-time setup:</strong> In Google Cloud Console → Create OAuth 2.0 credentials → Add these to your Worker env: <code>GMAIL_CLIENT_ID</code>, <code>GMAIL_CLIENT_SECRET</code>. Then visit <code>/auth/gmail</code> on your worker to connect your Gmail account.
+      <strong>One-time setup:</strong> In Google Cloud Console → Create OAuth 2.0 credentials → Add these to your Worker env: <code>GMAIL_CLIENT_ID</code>, <code>GMAIL_CLIENT_SECRET</code>. Then visit <code>/api/auth/gmail</code> on your worker to connect your Gmail account.
     </div>
     <button class="btn btn-ok" style="width:100%;margin-bottom:8px" onclick="openGmailAuth()">🔗 &nbsp;Connect Gmail (opens OAuth)</button>
 
@@ -330,7 +330,7 @@ code{background:var(--bg4);border:1px solid var(--b1);border-radius:3px;padding:
 <!-- COMPOSE MAIL MODAL -->
 <div class="mbg" id="mbg-compose">
 <div class="modal" style="width:500px">
-  <div class="mhdr"><div class="mtit">✉️ &nbsp;Send Email</div><button class="mxb" onclick="closeModal('compose')">✕</button></div>
+  <div class="mhdr"><div class="mtit">✉️ &nbsp;Save Gmail Draft</div><button class="mxb" onclick="closeModal('compose')">✕</button></div>
   <div class="mbody">
     <div class="field"><label>To</label><input type="email" id="compose-to" placeholder="recipient@example.com"></div>
     <div class="field"><label>Subject</label><input type="text" id="compose-subject"></div>
@@ -338,7 +338,7 @@ code{background:var(--bg4);border:1px solid var(--b1);border-radius:3px;padding:
   </div>
   <div class="mfoot">
     <button class="btn btn-ghost" onclick="closeModal('compose')">Cancel</button>
-    <button class="btn btn-ok" onclick="sendMail()">Send →</button>
+    <button class="btn btn-ok" onclick="sendMail()">Save draft →</button>
   </div>
 </div>
 </div>
@@ -640,16 +640,17 @@ async function sendMail(){
   const subject=document.getElementById('compose-subject').value;
   const body=document.getElementById('compose-body').value;
   try{
-    await workerFetch('/api/mail/send',{to,subject,body});
-    toast('Email sent!','ok');
+    const result=await workerFetch('/api/mail/send',{to,subject,body});
+    if(!result.draft)throw new Error('Worker did not confirm draft-only mode');
+    toast('Draft saved in Gmail — review before sending','ok');
     closeModal('compose');
-  }catch(e){toast('Send failed: '+e.message,'err');}
+  }catch(e){toast('Draft failed: '+e.message,'err');}
 }
 
 function openGmailAuth(){
   const cfg=getS();
   if(!cfg.worker){toast('Set Worker URL first','err');return;}
-  window.open(cfg.worker+'/auth/gmail','_blank');
+  window.open(cfg.worker+'/api/auth/gmail','_blank');
 }
 
 // ═══════════════════════════════════

@@ -1,0 +1,13 @@
+---
+description: Security rules for all CopelandOS changes
+alwaysApply: true
+---
+
+- `worker.js` is the canonical Cloudflare Worker entry point.
+- Do not add features before security tasks in `docs/cursor-ready-issues.md`.
+- Never commit secrets, tokens, OAuth codes, refresh tokens, real email content, `.env`, or `.dev.vars`.
+- Keep browser CORS restricted to the exact configured `ALLOWED_ORIGIN`; CORS is not authentication.
+- Gmail operations are draft-only. Do not call the Gmail messages send endpoint.
+- Add or update tests for every security behavior change.
+- Do not weaken tests or expose upstream error bodies that may contain sensitive information.
+- Open a branch and draft PR; do not push directly to `main`.
