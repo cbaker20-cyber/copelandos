@@ -98,12 +98,17 @@ test('createCursorPrompt includes repo and constraints', () => {
   assert.ok(prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(prompt.toLowerCase().includes('forbidden') || prompt.toLowerCase().includes('constraint'));
   assert.ok(prompt.toLowerCase().includes('tests') || prompt.toLowerCase().includes('test'));
+  assert.ok(prompt.includes('ISSUE OR IDEA ID:'));
+  assert.ok(prompt.includes('FILES TO INSPECT:'));
+  assert.ok(prompt.includes('DRAFT PR TITLE:'));
 });
 
 test('createCodexPrompt includes security review focus', () => {
   const prompt = createCodexPrompt({ idea: { id: 'test-2', text: 'review auth module' }, project: 'copelandos', task: 'review the permission engine' });
   assert.ok(prompt.toLowerCase().includes('security'));
   assert.ok(prompt.toLowerCase().includes('forbidden') || prompt.toLowerCase().includes('test'));
+  assert.ok(prompt.includes('SAFETY RULES:'));
+  assert.ok(prompt.includes('FORBIDDEN ACTIONS:'));
 });
 
 test('createCursorPrompt has forbidden actions from project config', () => {

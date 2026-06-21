@@ -14,6 +14,8 @@ Phone / Siri / Shortcuts / Mobile web
        │    ├─ Risk level assessment
        │    └─ Suggested action generation
        ├─ Idea stored in inbox (Map / KV in production)
+       ├─ Inbox idea note preview/write
+       ├─ Daily note append preview/write
        └─ Returns classified idea with confirmationRequired flag
 
 Idea inbox (/api/ideas)
@@ -34,6 +36,9 @@ Output
   ├─ Cursor prompt (/api/ideas/:id/cursor-prompt)
   ├─ Codex prompt (/api/ideas/:id/codex-prompt)
   ├─ Vault note (/api/ideas/:id/convert)
+  ├─ Project queue (/api/project-queue)
+  ├─ Brain status (/api/brain/status)
+  ├─ Orchestration status (/api/orchestration/status)
   └─ AI council result (/api/council)
 ```
 
@@ -106,3 +111,21 @@ See `config/skills.json` for the full skill list. Key skills:
 - Email is draft-only; sending is permanently blocked
 - Private student data is blocked from vault writes
 - Deploys, merges, deletes, and shell execution are blocked
+
+## Brain API
+
+| Route | Purpose |
+|---|---|
+| `POST /api/capture/idea` | Validate, sanitize, classify, store, and create vault/daily-note previews |
+| `GET /api/ideas` | List captured ideas |
+| `GET /api/ideas/stats` | Return inbox counts by status, risk, and skill |
+| `GET /api/ideas/:id` | Read one idea |
+| `POST /api/ideas/:id/triage` | Update classification/status and return a plan |
+| `POST /api/ideas/:id/plan` | Create plan mode output and mark the idea planned |
+| `POST /api/ideas/:id/convert` | Convert to project update, decision log, research note, meeting note, task list, email draft note, or idea note |
+| `POST /api/ideas/:id/cursor-prompt` | Generate a scoped Cursor prompt only |
+| `POST /api/ideas/:id/codex-prompt` | Generate a scoped Codex prompt only |
+| `POST /api/ideas/:id/dismiss` | Archive the idea as dismissed without deleting it |
+| `GET /api/project-queue` | Group planned and prompt-ready ideas by project |
+| `GET /api/brain/status` | Honest brain/provider/tool/vault status |
+| `GET /api/orchestration/status` | Multi-project queue and next-action summary |

@@ -82,6 +82,7 @@ If Siri Shortcuts is unreliable, use the mobile-first dashboard:
 4. Tap **Capture**
 
 The form submits to `POST /api/capture/idea` with `source: "mobile-web"`.
+The main dashboard form uses `source: "dashboard"`; a pinned iPhone Safari page may use `mobile-web`.
 
 ## Security note
 
@@ -92,6 +93,7 @@ The form submits to `POST /api/capture/idea` with `source: "mobile-web"`.
 - No files are modified
 - No PRs are merged
 - The idea enters the inbox with status `new`
+- Vault writes are safe note/mock previews unless a private GitHub vault is configured
 - A human must triage the idea before any action is taken
 
 The captured idea is classified automatically by the AI brain pipeline, but classification is advisory only.

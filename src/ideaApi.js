@@ -4,12 +4,16 @@ import {
   getIdea,
   listIdeas,
   triageIdea,
+  planIdea,
+  dismissIdea,
   updateIdea,
+  getIdeaStats,
+  getProjectQueues,
   VALID_STATUSES,
 } from './ideaStore.js';
 import { classify, classifyWithContext } from './ideaClassifier.js';
 import { createPlan, createCursorPrompt, createCodexPrompt } from './planner.js';
-import { writeIdeaNote, convertIdeaToNote } from './vault.js';
+import { writeIdeaNote, writeDailyIdeaAppend, convertIdeaToNote, getSupportedIdeaNoteTypes } from './vault.js';
 
 function methodGuard(request, allowed, json) {
   if (!allowed.includes(request.method)) {
@@ -18,7 +22,7 @@ function methodGuard(request, allowed, json) {
   return null;
 }
 
-export async function handleIdeaRequest({ path, request, body, env, json }) {
+export async function handleIdeaRequest({ path, request, body, env, json, projectRegistry }) {
   // POST /api/capture/idea
   if (path === '/api/capture/idea') {
     const guard = methodGuard(request, ['POST'], json);
@@ -33,7 +37,8 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
     });
 
     const idea = createIdea(validation, classification);
-    return json({ ok: true, idea, classification }, 201);
+    const vault = await persistCaptureDocuments(idea, env);
+    return json({ ok: true, idea, classification, vault }, 201);
   }
 
   // GET /api/ideas
@@ -54,8 +59,22 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
     return json({ ok: true, ...result });
   }
 
-  // Subaction routes: /api/ideas/:id/{triage,convert,cursor-prompt,codex-prompt}
-  const subMatch = path.match(/^\/api\/ideas\/([^/]+)\/(triage|convert|cursor-prompt|codex-prompt)$/);
+  // GET /api/ideas/stats
+  if (path === '/api/ideas/stats') {
+    const guard = methodGuard(request, ['GET'], json);
+    if (guard) return guard;
+    return json({ ok: true, stats: getIdeaStats() });
+  }
+
+  // GET /api/project-queue
+  if (path === '/api/project-queue') {
+    const guard = methodGuard(request, ['GET'], json);
+    if (guard) return guard;
+    return json({ ok: true, queues: getProjectQueues(projectRegistry?.projects || []) });
+  }
+
+  // Subaction routes: /api/ideas/:id/{triage,convert,plan,dismiss,cursor-prompt,codex-prompt}
+  const subMatch = path.match(/^\/api\/ideas\/([^/]+)\/(triage|convert|plan|dismiss|cursor-prompt|codex-prompt)$/);
   if (subMatch) {
     const ideaId = subMatch[1];
     const subAction = subMatch[2];
@@ -90,7 +109,7 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       if (!idea) return json({ ok: false, error: 'Idea not found.' }, 404);
 
       const noteType = body.type || 'research';
-      const validTypes = ['project', 'decision', 'research', 'meeting', 'email', 'tasks', 'idea'];
+      const validTypes = getSupportedIdeaNoteTypes();
       if (!validTypes.includes(noteType)) {
         return json({ ok: false, error: `Invalid note type. Use: ${validTypes.join(', ')}` }, 400);
       }
@@ -104,6 +123,27 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       } catch (err) {
         return json({ ok: false, error: err.message }, 400);
       }
+    }
+
+    // POST /api/ideas/:id/plan
+    if (subAction === 'plan') {
+      const guard = methodGuard(request, ['POST'], json);
+      if (guard) return guard;
+      const idea = getIdea(ideaId);
+      if (!idea) return json({ ok: false, error: 'Idea not found.' }, 404);
+      const plan = createPlan(body.task || idea.text);
+      planIdea(ideaId);
+      const updated = getIdea(ideaId);
+      return json({ ok: true, idea: updated, plan });
+    }
+
+    // POST /api/ideas/:id/dismiss
+    if (subAction === 'dismiss') {
+      const guard = methodGuard(request, ['POST'], json);
+      if (guard) return guard;
+      const updated = dismissIdea(ideaId);
+      if (!updated) return json({ ok: false, error: 'Idea not found.' }, 404);
+      return json({ ok: true, idea: updated });
     }
 
     // POST /api/ideas/:id/cursor-prompt
@@ -147,6 +187,24 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
   }
 
   return null;
+}
+
+async function persistCaptureDocuments(idea, env) {
+  const documents = {
+    ideaNote: { ok: false, error: null },
+    dailyAppend: { ok: false, error: null },
+  };
+  try {
+    documents.ideaNote = await persistVaultDocumentIfConfigured(writeIdeaNote(idea), env);
+  } catch (error) {
+    documents.ideaNote = { ok: false, blocked: true, error: error.message };
+  }
+  try {
+    documents.dailyAppend = await persistVaultDocumentIfConfigured(writeDailyIdeaAppend(idea), env);
+  } catch (error) {
+    documents.dailyAppend = { ok: false, blocked: true, error: error.message };
+  }
+  return documents;
 }
 
 async function persistVaultDocumentIfConfigured(document, env) {

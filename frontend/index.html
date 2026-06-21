@@ -224,6 +224,15 @@
 
     /* Prompt output */
     .prompt-box { margin: 12px 18px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; font: 10px/1.6 ui-monospace, monospace; color: var(--muted); max-height: 180px; overflow-y: auto; white-space: pre-wrap; scrollbar-width: thin; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 12px 18px 0; }
+    .stat-card { border: 1px solid rgba(111,223,255,.10); border-radius: 10px; background: rgba(3,9,16,.28); padding: 10px; }
+    .stat-card strong { display: block; font-size: 17px; letter-spacing: -.03em; }
+    .stat-card span { color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .idea-actions { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+    .idea-actions .ghost-btn { font-size: 9px; padding: 4px 8px; }
+    .queue-list { margin: 12px 18px 0; display: grid; gap: 8px; max-height: 175px; overflow: auto; scrollbar-width: thin; }
+    .queue-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid rgba(111,223,255,.09); border-radius: 9px; padding: 8px 10px; background: rgba(3,9,16,.24); font-size: 10px; color: var(--muted); }
+    .queue-row strong { color: var(--text); font-size: 11px; }
 
     @media (max-width: 1180px) {
       .project-grid { grid-template-columns: repeat(3, minmax(190px, 1fr)); }
@@ -248,6 +257,7 @@
       .orb-panel { min-height: 0; padding: 6px 12px 24px; }
       .orb-wrap { min-height: 290px; }
       .project-grid { grid-template-columns: repeat(5, 210px); }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .command-dock { left: 12px; right: 12px; bottom: 10px; }
       .command-shell { grid-template-columns: 1fr auto auto; }
       .prompt-mark { display: none; }
@@ -347,6 +357,12 @@
 
           <article class="panel">
             <div class="panel-head"><div><div class="panel-title">Idea inbox</div><div class="panel-sub">Captured ideas awaiting triage</div></div><span class="badge" id="inbox-badge">empty</span></div>
+            <div class="stats-grid" id="idea-stats">
+              <div class="stat-card"><strong>0</strong><span>Total</span></div>
+              <div class="stat-card"><strong>0</strong><span>Open</span></div>
+              <div class="stat-card"><strong>0</strong><span>Ready</span></div>
+              <div class="stat-card"><strong>0</strong><span>High risk</span></div>
+            </div>
             <div class="idea-list" id="idea-list" aria-live="polite">
               <div class="empty-state">No ideas captured yet. Use the form or your Siri Shortcut to add the first one.</div>
             </div>
@@ -360,7 +376,7 @@
         <div class="dashboard-grid">
           <article class="panel small-panel">
             <div class="panel-head"><div><div class="panel-title">Idea classifier</div><div class="panel-sub">Deterministic rules + AI layer</div></div><span class="badge ok">active</span></div>
-            <div class="brain-pipeline">
+            <div class="brain-pipeline" id="brain-pipeline">
               <div class="pipeline-step"><span class="pipeline-node">1</span><div class="pipeline-content"><strong>Capture</strong><small>Text, source, tags, urgency</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">2</span><div class="pipeline-content"><strong>Classify</strong><small>Category, skill, risk level</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">3</span><div class="pipeline-content"><strong>Triage</strong><small>Human review, status update</small></div></div>
@@ -440,14 +456,10 @@
           <div class="provider-grid" id="providers-grid"></div>
           <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. No provider shown as connected without an API key.</div>
         </article>
-        <article class="panel small-panel">
-          <div class="panel-head"><div><div class="panel-title">Automations</div><div class="panel-sub">Review-first schedules</div></div><span class="badge">manual</span></div>
-          <div class="automation">
-            <div class="auto-row"><span>Idea capture</span><span>on demand</span></div>
-            <div class="auto-row"><span>PR review</span><span>on demand</span></div>
-            <div class="auto-row"><span>Daily mission</span><span>not configured</span></div>
-            <div class="auto-row"><span>Vault summary</span><span>not configured</span></div>
-            <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
+        <article class="panel small-panel" id="project-queue">
+          <div class="panel-head"><div><div class="panel-title">Project task queue</div><div class="panel-sub">Ideas grouped for Cursor/Codex orchestration</div></div><span class="badge" id="queue-badge">empty</span></div>
+          <div class="queue-list" id="queue-list">
+            <div class="empty-state" style="margin:0;">No queued project tasks yet. Capture and plan an idea to populate this queue.</div>
           </div>
         </article>
       </section>
@@ -544,10 +556,14 @@
       ideaUrgency: document.getElementById('idea-urgency'),
       captureResult: document.getElementById('capture-result'),
       ideaList: document.getElementById('idea-list'),
+      ideaStats: document.getElementById('idea-stats'),
       inboxBadge: document.getElementById('inbox-badge'),
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      brainPipeline: document.getElementById('brain-pipeline'),
+      queueList: document.getElementById('queue-list'),
+      queueBadge: document.getElementById('queue-badge'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -610,11 +626,25 @@
             ${(idea.tags || []).map(t => `<span class="idea-tag tag-source">${escapeHtml(t)}</span>`).join('')}
           </div>
           ${idea.suggestedAction ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">${escapeHtml(idea.suggestedAction)}</div>` : ''}
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor prompt</button>
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex prompt</button>
+          <div class="idea-actions">
+            <button class="ghost-btn" type="button" onclick="triageIdea('${escapeHtml(idea.id)}')">Triage</button>
+            <button class="ghost-btn" type="button" onclick="planIdea('${escapeHtml(idea.id)}')">Plan</button>
+            <button class="ghost-btn" type="button" onclick="convertIdea('${escapeHtml(idea.id)}')">Vault note</button>
+            <button class="ghost-btn" type="button" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor</button>
+            <button class="ghost-btn" type="button" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex</button>
+            <button class="ghost-btn" type="button" onclick="dismissIdea('${escapeHtml(idea.id)}')">Dismiss</button>
           </div>
         </div>`).join('');
+    }
+
+    function renderIdeaStats(stats = {}) {
+      const ready = (stats.byStatus?.['ready-for-cursor'] || 0) + (stats.byStatus?.['ready-for-codex'] || 0);
+      els.ideaStats.innerHTML = [
+        ['Total', stats.total || 0],
+        ['Open', stats.open || 0],
+        ['Ready', ready],
+        ['High risk', stats.byRisk?.high || 0],
+      ].map(([label, value]) => `<div class="stat-card"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join('');
     }
 
     async function loadIdeas() {
@@ -622,6 +652,11 @@
         const result = await api('/api/ideas');
         capturedIdeas = result.ideas || [];
         renderIdeas(capturedIdeas);
+        try {
+          const stats = await api('/api/ideas/stats');
+          renderIdeaStats(stats.stats);
+        } catch {}
+        await loadProjectQueue();
       } catch (e) {
         els.ideaList.innerHTML = `<div class="empty-state">Could not load inbox: ${escapeHtml(e.message)}</div>`;
       }
@@ -645,11 +680,69 @@
         });
         els.ideaText.value = '';
         addLog('copelandos', `Idea captured: "${text.slice(0, 60)}" → ${result.classification?.category || 'general'} · ${result.classification?.riskLevel || 'unknown'} risk`);
+        els.captureResult.style.display = 'block';
+        els.captureResult.className = 'empty-state';
+        els.captureResult.style.margin = '0';
+        els.captureResult.textContent = result.vault?.ideaNote?.ok
+          ? `Captured. Vault mode: ${result.vault.ideaNote.mode || 'mock'}`
+          : 'Captured. Vault write preview was blocked or unavailable; see transcript.';
         await loadIdeas();
         document.getElementById('capture').scrollIntoView({ behavior: 'smooth' });
       } catch (e) {
+        els.captureResult.style.display = 'block';
+        els.captureResult.className = 'empty-state';
+        els.captureResult.style.margin = '0';
+        els.captureResult.textContent = `Capture failed: ${e.message}`;
         addLog('system', `Capture failed: ${e.message}`);
       }
+    }
+
+    async function triageIdea(ideaId) {
+      try {
+        const idea = capturedIdeas.find(item => item.id === ideaId);
+        const result = await api(`/api/ideas/${ideaId}/triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'triaged',
+            category: idea?.category,
+            skill: idea?.skill,
+            riskLevel: idea?.riskLevel,
+            suggestedAction: idea?.suggestedAction,
+            confirmationRequired: idea?.confirmationRequired,
+          }),
+        });
+        addLog('copelandos', `Idea triaged: ${result.idea.skill || 'unassigned'} · ${result.idea.riskLevel || 'unknown'} risk`);
+        await loadIdeas();
+      } catch (e) { addLog('system', `Triage failed: ${e.message}`); }
+    }
+
+    async function planIdea(ideaId) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/plan`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        addLog('copelandos', `Plan created. Council mode: ${result.plan.councilMode.useCouncil ? 'yes' : 'no'}`);
+        await loadIdeas();
+      } catch (e) { addLog('system', `Plan failed: ${e.message}`); }
+    }
+
+    async function convertIdea(ideaId) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'idea-note' }),
+        });
+        addLog('copelandos', `Converted to vault note: ${result.vault?.mode || 'mock'} · ${result.vault?.path || result.document?.path}`);
+        await loadIdeas();
+      } catch (e) { addLog('system', `Convert failed: ${e.message}`); }
+    }
+
+    async function dismissIdea(ideaId) {
+      try {
+        await api(`/api/ideas/${ideaId}/dismiss`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        addLog('copelandos', `Idea dismissed: ${ideaId.slice(0, 8)}…`);
+        await loadIdeas();
+      } catch (e) { addLog('system', `Dismiss failed: ${e.message}`); }
     }
 
     async function generateCursorPrompt(ideaId) {
@@ -727,6 +820,43 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function renderBrainStatus(status) {
+      if (!status?.pipeline) return;
+      els.brainPipeline.innerHTML = status.pipeline.map((step, index) => `
+        <div class="pipeline-step">
+          <span class="pipeline-node">${index + 1}</span>
+          <div class="pipeline-content"><strong>${escapeHtml(step.label)}</strong><small>${escapeHtml(step.status)}${step.endpoint ? ` · ${escapeHtml(step.endpoint)}` : ''}</small></div>
+        </div>
+      `).join('');
+    }
+
+    async function loadBrainStatus() {
+      try {
+        const status = await api('/api/brain/status');
+        renderBrainStatus(status);
+      } catch (e) {
+        addLog('system', `Brain status unavailable: ${e.message}`);
+      }
+    }
+
+    async function loadProjectQueue() {
+      try {
+        const result = await api('/api/project-queue');
+        const queues = (result.queues || []).filter(queue => queue.total > 0);
+        const total = queues.reduce((sum, queue) => sum + queue.total, 0);
+        els.queueBadge.textContent = total ? `${total} queued` : 'empty';
+        els.queueBadge.className = total ? 'badge warn' : 'badge';
+        els.queueList.innerHTML = queues.length ? queues.map(queue => `
+          <div class="queue-row">
+            <div><strong>${escapeHtml(queue.displayName)}</strong><br>${escapeHtml(queue.total)} item${queue.total !== 1 ? 's' : ''}</div>
+            <span>${escapeHtml(queue.readyForCursor.length)} Cursor · ${escapeHtml(queue.readyForCodex.length)} Codex</span>
+          </div>
+        `).join('') : '<div class="empty-state" style="margin:0;">No queued project tasks yet. Capture and plan an idea to populate this queue.</div>';
+      } catch (e) {
+        els.queueList.innerHTML = `<div class="empty-state" style="margin:0;">Project queue unavailable: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -736,6 +866,7 @@
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        await Promise.allSettled([loadBrainStatus(), loadProjectQueue()]);
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }

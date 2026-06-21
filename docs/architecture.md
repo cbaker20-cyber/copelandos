@@ -36,6 +36,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Voice interface:** browser Web Speech API, push-to-talk only.
 - **Model router:** chooses the first configured provider for a task category without revealing credentials.
 - **Permission engine:** classifies every named action as SAFE, MEDIUM, or HIGH.
+- **AI brain pipeline:** captures mobile ideas, classifies them, plans next steps, routes providers, writes vault memory, and generates Cursor/Codex task prompts without executing the ideas.
 
 ## Backend decision
 
@@ -48,6 +49,22 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 3. Deterministic routing returns a status/project response or a proposed plan/model route.
 4. Action routes consult the permission engine.
 5. HIGH actions stop with `confirmation_required`; MEDIUM actions require explicit confirmation; SAFE actions may proceed.
+
+## Brain pipeline flow
+
+```text
+Siri / Shortcuts / mobile web / dashboard
+  -> POST /api/capture/idea
+  -> in-memory idea inbox
+  -> deterministic classifier + skill registry
+  -> plan mode and optional mock council
+  -> provider router status/fallback selection
+  -> allowlisted tool/MCP registry
+  -> Obsidian vault idea note + daily append preview/write
+  -> dashboard inbox and generated Cursor/Codex prompts
+```
+
+Captured ideas are planning inputs only. Prompt generation, vault writing, provider routing, and tool checks do not run deploys, merges, deletes, email sends, arbitrary shell commands, or local UI automation.
 
 ## Foundation API
 
@@ -65,3 +82,13 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `GET /api/remote/status` | Honest local-agent connection status |
 | `POST /api/remote/request-action` | Permission classification; no remote execution without a connection |
 | `POST /api/ai/route` | Provider/model selection without key exposure |
+| `POST /api/capture/idea` | Mobile/dashboard idea capture |
+| `GET /api/ideas` / `GET /api/ideas/:id` | Idea inbox |
+| `POST /api/ideas/:id/triage` | Human-reviewed triage |
+| `POST /api/ideas/:id/plan` | Plan mode for one idea |
+| `POST /api/ideas/:id/convert` | Convert idea to an Obsidian/vault note type |
+| `POST /api/ideas/:id/cursor-prompt` | Cursor task prompt generation |
+| `POST /api/ideas/:id/codex-prompt` | Codex task prompt generation |
+| `GET /api/brain/status` | Brain pipeline status |
+| `GET /api/project-queue` | Project-scoped idea queues |
+| `GET /api/orchestration/status` | Multi-project orchestration status |

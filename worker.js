@@ -4,9 +4,10 @@ import { handleFoundationRequest } from './src/foundationApi.js';
 import { evaluatePermission } from './src/permissions.js';
 import { getProviderCredential, routeModel } from './src/modelRouter.js';
 import { handleIdeaRequest } from './src/ideaApi.js';
+import { getIdeaStats, getProjectQueues } from './src/ideaStore.js';
 import { listSkills, publicSkillSummary } from './src/skills.js';
-import { createPlan, createTaskBrief } from './src/planner.js';
-import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
+import { createPlan, createTaskBrief, selectRoles } from './src/planner.js';
+import { listProviderStatuses, chooseProvider, chooseCouncilProviders, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
 import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
 
@@ -73,9 +74,62 @@ export default {
       if (foundationResponse) return foundationResponse;
 
       // ── Brain pipeline: idea capture ──────────────────────
-      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas')) {
-        const ideaResponse = await handleIdeaRequest({ path, request, body, env, json });
+      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas') || path === '/api/project-queue') {
+        const ideaResponse = await handleIdeaRequest({ path, request, body, env, json, projectRegistry });
         if (ideaResponse) return ideaResponse;
+      }
+
+      // ── /api/brain/status ─────────────────────────────────
+      if (path === '/api/brain/status') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const providerStatuses = listProviderStatuses(env);
+        const councilRoute = chooseCouncilProviders({ taskType: 'council' }, env);
+        return json({
+          ok: true,
+          mode: 'scaffold',
+          pipeline: [
+            { id: 'capture', label: 'Mobile idea capture', status: 'configured', endpoint: '/api/capture/idea' },
+            { id: 'inbox', label: 'Idea inbox', status: 'configured', endpoint: '/api/ideas' },
+            { id: 'classifier', label: 'Deterministic classifier', status: 'configured' },
+            { id: 'planner', label: 'Plan mode', status: 'configured' },
+            { id: 'council', label: 'AI council', status: councilRoute.configured ? 'configured' : 'mock mode' },
+            { id: 'provider-router', label: 'Provider router', status: providerStatuses.some(p => p.configured) ? 'configured' : 'ready for setup' },
+            { id: 'tool-registry', label: 'Tool/MCP registry', status: 'configured' },
+            { id: 'obsidian', label: 'Obsidian vault memory', status: env.GITHUB_TOKEN && env.GITHUB_REPO ? 'configured' : 'mock mode' },
+            { id: 'prompts', label: 'Cursor/Codex prompt generation', status: 'configured' },
+          ],
+          inbox: getIdeaStats(),
+          providers: providerStatuses,
+          council: councilRoute,
+          tools: getRegistrySummary(),
+          safety: {
+            automaticExecution: false,
+            gmailMode: 'draft-only',
+            highRiskActions: 'confirmation_required',
+            mcpPolicy: 'allowlist-first',
+          },
+        });
+      }
+
+      // ── /api/orchestration/status ──────────────────────────
+      if (path === '/api/orchestration/status') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const queues = getProjectQueues(projectRegistry.projects || []);
+        return json({
+          ok: true,
+          status: 'ready',
+          connectedProviders: listProviderStatuses(env).filter(p => p.configured).map(p => p.id),
+          localFallback: getLocalFallback({}, env),
+          projectQueues: queues,
+          nextActions: queues
+            .filter(queue => queue.total > 0)
+            .map(queue => ({ projectId: queue.projectId, total: queue.total, firstReadyIdea: queue.readyForCursor[0]?.id || queue.readyForCodex[0]?.id || queue.planned[0]?.id || queue.newIdeas[0]?.id || null })),
+          constraints: [
+            'Captured ideas are not executed automatically.',
+            'Cursor/Codex routes generate prompts only.',
+            'Deploy, merge, delete, arbitrary shell, email sending, and screen control remain blocked or confirmation-required.',
+          ],
+        });
       }
 
       // ── /api/skills ───────────────────────────────────────
@@ -166,7 +220,6 @@ export default {
       if (path === '/api/council') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
-        const { selectRoles } = await import('./src/planner.js');
         const roles = selectRoles(body.task);
         const prompt = createCouncilPrompt(body.task, roles);
         const mockResults = roles.map(r => createMockCouncilResult(r.id, body.task));

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "name": "CopelandVault",
+  "mode": "github-or-mock",
+  "requiredEnvVarsForGitHubMode": ["GITHUB_TOKEN", "GITHUB_REPO"],
+  "optionalEnvVars": ["VAULT_ROOT", "VAULT_BRANCH"],
+  "defaultRoot": "CopelandVault",
+  "folders": ["Daily", "Projects", "School", "BandCouncil", "Music", "Research", "Decisions", "Inbox", "Templates"],
+  "ideaInbox": {
+    "folder": "Inbox",
+    "template": "templates/idea-capture.md",
+    "dailyAppendSection": "## Captured ideas",
+    "captureWrites": ["idea-note", "daily-append-preview"]
+  },
+  "conversionTypes": [
+    "project-update",
+    "decision-log",
+    "research-note",
+    "meeting-note",
+    "task-list",
+    "email-draft-note",
+    "idea-note"
+  ],
+  "safety": {
+    "sanitizeFilenames": true,
+    "blockPathTraversal": true,
+    "blockObviousSecrets": true,
+    "blockObviousPrivateStudentData": true,
+    "emailNotesDraftOnly": true,
+    "mockModeWhenUnconfigured": true
+  }
+}

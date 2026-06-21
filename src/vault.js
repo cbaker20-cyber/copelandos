@@ -16,6 +16,13 @@ const SECRET_PATTERNS = [
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
 ];
 
+const PRIVATE_STUDENT_PATTERNS = [
+  /\b(student\s*id|school\s*id)\b/i,
+  /\b(iep|504\s*plan|discipline|detention|suspension)\b/i,
+  /\b(parent|guardian)\s+(phone|email|contact)\b/i,
+  /\b[A-Z][a-z]+ [A-Z][a-z]+\s+(grade|gpa|absence|medical|address)\b/,
+];
+
 export const VAULT_STRUCTURE = Object.freeze([
   'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates',
 ]);
@@ -28,6 +35,8 @@ export const VAULT_TEMPLATES = Object.freeze({
   meeting: '# Meeting: {{title}}\n\n## Agenda\n\n## Decisions\n\n## Actions\n',
   email: '# Email draft: {{subject}}\n\n> DRAFT — NOT SENT\n\n## Draft\n',
   tasks: '# {{project}} tasks\n\n- [ ] \n',
+  idea: '# Idea capture: {{id}}\n\n## Raw idea\n\n{{text}}\n\n## Triage\n\n- Source: {{source}}\n- Skill: {{skill}}\n- Risk: {{risk}}\n',
+  ideaTriaged: '# Idea triage: {{id}}\n\n## Classification\n\n- Category: {{category}}\n- Skill: {{skill}}\n- Risk: {{risk}}\n\n## Suggested action\n\n{{suggestedAction}}\n',
 });
 
 export function sanitizePathSegment(value, fallback = 'note') {
@@ -50,6 +59,7 @@ export function validateVaultContent(content, { containsPrivateStudentData = fal
   const text = String(content || '');
   if (containsPrivateStudentData) throw new Error('Private student data is not allowed in the vault integration.');
   if (SECRET_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential secret detected; vault write blocked.');
+  if (PRIVATE_STUDENT_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential private student data detected; vault write blocked.');
   return text;
 }
 
@@ -94,7 +104,8 @@ export function writeEmailDraftNote(subject, content, options) {
 
 export function writeIdeaNote(idea, options) {
   const date = new Date().toISOString().slice(0, 10);
-  const title = `idea-${date}-${String(idea.id || '').slice(0, 8)}`;
+  const idFragment = sanitizePathSegment(String(idea.id || 'captured').slice(0, 12), 'captured');
+  const title = `idea-${date}-${idFragment}`;
   const content = [
     `**Source:** ${idea.source || 'manual'}`,
     `**Tags:** ${(idea.tags || []).join(', ') || 'none'}`,
@@ -112,10 +123,50 @@ export function writeIdeaNote(idea, options) {
   return createDocument('idea', title, content.trim(), options);
 }
 
+export function buildDailyIdeaAppend(idea, date = new Date().toISOString().slice(0, 10), options) {
+  const safeDate = sanitizePathSegment(date, new Date().toISOString().slice(0, 10));
+  const content = validateVaultContent([
+    `- ${new Date().toISOString()} [${idea.source || 'manual'}] ${idea.text || ''}`,
+    `  - Status: ${idea.status || 'new'}`,
+    `  - Skill: ${idea.skill || 'unassigned'}`,
+    `  - Risk: ${idea.riskLevel || 'unknown'}`,
+    idea.suggestedAction ? `  - Suggested action: ${idea.suggestedAction}` : '',
+  ].filter(Boolean).join('\n'), options);
+  return {
+    type: 'daily-idea-append',
+    folder: 'Daily',
+    title: safeDate,
+    path: `Daily/${safeDate}.md`,
+    content,
+    append: true,
+    section: '## Captured ideas',
+  };
+}
+
+export function writeDailyIdeaAppend(idea, options) {
+  return buildDailyIdeaAppend(idea, new Date().toISOString().slice(0, 10), options);
+}
+
+function normalizeIdeaNoteType(noteType) {
+  const key = String(noteType || 'idea').trim().toLowerCase();
+  const aliases = {
+    'project-update': 'project',
+    'decision-log': 'decision',
+    'research-note': 'research',
+    'meeting-note': 'meeting',
+    'task-list': 'tasks',
+    'email-draft': 'email',
+    'email-draft-note': 'email',
+    'idea-note': 'idea',
+  };
+  return aliases[key] || key;
+}
+
 export function convertIdeaToNote(idea, noteType) {
+  const normalizedType = normalizeIdeaNoteType(noteType);
   const text = idea.text || '';
   const date = new Date().toISOString().slice(0, 10);
-  switch (noteType) {
+  switch (normalizedType) {
     case 'project':
       return writeProjectUpdate(idea.project || 'idea', `From captured idea (${date}):\n\n${text}`);
     case 'decision':
@@ -132,6 +183,10 @@ export function convertIdeaToNote(idea, noteType) {
     default:
       return writeIdeaNote(idea);
   }
+}
+
+export function getSupportedIdeaNoteTypes() {
+  return ['project', 'project-update', 'decision', 'decision-log', 'research', 'research-note', 'meeting', 'meeting-note', 'email', 'email-draft-note', 'tasks', 'task-list', 'idea', 'idea-note'];
 }
 
 export function writeTaskList(projectId, tasks, options) {
@@ -163,6 +218,21 @@ function encodeBase64(text) {
   return btoa(binary);
 }
 
+function decodeBase64(text) {
+  const binary = atob(String(text || '').replace(/\s/g, ''));
+  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function appendVaultContent(existingContent, document) {
+  const section = document.section || '## Appended notes';
+  const current = String(existingContent || '').trimEnd();
+  const addition = String(document.content || '').trim();
+  if (!current) return `# ${document.title}\n\n${section}\n\n${addition}\n`;
+  if (current.includes(section)) return `${current}\n${addition}\n`;
+  return `${current}\n\n${section}\n\n${addition}\n`;
+}
+
 export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const root = sanitizePathSegment(env.VAULT_ROOT || 'CopelandVault', 'CopelandVault');
   const fullPath = `${root}/${document.path}`;
@@ -175,12 +245,18 @@ export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const headers = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, 'User-Agent': 'CopelandOS' };
   const existing = await fetchImpl(apiUrl, { headers });
   let sha;
-  if (existing.ok) sha = (await existing.json()).sha;
+  let existingContent = '';
+  if (existing.ok) {
+    const existingJson = await existing.json();
+    sha = existingJson.sha;
+    if (document.append && existingJson.content) existingContent = decodeBase64(existingJson.content);
+  }
   else if (existing.status !== 404) throw new Error(`Vault lookup failed (${existing.status}).`);
 
+  const content = document.append ? appendVaultContent(existingContent, document) : document.content;
   const payload = {
     message: `CopelandOS vault: ${document.path}`,
-    content: encodeBase64(document.content),
+    content: encodeBase64(content),
     branch: env.VAULT_BRANCH || 'main',
   };
   if (sha) payload.sha = sha;

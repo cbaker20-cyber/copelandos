@@ -129,7 +129,7 @@ export function classify(text) {
 // "deploy this to Cloudflare" → high risk, confirmation_required
 // "delete files" → high risk, confirmation_required
 
-export function classifyWithContext(text, { project, tags } = {}) {
+export function classifyWithContext(text, { project, tags = [] } = {}) {
   const base = classify(text);
   // Project-specific overrides
   if (project === 'band-council-agent' && base.riskLevel === 'safe') {

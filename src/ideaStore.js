@@ -31,6 +31,19 @@ function sanitizeText(value, maxLength = MAX_TEXT_LENGTH) {
   return str.slice(0, maxLength);
 }
 
+function sanitizeProject(value) {
+  const text = sanitizeText(value, 80);
+  if (!text) return null;
+  return text
+    .normalize('NFKC')
+    .replace(/[<>:"/\\|?*\0]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^A-Za-z0-9_.-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '')
+    .slice(0, 80) || null;
+}
+
 function sanitizeTag(value) {
   return String(value || '')
     .trim()
@@ -58,7 +71,7 @@ export function validateIdeaInput(body) {
 
   const source = VALID_SOURCES.has(body.source) ? body.source : 'manual';
   const tags = sanitizeTags(body.tags);
-  const project = sanitizeText(body.project, 80) || null;
+  const project = sanitizeProject(body.project);
   const urgency = ['low', 'medium', 'high'].includes(body.urgency) ? body.urgency : 'medium';
 
   return { ok: true, text, source, tags, project, urgency };
@@ -126,4 +139,87 @@ export function triageIdea(id, triageData) {
   return { ok: true, idea: updateIdea(id, triageData) };
 }
 
-export { VALID_STATUSES, VALID_SOURCES };
+export function planIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'planned' });
+}
+
+export function dismissIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'dismissed' });
+}
+
+export function getIdeaStats() {
+  const byStatus = Object.fromEntries([...VALID_STATUSES].map(status => [status, 0]));
+  const byRisk = { safe: 0, medium: 0, high: 0, unknown: 0 };
+  const bySkill = {};
+  for (const idea of inbox.values()) {
+    byStatus[idea.status] = (byStatus[idea.status] || 0) + 1;
+    const risk = idea.riskLevel || 'unknown';
+    byRisk[risk] = (byRisk[risk] || 0) + 1;
+    const skill = idea.skill || 'unassigned';
+    bySkill[skill] = (bySkill[skill] || 0) + 1;
+  }
+  return {
+    total: inbox.size,
+    byStatus,
+    byRisk,
+    bySkill,
+    open: [...inbox.values()].filter(idea => !['converted-to-note', 'dismissed'].includes(idea.status)).length,
+  };
+}
+
+function inferProjectId(idea) {
+  const text = `${idea.project || ''} ${idea.tags.join(' ')} ${idea.text}`.toLowerCase();
+  if (idea.project) return idea.project;
+  if (/score\s*scanner|musicxml|score/.test(text)) return 'score-scanner';
+  if (/jazzbackend|jazz|rhythm|sight.?reading/.test(text)) return 'jazz-backend';
+  if (/connectome|neuroscience|research/.test(text)) return 'connectome-perturbation';
+  if (/band\s*council|agenda|minutes|delegation/.test(text)) return 'band-council-agent';
+  if (/copelandos|jarvis|dashboard|worker|cloudflare/.test(text)) return 'copelandos';
+  return 'inbox';
+}
+
+export function getProjectQueues(projects = []) {
+  const knownProjects = new Set(projects.map(project => project.id));
+  const queues = Object.fromEntries(projects.map(project => [project.id, {
+    projectId: project.id,
+    displayName: project.displayName,
+    readyForCursor: [],
+    readyForCodex: [],
+    planned: [],
+    newIdeas: [],
+  }]));
+  queues.inbox = { projectId: 'inbox', displayName: 'Idea Inbox', readyForCursor: [], readyForCodex: [], planned: [], newIdeas: [] };
+
+  for (const idea of inbox.values()) {
+    const projectId = inferProjectId(idea);
+    const queue = knownProjects.has(projectId) ? queues[projectId] : queues.inbox;
+    const summary = {
+      id: idea.id,
+      text: idea.text.slice(0, 160),
+      status: idea.status,
+      skill: idea.skill,
+      riskLevel: idea.riskLevel,
+      suggestedAction: idea.suggestedAction,
+      createdAt: idea.createdAt,
+    };
+    if (idea.status === 'ready-for-cursor') queue.readyForCursor.push(summary);
+    else if (idea.status === 'ready-for-codex') queue.readyForCodex.push(summary);
+    else if (idea.status === 'planned' || idea.status === 'triaged') queue.planned.push(summary);
+    else if (idea.status === 'new') queue.newIdeas.push(summary);
+  }
+
+  return Object.values(queues).map(queue => ({
+    ...queue,
+    total: queue.readyForCursor.length + queue.readyForCodex.length + queue.planned.length + queue.newIdeas.length,
+  }));
+}
+
+export function _clearInbox() {
+  inbox.clear();
+}
+
+export { VALID_STATUSES, VALID_SOURCES, MAX_TEXT_LENGTH };

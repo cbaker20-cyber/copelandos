@@ -3,6 +3,7 @@ import mcpConfig from '../config/mcp-servers.json' with { type: 'json' };
 
 const TOOLS = toolsConfig.tools;
 const MCP_SERVERS = mcpConfig.servers;
+const HIGH_RISK_ACTION_PATTERN = /\b(send|delete|deploy|merge|shell|screen|keyboard|mouse|publish|release|install|secret|rm|rmdir|unlink)\b/i;
 
 export function getTool(id) {
   return TOOLS.find(t => t.id === id) || null;
@@ -41,8 +42,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Tool '${toolId}' is permanently blocked.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high',
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -51,8 +53,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Action '${action}' is blocked for tool '${toolId}'.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high' || HIGH_RISK_ACTION_PATTERN.test(action),
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -121,6 +124,8 @@ export function checkMcpPermission(serverId, operation) {
       allowed: false,
       reason: `Operation '${operation}' is blocked for MCP server '${serverId}'.`,
       blocked: true,
+      confirmation_required: server.riskLevel === 'high' || HIGH_RISK_ACTION_PATTERN.test(operation),
+      riskLevel: server.riskLevel,
     };
   }
 

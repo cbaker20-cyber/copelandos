@@ -157,49 +157,134 @@ export function createTaskBrief(task) {
   };
 }
 
+function buildFilesToInspect(project, classification) {
+  const common = ['README.md', 'package.json'];
+  if (!project) return common.concat(['src/', 'test/']);
+  const byProject = {
+    'score-scanner': ['src/', 'tests/', 'docs/cursor-ready-issues.md', 'musicxml fixtures'],
+    'jazz-backend': ['src/', 'tests/', 'docs/cursor-ready-issues.md', 'MusicXML generation code'],
+    'connectome-perturbation': ['README.md', 'docs/', 'scripts/', 'data manifest'],
+    'band-council-agent': ['README.md', 'templates/', 'docs/', 'privacy policy files'],
+    copelandos: ['worker.js', 'src/', 'config/', 'frontend/index.html', 'test/', 'docs/'],
+  };
+  if (byProject[project.id]) return byProject[project.id];
+  if (classification.category === 'design') return ['frontend/', 'styles/', 'README.md'];
+  if (classification.category === 'coding') return ['src/', 'test/', 'README.md'];
+  return common.concat(['docs/']);
+}
+
+function buildProjectRules(project) {
+  if (!project) return [];
+  const rules = {
+    'score-scanner': ['Score Scanner: no fake PDF/photo OMR; MusicXML-only unless explicitly implemented and tested.'],
+    'jazz-backend': ['JazzBackend: preserve musical constraints and do not weaken generated MusicXML validity.'],
+    'band-council-agent': ['Band Council: privacy-safe, draft-only, no private student data.'],
+    'connectome-perturbation': ['Connectome: evidence-first, no invented research or provenance.'],
+    copelandos: ['CopelandOS: security-first, no fake connected claims, worker.js remains canonical.'],
+  };
+  return rules[project.id] || [];
+}
+
+function projectById(project) {
+  return projectRegistry.projects.find(p => p.id === project) || null;
+}
+
+function promptGoal(idea, task) {
+  return String(task || idea?.text || '').trim();
+}
+
+function promptTitle(agentKind, project, goal) {
+  const prefix = agentKind === 'cursor' ? 'Implement' : 'Review';
+  const projectName = project?.displayName || 'CopelandOS task';
+  return `${prefix}: ${projectName} - ${goal.slice(0, 58) || 'captured idea'}`;
+}
+
 export function createCursorPrompt({ idea, project, task }) {
-  const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
+  const proj = projectById(project);
+  const goal = promptGoal(idea, task);
+  const classification = classifyTask(goal);
+  const filesToInspect = buildFilesToInspect(proj, classification);
+  const forbiddenActions = proj?.forbiddenActions || ['send_email', 'merge_pr', 'deploy', 'delete_files', 'arbitrary_shell', 'control_screen'];
   const lines = [
     `You are the Cursor implementation agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    proj ? `Current phase: ${proj.currentPhase}` : '',
-    `Idea: ${idea?.id ? `[${idea.id}]` : ''} ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    `Risk level: ${classification.riskLevel}`,
+    '',
+    'REPO:',
+    proj ? proj.repo : 'unknown - inspect the active repository before editing',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'captured-idea',
+    '',
+    'GOAL:',
+    goal || 'Convert the captured idea into the smallest safe implementation task.',
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect.map(file => `- ${file}`),
+    '',
+    'TASK PROFILE:',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
+    `- Human confirmation required: ${classification.confirmationRequired}`,
     '',
     'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
+    ...(proj ? [`- Current phase: ${proj.currentPhase}`, `- Task source: ${proj.taskSource}`] : []),
+    ...buildProjectRules(proj).map(rule => `- ${rule}`),
     '- Do not commit secrets, tokens, or private data.',
     '- Use a branch and draft PR. Do not push to main directly.',
     '- Stop and report blockers instead of guessing.',
-    '- Run tests before proposing a merge.',
+    '- Do not claim integrations are connected without evidence.',
     '',
-    'REQUIRED STEPS:',
-    '1. Read the repository and understand the existing code.',
-    '2. Identify the files that need to change.',
-    '3. Implement the minimal change that satisfies the goal.',
-    '4. Add or update tests.',
-    '5. Open a draft PR with a clear description.',
+    'SAFETY RULES:',
+    '- Captured ideas are never executed automatically.',
+    '- Gmail remains draft-only.',
+    '- High-risk actions require human confirmation and must not run automatically.',
+    '- Do not deploy, merge, delete files, run arbitrary shell, or control the screen.',
     '',
-    proj ? `SAFE ACTIONS: ${proj.safeActions.join(', ')}` : '',
-    `TASK BRIEF: ${task || idea?.text || 'See idea above'}`,
+    'TESTS TO RUN:',
+    '- npm test',
+    '- node --check worker.js',
+    '- node --check src/foundationApi.js',
+    '- node --check src/vault.js',
+    '',
+    'DRAFT PR TITLE:',
+    promptTitle('cursor', proj, goal),
+    '',
+    'FORBIDDEN ACTIONS:',
+    ...forbiddenActions.map(action => `- ${action}`),
+    ...(proj ? proj.forbiddenClaims.map(claim => `- Forbidden claim: ${claim}`) : []),
+    '',
+    'DELIVERABLE:',
+    'Implement the minimal scoped change, add or update tests, and open a draft PR. Stop on blockers.',
   ].filter(Boolean);
 
   return lines.join('\n');
 }
 
 export function createCodexPrompt({ idea, project, task }) {
-  const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
+  const proj = projectById(project);
+  const goal = promptGoal(idea, task);
+  const classification = classifyTask(goal);
+  const filesToInspect = buildFilesToInspect(proj, classification);
+  const forbiddenActions = proj?.forbiddenActions || ['send_email', 'merge_pr', 'deploy', 'delete_files', 'arbitrary_shell', 'control_screen'];
   const lines = [
     `You are the Codex architecture and security agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    `Goal: ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
+    '',
+    'REPO:',
+    proj ? proj.repo : 'unknown - inspect the active repository before proposing changes',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'captured-idea',
+    '',
+    'GOAL:',
+    goal || 'Review this captured idea and produce a safe architecture plan.',
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect.map(file => `- ${file}`),
+    '',
+    'TASK PROFILE:',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
     '',
     'REVIEW FOCUS:',
     '- Architecture decisions and trade-offs',
@@ -208,13 +293,32 @@ export function createCodexPrompt({ idea, project, task }) {
     '- Dependency choices and risk',
     '',
     'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
+    ...buildProjectRules(proj).map(rule => `- ${rule}`),
     '- Do not claim integration is connected without evidence.',
     '- Do not weaken existing tests.',
     '- Never add secrets or tokens to the codebase.',
     '',
-    proj ? `FORBIDDEN CLAIMS: ${proj.forbiddenClaims.join('; ')}` : '',
-    `TASK: ${task || idea?.text || 'See idea above'}`,
+    'SAFETY RULES:',
+    '- Captured ideas are planning inputs only; do not execute them.',
+    '- Gmail is draft-only.',
+    '- High-risk actions require confirmation and should be represented as blocked/confirmation_required.',
+    '- Do not deploy, merge, delete files, run arbitrary shell, or control screen/mouse/keyboard.',
+    '',
+    'TESTS TO RUN:',
+    '- npm test',
+    '- node --check worker.js',
+    '- node --check src/foundationApi.js',
+    '- node --check src/vault.js',
+    '',
+    'DRAFT PR TITLE:',
+    promptTitle('codex', proj, goal),
+    '',
+    'FORBIDDEN ACTIONS:',
+    ...forbiddenActions.map(action => `- ${action}`),
+    ...(proj ? proj.forbiddenClaims.map(claim => `- Forbidden claim: ${claim}`) : []),
+    '',
+    'DELIVERABLE:',
+    'Produce a concise implementation or review plan with risks, files, tests, and open questions.',
   ].filter(Boolean);
 
   return lines.join('\n');
