@@ -8,7 +8,8 @@ import { listSkills, publicSkillSummary } from './src/skills.js';
 import { createPlan, createTaskBrief } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
-import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import { createCouncilPrompt, createRolePrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import planningRoles from './config/planning-roles.json' with { type: 'json' };
 
 export default {
   async fetch(request, env, ctx) {
@@ -72,8 +73,8 @@ export default {
       });
       if (foundationResponse) return foundationResponse;
 
-      // ── Brain pipeline: idea capture ──────────────────────
-      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas')) {
+      // ── Brain pipeline: idea capture, inbox, status ───────
+      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas') || path === '/api/brain/status') {
         const ideaResponse = await handleIdeaRequest({ path, request, body, env, json });
         if (ideaResponse) return ideaResponse;
       }
@@ -172,6 +173,25 @@ export default {
         const mockResults = roles.map(r => createMockCouncilResult(r.id, body.task));
         const finalPlan = produceFinalPlan(mockResults, body.task);
         return json({ ok: true, task: body.task, roles: roles.map(r => r.id), prompt, mockResults, finalPlan, mode: 'mock' });
+      }
+
+      // ── /api/council/roles ────────────────────────────────
+      if (path === '/api/council/roles') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, roles: planningRoles.roles, selectionRules: planningRoles.selectionRules });
+      }
+
+      // ── /api/council/role-prompt ──────────────────────────
+      if (path === '/api/council/role-prompt') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.roleId) return json({ ok: false, error: 'roleId is required.' }, 400);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        try {
+          const prompt = createRolePrompt(body.roleId, body.task);
+          return json({ ok: true, roleId: body.roleId, task: body.task, prompt });
+        } catch (err) {
+          return json({ ok: false, error: err.message }, 400);
+        }
       }
 
       // ── /api/ai ───────────────────────────────────────────

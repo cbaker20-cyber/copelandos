@@ -134,6 +134,29 @@ export function convertIdeaToNote(idea, noteType) {
   }
 }
 
+/**
+ * Builds a markdown block suitable for appending to a daily note when an idea is captured.
+ * Returns a plain string (not a document) so callers can concatenate multiple ideas.
+ */
+export function buildDailyIdeaAppend(idea) {
+  const riskLabel = { high: '🔴 HIGH', medium: '🟡 MEDIUM', safe: '🟢 SAFE' }[idea.riskLevel] || idea.riskLevel || 'unknown';
+  const urgencyLabel = { high: '⚡ HIGH', medium: '⏱ MEDIUM', low: '💤 LOW' }[idea.urgency] || idea.urgency || '';
+  return [
+    `### Captured idea`,
+    '',
+    `> ${String(idea.text || '').slice(0, 200)}`,
+    '',
+    `- **Source:** ${idea.source || 'manual'}`,
+    `- **Risk:** ${riskLabel}`,
+    urgencyLabel ? `- **Urgency:** ${urgencyLabel}` : '',
+    `- **Skill:** ${idea.skill || 'unassigned'}`,
+    `- **Status:** ${idea.status || 'new'}`,
+    idea.suggestedAction ? `- **Next action:** ${idea.suggestedAction}` : '',
+    `- **ID:** \`${idea.id || ''}\``,
+    '',
+  ].filter(s => s !== null && s !== undefined).join('\n');
+}
+
 export function writeTaskList(projectId, tasks, options) {
   const lines = Array.isArray(tasks) ? tasks.map((task) => `- [ ] ${String(task)}`).join('\n') : String(tasks || '');
   return createDocument('tasks', `${projectId}-tasks`, lines, options);

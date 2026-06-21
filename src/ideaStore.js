@@ -126,4 +126,38 @@ export function triageIdea(id, triageData) {
   return { ok: true, idea: updateIdea(id, triageData) };
 }
 
+export function dismissIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return { ok: true, idea: updateIdea(id, { status: 'dismissed' }) };
+}
+
+export function getIdeaStats() {
+  const all = [...inbox.values()];
+  const byStatus = {};
+  const byCategory = {};
+  const byRisk = {};
+  let confirmationRequired = 0;
+
+  for (const idea of all) {
+    byStatus[idea.status] = (byStatus[idea.status] || 0) + 1;
+    if (idea.category) byCategory[idea.category] = (byCategory[idea.category] || 0) + 1;
+    if (idea.riskLevel) byRisk[idea.riskLevel] = (byRisk[idea.riskLevel] || 0) + 1;
+    if (idea.confirmationRequired) confirmationRequired++;
+  }
+
+  return {
+    total: all.length,
+    byStatus,
+    byCategory,
+    byRisk,
+    confirmationRequired,
+  };
+}
+
+/** Clears all ideas from the inbox. Use only in tests for isolation. */
+export function _clearInbox() {
+  inbox.clear();
+}
+
 export { VALID_STATUSES, VALID_SOURCES };

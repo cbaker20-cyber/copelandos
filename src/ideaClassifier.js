@@ -5,6 +5,29 @@
 
 import { findSkillByKeyword, getSkill } from './skills.js';
 
+const URGENCY_PATTERNS = {
+  high: [
+    /\burgent\b/i,
+    /\basap\b/i,
+    /\bimmediately\b/i,
+    /\bdeadline\b/i,
+    /\bcritical\b/i,
+    /\btoday\b/i,
+    /\bright now\b/i,
+    /\boverdue\b/i,
+    /\bemergency\b/i,
+  ],
+  low: [
+    /\bsomeday\b/i,
+    /\beventually\b/i,
+    /\bwhen possible\b/i,
+    /\blow priority\b/i,
+    /\bno rush\b/i,
+    /\bbacklog\b/i,
+    /\bnice to have\b/i,
+  ],
+};
+
 const HIGH_RISK_PATTERNS = [
   /\bdeploy\b/i,
   /\bpublish\b/i,
@@ -35,6 +58,11 @@ const MEDIUM_RISK_PATTERNS = [
   /\bopen\s+(cursor|vscode|terminal)\b/i,
   /\blaunch\b/i,
   /\bstart\s+cursor\b/i,
+  /\bsubmit\b/i,
+  /\bupload\b/i,
+  /\bsend\s+to\b/i,
+  /\bpost\s+to\b/i,
+  /\bshare\s+with\b/i,
 ];
 
 const CATEGORY_PATTERNS = [
@@ -62,6 +90,14 @@ function detectRiskLevel(text) {
   if (HIGH_RISK_PATTERNS.some(p => p.test(text))) return 'high';
   if (MEDIUM_RISK_PATTERNS.some(p => p.test(text))) return 'medium';
   return 'safe';
+}
+
+function detectUrgency(text, inputUrgency) {
+  // Respect explicit urgency if provided
+  if (inputUrgency && ['low', 'medium', 'high'].includes(inputUrgency)) return inputUrgency;
+  if (URGENCY_PATTERNS.high.some(p => p.test(text))) return 'high';
+  if (URGENCY_PATTERNS.low.some(p => p.test(text))) return 'low';
+  return 'medium';
 }
 
 function extractKeywords(text) {
@@ -101,9 +137,10 @@ function buildSuggestedAction(skill, riskLevel, category) {
   }
 }
 
-export function classify(text) {
+export function classify(text, { urgency: inputUrgency } = {}) {
   const category = detectCategory(text);
   const riskLevel = detectRiskLevel(text);
+  const urgency = detectUrgency(text, inputUrgency);
   const keywords = extractKeywords(text);
   const skill = findSkillByKeyword(keywords);
   const confirmationRequired = riskLevel !== 'safe' || (skill && skill.confirmationRequired);
@@ -114,6 +151,7 @@ export function classify(text) {
     skill: skill ? skill.id : null,
     skillDetail: skill || null,
     riskLevel,
+    urgency,
     confirmationRequired: Boolean(confirmationRequired),
     suggestedAction,
     keywords: keywords.slice(0, 10),
@@ -129,8 +167,8 @@ export function classify(text) {
 // "deploy this to Cloudflare" → high risk, confirmation_required
 // "delete files" → high risk, confirmation_required
 
-export function classifyWithContext(text, { project, tags } = {}) {
-  const base = classify(text);
+export function classifyWithContext(text, { project, tags, urgency } = {}) {
+  const base = classify(text, { urgency });
   // Project-specific overrides
   if (project === 'band-council-agent' && base.riskLevel === 'safe') {
     base.riskLevel = 'medium';
