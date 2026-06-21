@@ -109,7 +109,7 @@ export function writeEmailDraftNote(subject, content, options) {
 export function writeIdeaNote(idea, options) {
   const date = new Date().toISOString().slice(0, 10);
   const idFragment = sanitizePathSegment(
-    String(idea.id || 'captured').replace(/[^A-Za-z0-9_.-]/g, '-').slice(0, 24),
+    String(idea.id || 'captured').replace(/[^A-Za-z0-9_-]/g, '-').replace(/-+/g, '-').slice(0, 24),
     'captured',
   );
   const title = `idea-${date}-${idFragment}`;

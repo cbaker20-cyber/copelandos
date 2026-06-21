@@ -66,7 +66,7 @@ export function validateIdeaInput(body) {
   const tags = sanitizeTags(input.tags || input.tag);
   const project = sanitizeText(input.project, 80)
     .toLowerCase()
-    .replace(/[^a-z0-9_.-]/g, '-')
+    .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '') || null;
   const urgency = ['low', 'medium', 'high'].includes(input.urgency) ? input.urgency : 'medium';
