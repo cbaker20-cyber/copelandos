@@ -6,6 +6,39 @@ import { getSkill } from './skills.js';
 const ROLES = Object.fromEntries(planningRoles.roles.map(r => [r.id, r]));
 const SELECTION_RULES = planningRoles.selectionRules;
 
+const PROJECT_PROMPT_RULES = {
+  'score-scanner': {
+    filesToInspect: ['README.md', 'docs/cursor-ready-issues.md', 'src/', 'tests/'],
+    testsToRun: ['npm test', 'node --test'],
+    safetyRules: ['No fake PDF/photo OMR claims or implementation.', 'MusicXML-only unless real OMR is explicitly implemented and tested.'],
+    draftPrTitle: 'Scope Score Scanner MusicXML task',
+  },
+  'jazz-backend': {
+    filesToInspect: ['README.md', 'src/', 'tests/', 'docs/cursor-ready-issues.md'],
+    testsToRun: ['npm test', 'pytest if present'],
+    safetyRules: ['Preserve musical constraints.', 'Do not remove failing rhythm or MusicXML tests to pass CI.'],
+    draftPrTitle: 'Improve JazzBackend task safely',
+  },
+  'band-council-agent': {
+    filesToInspect: ['README.md', 'docs/', 'templates/'],
+    testsToRun: ['npm test if present'],
+    safetyRules: ['Privacy-safe only.', 'Draft-only communications.', 'Do not store private student data.'],
+    draftPrTitle: 'Draft Band Council workflow update',
+  },
+  'connectome-perturbation': {
+    filesToInspect: ['README.md', 'docs/', 'scripts/', 'data manifest if present'],
+    testsToRun: ['pytest if present', 'validation scripts documented by repo'],
+    safetyRules: ['Evidence-first.', 'Do not invent research claims or provenance.', 'Do not commit private or large generated data.'],
+    draftPrTitle: 'Document Connectome evidence workflow',
+  },
+  copelandos: {
+    filesToInspect: ['README.md', 'worker.js', 'src/', 'config/', 'docs/', 'test/'],
+    testsToRun: ['npm test', 'node --check worker.js', 'git diff --check'],
+    safetyRules: ['Security-first.', 'No fake connected claims.', 'Do not add secrets, deploy controls, merge controls, or arbitrary shell execution.'],
+    draftPrTitle: 'Build CopelandOS foundation task',
+  },
+};
+
 export function classifyTask(input) {
   return classify(String(input || ''));
 }
@@ -160,16 +193,30 @@ export function createTaskBrief(task) {
 export function createCursorPrompt({ idea, project, task }) {
   const proj = projectRegistry.projects.find(p => p.id === project);
   const classification = classifyTask(task || idea?.text || '');
+  const rules = getPromptRules(project, proj);
+  const goal = task || idea?.text || '';
   const lines = [
     `You are the Cursor implementation agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    proj ? `Current phase: ${proj.currentPhase}` : '',
-    `Idea: ${idea?.id ? `[${idea.id}]` : ''} ${task || idea?.text || ''}`,
+    '',
+    'REPO:',
+    proj ? proj.repo : 'Unknown repo - inspect the idea/project before editing.',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'No issue id provided. Use the captured idea text as the source of truth.',
+    '',
+    'GOAL:',
+    goal,
+    '',
+    'FILES TO INSPECT:',
+    ...rules.filesToInspect.map((file) => `- ${file}`),
+    '',
+    proj ? `CURRENT PHASE: ${proj.currentPhase}` : '',
     `Category: ${classification.category}`,
     `Skill: ${classification.skill || 'general'}`,
     `Risk level: ${classification.riskLevel}`,
     '',
     'CONSTRAINTS:',
+    ...(rules.safetyRules || []).map((rule) => `- ${rule}`),
     ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
     ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
     '- Do not commit secrets, tokens, or private data.',
@@ -184,8 +231,21 @@ export function createCursorPrompt({ idea, project, task }) {
     '4. Add or update tests.',
     '5. Open a draft PR with a clear description.',
     '',
+    'TESTS TO RUN:',
+    ...rules.testsToRun.map((test) => `- ${test}`),
+    '',
+    'DRAFT PR TITLE:',
+    rules.draftPrTitle,
+    '',
+    'FORBIDDEN ACTIONS:',
+    '- Do not merge PRs.',
+    '- Do not deploy.',
+    '- Do not send email.',
+    '- Do not run arbitrary shell commands outside the repo task.',
+    '- Do not delete user files or secrets.',
+    '',
     proj ? `SAFE ACTIONS: ${proj.safeActions.join(', ')}` : '',
-    `TASK BRIEF: ${task || idea?.text || 'See idea above'}`,
+    `TASK BRIEF: ${goal || 'See idea above'}`,
   ].filter(Boolean);
 
   return lines.join('\n');
@@ -194,10 +254,23 @@ export function createCursorPrompt({ idea, project, task }) {
 export function createCodexPrompt({ idea, project, task }) {
   const proj = projectRegistry.projects.find(p => p.id === project);
   const classification = classifyTask(task || idea?.text || '');
+  const rules = getPromptRules(project, proj);
+  const goal = task || idea?.text || '';
   const lines = [
     `You are the Codex architecture and security agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    `Goal: ${task || idea?.text || ''}`,
+    '',
+    'REPO:',
+    proj ? proj.repo : 'Unknown repo - inspect the idea/project before editing.',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'No issue id provided. Use the captured idea text as the source of truth.',
+    '',
+    'GOAL:',
+    goal,
+    '',
+    'FILES TO INSPECT:',
+    ...rules.filesToInspect.map((file) => `- ${file}`),
+    '',
     `Category: ${classification.category}`,
     `Skill: ${classification.skill || 'general'}`,
     '',
@@ -208,14 +281,40 @@ export function createCodexPrompt({ idea, project, task }) {
     '- Dependency choices and risk',
     '',
     'CONSTRAINTS:',
+    ...(rules.safetyRules || []).map((rule) => `- ${rule}`),
     ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
     '- Do not claim integration is connected without evidence.',
     '- Do not weaken existing tests.',
     '- Never add secrets or tokens to the codebase.',
     '',
+    'TESTS TO RUN:',
+    ...rules.testsToRun.map((test) => `- ${test}`),
+    '',
+    'DRAFT PR TITLE:',
+    rules.draftPrTitle,
+    '',
+    'FORBIDDEN ACTIONS:',
+    '- Do not merge PRs.',
+    '- Do not deploy.',
+    '- Do not send email.',
+    '- Do not delete files or data.',
+    '- Do not install random MCP servers.',
+    '',
     proj ? `FORBIDDEN CLAIMS: ${proj.forbiddenClaims.join('; ')}` : '',
-    `TASK: ${task || idea?.text || 'See idea above'}`,
+    `TASK: ${goal || 'See idea above'}`,
   ].filter(Boolean);
 
   return lines.join('\n');
+}
+
+function getPromptRules(projectId, project) {
+  return PROJECT_PROMPT_RULES[projectId] || {
+    filesToInspect: ['README.md', 'docs/', 'src/', 'test/'],
+    testsToRun: ['npm test', 'project-specific checks from README'],
+    safetyRules: project ? [
+      `Project goal: ${project.goal}`,
+      `Safe actions: ${project.safeActions.join(', ')}`,
+    ] : ['Inspect the repo before making changes.', 'Preserve existing tests and security boundaries.'],
+    draftPrTitle: project ? `Implement ${project.displayName} task` : 'Implement captured idea safely',
+  };
 }

@@ -206,6 +206,12 @@
     .tag-high { background: rgba(255,120,133,.10); color: var(--red); }
     .tag-source { background: rgba(111,223,255,.06); color: var(--cyan); }
     .tag-status { background: rgba(155,140,255,.08); color: var(--violet); }
+    .idea-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .idea-actions button { font-size: 9px; padding: 4px 8px; }
+    .stats-grid { padding: 0 18px 14px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+    .stat-card { border: 1px solid rgba(111,223,255,.10); border-radius: 10px; padding: 9px; background: rgba(3,9,16,.24); }
+    .stat-card strong { display: block; font-size: 16px; }
+    .stat-card span { color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; }
 
     /* Brain / planner */
     .brain-pipeline { padding: 14px 18px; display: grid; gap: 9px; }
@@ -245,6 +251,7 @@
       .topbar { align-items: start; }
       .top-actions .ghost-btn { display: none; }
       .hero-grid, .dashboard-grid, .two-col-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
       .orb-panel { min-height: 0; padding: 6px 12px 24px; }
       .orb-wrap { min-height: 290px; }
       .project-grid { grid-template-columns: repeat(5, 210px); }
@@ -347,6 +354,12 @@
 
           <article class="panel">
             <div class="panel-head"><div><div class="panel-title">Idea inbox</div><div class="panel-sub">Captured ideas awaiting triage</div></div><span class="badge" id="inbox-badge">empty</span></div>
+            <div class="stats-grid" id="idea-stats">
+              <div class="stat-card"><strong>0</strong><span>Total</span></div>
+              <div class="stat-card"><strong>0</strong><span>New</span></div>
+              <div class="stat-card"><strong>0</strong><span>Ready</span></div>
+              <div class="stat-card"><strong>0</strong><span>Confirm</span></div>
+            </div>
             <div class="idea-list" id="idea-list" aria-live="polite">
               <div class="empty-state">No ideas captured yet. Use the form or your Siri Shortcut to add the first one.</div>
             </div>
@@ -360,7 +373,7 @@
         <div class="dashboard-grid">
           <article class="panel small-panel">
             <div class="panel-head"><div><div class="panel-title">Idea classifier</div><div class="panel-sub">Deterministic rules + AI layer</div></div><span class="badge ok">active</span></div>
-            <div class="brain-pipeline">
+            <div class="brain-pipeline" id="brain-status-list">
               <div class="pipeline-step"><span class="pipeline-node">1</span><div class="pipeline-content"><strong>Capture</strong><small>Text, source, tags, urgency</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">2</span><div class="pipeline-content"><strong>Classify</strong><small>Category, skill, risk level</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">3</span><div class="pipeline-content"><strong>Triage</strong><small>Human review, status update</small></div></div>
@@ -545,6 +558,8 @@
       captureResult: document.getElementById('capture-result'),
       ideaList: document.getElementById('idea-list'),
       inboxBadge: document.getElementById('inbox-badge'),
+      ideaStats: document.getElementById('idea-stats'),
+      brainStatusList: document.getElementById('brain-status-list'),
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
@@ -588,6 +603,16 @@
       return 'tag-safe';
     }
 
+    function renderIdeaStats(stats = {}) {
+      const ready = (stats.byStatus?.['ready-for-cursor'] || 0) + (stats.byStatus?.['ready-for-codex'] || 0);
+      els.ideaStats.innerHTML = [
+        [stats.total || 0, 'Total'],
+        [stats.byStatus?.new || 0, 'New'],
+        [ready, 'Ready'],
+        [stats.confirmationRequired || 0, 'Confirm'],
+      ].map(([value, label]) => `<div class="stat-card"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join('');
+    }
+
     function renderIdeas(ideas) {
       if (!ideas || ideas.length === 0) {
         els.ideaList.innerHTML = '<div class="empty-state">No ideas captured yet. Use the form or your Siri Shortcut to add the first one.</div>';
@@ -610,20 +635,66 @@
             ${(idea.tags || []).map(t => `<span class="idea-tag tag-source">${escapeHtml(t)}</span>`).join('')}
           </div>
           ${idea.suggestedAction ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">${escapeHtml(idea.suggestedAction)}</div>` : ''}
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor prompt</button>
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex prompt</button>
+          <div class="idea-actions">
+            <button class="ghost-btn" onclick="triageIdea('${escapeHtml(idea.id)}')">Triage</button>
+            <button class="ghost-btn" onclick="convertIdea('${escapeHtml(idea.id)}')">Vault note</button>
+            <button class="ghost-btn" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor</button>
+            <button class="ghost-btn" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex</button>
+            <button class="ghost-btn" onclick="dismissIdea('${escapeHtml(idea.id)}')">Dismiss</button>
           </div>
         </div>`).join('');
     }
 
     async function loadIdeas() {
       try {
-        const result = await api('/api/ideas');
+        const [result, stats] = await Promise.all([api('/api/ideas'), api('/api/ideas/stats')]);
         capturedIdeas = result.ideas || [];
+        renderIdeaStats(stats.stats || {});
         renderIdeas(capturedIdeas);
       } catch (e) {
         els.ideaList.innerHTML = `<div class="empty-state">Could not load inbox: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    async function triageIdea(ideaId) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'triaged' }),
+        });
+        addLog('copelandos', `Idea triaged: ${result.idea.skill || 'unassigned'} · ${result.idea.riskLevel || 'unknown'} risk`);
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `Triage failed: ${e.message}`);
+      }
+    }
+
+    async function convertIdea(ideaId) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'research-note' }),
+        });
+        addLog('copelandos', `Idea converted to vault ${result.vault?.mode || 'mock'} note: ${result.vault?.path || result.document?.path}`);
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `Convert failed: ${e.message}`);
+      }
+    }
+
+    async function dismissIdea(ideaId) {
+      try {
+        await api(`/api/ideas/${ideaId}/dismiss`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        addLog('copelandos', `Idea dismissed: ${ideaId.slice(0, 8)}…`);
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `Dismiss failed: ${e.message}`);
       }
     }
 
@@ -727,6 +798,34 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    async function loadBrainStatus() {
+      try {
+        const result = await api('/api/brain/status');
+        const stages = result.status?.stages || [];
+        els.brainStatusList.innerHTML = stages.slice(0, 6).map((stage, index) => `
+          <div class="pipeline-step">
+            <span class="pipeline-node">${index + 1}</span>
+            <div class="pipeline-content"><strong>${escapeHtml(stage.label)}</strong><small>${escapeHtml(stage.status)}</small></div>
+          </div>
+        `).join('');
+      } catch (e) {
+        els.brainStatusList.innerHTML = `<div class="empty-state">Brain status unavailable: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    async function loadProviders() {
+      try {
+        const result = await api('/api/providers');
+        const providers = result.providers || [];
+        els.providersGrid.innerHTML = providers.map(p =>
+          `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.id)} · ${escapeHtml(p.status)}</span>`
+        ).join('');
+        document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'configured' : 'not connected';
+      } catch (e) {
+        els.providersGrid.innerHTML = '<span class="provider">router · ready for setup</span><span class="provider">ollama · local fallback</span>';
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -736,8 +835,10 @@
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        await Promise.all([loadBrainStatus(), loadProviders()]);
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
+        await Promise.all([loadBrainStatus(), loadProviders()]);
       }
     }
 

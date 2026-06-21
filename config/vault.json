@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "defaultRoot": "CopelandVault",
+  "persistenceModes": ["mock", "github"],
+  "requiredGithubEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO"],
+  "folders": [
+    "Daily",
+    "Projects",
+    "School",
+    "BandCouncil",
+    "Music",
+    "Research",
+    "Decisions",
+    "Inbox",
+    "Templates"
+  ],
+  "ideaCapture": {
+    "inboxFolder": "Inbox",
+    "dailyAppendEnabled": true,
+    "template": "templates/idea-capture.md",
+    "triageTemplate": "templates/idea-triage.md",
+    "conversionTypes": [
+      "project-update",
+      "decision-log",
+      "research-note",
+      "meeting-note",
+      "task-list",
+      "email-draft-note"
+    ]
+  },
+  "safety": {
+    "blockPathTraversal": true,
+    "blockObviousSecrets": true,
+    "blockPrivateStudentData": true,
+    "emailDraftOnly": true
+  }
+}

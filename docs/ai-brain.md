@@ -34,6 +34,8 @@ Output
   ├─ Cursor prompt (/api/ideas/:id/cursor-prompt)
   ├─ Codex prompt (/api/ideas/:id/codex-prompt)
   ├─ Vault note (/api/ideas/:id/convert)
+  ├─ Project queue (/api/project-queue)
+  ├─ Brain status (/api/brain/status)
   └─ AI council result (/api/council)
 ```
 
@@ -106,3 +108,18 @@ See `config/skills.json` for the full skill list. Key skills:
 - Email is draft-only; sending is permanently blocked
 - Private student data is blocked from vault writes
 - Deploys, merges, deletes, and shell execution are blocked
+
+## Working API surface
+
+- `POST /api/capture/idea` - capture, sanitize, classify, store in the inbox, and prepare a vault note.
+- `GET /api/ideas` / `GET /api/ideas/:id` - read inbox items.
+- `GET /api/ideas/stats` - status/category/risk counts.
+- `POST /api/ideas/:id/triage` - update classification/status after human review.
+- `POST /api/ideas/:id/plan` - create a plan and mark the idea `planned`.
+- `POST /api/ideas/:id/convert` - convert to project update, decision log, research note, meeting note, task list, email draft note, or raw idea note.
+- `POST /api/ideas/:id/cursor-prompt` / `POST /api/ideas/:id/codex-prompt` - create scoped handoff prompts.
+- `POST /api/ideas/:id/dismiss` - mark an idea dismissed without deleting it.
+- `GET /api/project-queue` - group captured ideas by configured project.
+- `GET /api/orchestration/status` - show multi-project orchestration scaffold and next safe actions.
+
+None of these routes deploy, merge, send email, execute shell commands, delete files, or control a screen.

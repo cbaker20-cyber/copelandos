@@ -110,3 +110,36 @@ test('createCursorPrompt has forbidden actions from project config', () => {
   const prompt = createCursorPrompt({ idea: { id: 'test-3', text: 'do music stuff' }, project: 'score-scanner', task: 'scan a PDF score' });
   assert.ok(prompt.toLowerCase().includes('forbidden'));
 });
+
+test('Cursor prompt includes repo, goal, files, tests, title, and forbidden actions', () => {
+  const prompt = createCursorPrompt({
+    idea: { id: 'idea-123', text: 'build mobile capture' },
+    project: 'copelandos',
+    task: 'build mobile capture dashboard',
+  });
+  for (const section of ['REPO:', 'ISSUE OR IDEA ID:', 'GOAL:', 'FILES TO INSPECT:', 'TESTS TO RUN:', 'DRAFT PR TITLE:', 'FORBIDDEN ACTIONS:']) {
+    assert.ok(prompt.includes(section), `missing ${section}`);
+  }
+  assert.match(prompt, /No fake connected claims/i);
+});
+
+test('Codex prompt includes security-first project constraints', () => {
+  const prompt = createCodexPrompt({
+    idea: { id: 'idea-456', text: 'review provider router' },
+    project: 'copelandos',
+    task: 'review provider router security',
+  });
+  assert.match(prompt, /security/i);
+  assert.match(prompt, /Do not install random MCP servers/i);
+  assert.match(prompt, /TESTS TO RUN:/);
+});
+
+test('Score Scanner prompt explicitly forbids fake PDF or photo OMR', () => {
+  const prompt = createCursorPrompt({
+    idea: { id: 'score-1', text: 'add score scanning' },
+    project: 'score-scanner',
+    task: 'support score input safely',
+  });
+  assert.match(prompt, /No fake PDF\/photo OMR/i);
+  assert.match(prompt, /MusicXML-only/i);
+});

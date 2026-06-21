@@ -48,7 +48,17 @@ Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the Cop
 
 ```json
 {
-  "text": "Fix the JazzBackend rhythm test — the triplet subdivision is off",
+  "text": "",
+  "source": "siri",
+  "tags": ["mobile"]
+}
+```
+
+In Shortcuts, replace the empty `text` value with the `Dictated Text` variable. Add `project` and `urgency` only when useful:
+
+```json
+{
+  "text": "Fix the JazzBackend rhythm test - the triplet subdivision is off",
   "source": "siri",
   "tags": ["mobile", "jazzbackend"],
   "project": "jazz-backend",

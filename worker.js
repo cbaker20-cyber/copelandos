@@ -8,7 +8,8 @@ import { listSkills, publicSkillSummary } from './src/skills.js';
 import { createPlan, createTaskBrief } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
-import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import { createCouncilPrompt, createRolePrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import planningRoles from './config/planning-roles.json' with { type: 'json' };
 
 export default {
   async fetch(request, env, ctx) {
@@ -73,7 +74,13 @@ export default {
       if (foundationResponse) return foundationResponse;
 
       // ── Brain pipeline: idea capture ──────────────────────
-      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas')) {
+      if (
+        path.startsWith('/api/capture/') ||
+        path.startsWith('/api/ideas') ||
+        path === '/api/brain/status' ||
+        path === '/api/project-queue' ||
+        path === '/api/orchestration/status'
+      ) {
         const ideaResponse = await handleIdeaRequest({ path, request, body, env, json });
         if (ideaResponse) return ideaResponse;
       }
@@ -163,6 +170,21 @@ export default {
       }
 
       // ── /api/council ─────────────────────────────────────
+      if (path === '/api/council/roles') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, roles: planningRoles.roles, selectionRules: planningRoles.selectionRules });
+      }
+
+      if (path === '/api/council/role-prompt') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.roleId || !body.task) return json({ ok: false, error: 'roleId and task are required.' }, 400);
+        try {
+          return json({ ok: true, roleId: body.roleId, prompt: createRolePrompt(body.roleId, body.task) });
+        } catch (error) {
+          return json({ ok: false, error: error.message }, 400);
+        }
+      }
+
       if (path === '/api/council') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);

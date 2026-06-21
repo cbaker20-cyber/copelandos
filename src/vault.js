@@ -16,6 +16,15 @@ const SECRET_PATTERNS = [
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
 ];
 
+const PRIVATE_STUDENT_PATTERNS = [
+  /\bstudent\s+id\b/i,
+  /\bdate\s+of\s+birth\b/i,
+  /\bhome\s+address\b/i,
+  /\b(?:iep|504\s+plan)\b/i,
+  /\bdisciplinary\s+record\b/i,
+  /\bmedical\s+accommodation\b/i,
+];
+
 export const VAULT_STRUCTURE = Object.freeze([
   'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates',
 ]);
@@ -28,6 +37,8 @@ export const VAULT_TEMPLATES = Object.freeze({
   meeting: '# Meeting: {{title}}\n\n## Agenda\n\n## Decisions\n\n## Actions\n',
   email: '# Email draft: {{subject}}\n\n> DRAFT — NOT SENT\n\n## Draft\n',
   tasks: '# {{project}} tasks\n\n- [ ] \n',
+  idea: '# Idea Capture: {{title}}\n\n> Captured only. Not executed automatically.\n\n## Idea\n\n{{text}}\n',
+  triage: '# Idea Triage: {{title}}\n\n## Decision\n\n{{decision}}\n',
 });
 
 export function sanitizePathSegment(value, fallback = 'note') {
@@ -50,6 +61,7 @@ export function validateVaultContent(content, { containsPrivateStudentData = fal
   const text = String(content || '');
   if (containsPrivateStudentData) throw new Error('Private student data is not allowed in the vault integration.');
   if (SECRET_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential secret detected; vault write blocked.');
+  if (PRIVATE_STUDENT_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Possible private student data detected; vault write blocked.');
   return text;
 }
 
@@ -94,12 +106,19 @@ export function writeEmailDraftNote(subject, content, options) {
 
 export function writeIdeaNote(idea, options) {
   const date = new Date().toISOString().slice(0, 10);
-  const title = `idea-${date}-${String(idea.id || '').slice(0, 8)}`;
+  const idFragment = String(idea.id || '')
+    .replace(/[^A-Za-z0-9-]/g, '')
+    .slice(0, 8) || 'capture';
+  const title = `idea-${date}-${idFragment}`;
   const content = [
     `**Source:** ${idea.source || 'manual'}`,
     `**Tags:** ${(idea.tags || []).join(', ') || 'none'}`,
+    `**Urgency:** ${idea.urgency || 'medium'}`,
+    `**Category:** ${idea.category || 'uncategorized'}`,
+    `**Skill:** ${idea.skill || 'unassigned'}`,
     `**Risk level:** ${idea.riskLevel || 'unknown'}`,
     `**Status:** ${idea.status || 'new'}`,
+    `**Confirmation required:** ${idea.confirmationRequired ? 'yes' : 'no'}`,
     idea.project ? `**Project:** ${idea.project}` : '',
     '',
     '## Idea',
@@ -112,21 +131,51 @@ export function writeIdeaNote(idea, options) {
   return createDocument('idea', title, content.trim(), options);
 }
 
+export function buildDailyIdeaAppend(idea) {
+  const createdAt = idea.createdAt || new Date().toISOString();
+  return [
+    '',
+    `### Captured idea: ${createdAt}`,
+    '',
+    `- **ID:** ${idea.id || 'unassigned'}`,
+    `- **Source:** ${idea.source || 'manual'}`,
+    `- **Status:** ${idea.status || 'new'}`,
+    `- **Risk:** ${idea.riskLevel || 'unknown'}`,
+    `- **Skill:** ${idea.skill || 'unassigned'}`,
+    `- **Confirmation required:** ${idea.confirmationRequired ? 'yes' : 'no'}`,
+    `- **Suggested action:** ${idea.suggestedAction || 'Review and triage.'}`,
+    '',
+    '> Captured only. No action was executed automatically.',
+    '',
+    idea.text || '',
+  ].join('\n');
+}
+
+export function writeDailyIdeaAppend(idea, date = new Date().toISOString().slice(0, 10), options) {
+  return writeDailyNote(date, buildDailyIdeaAppend(idea), options);
+}
+
 export function convertIdeaToNote(idea, noteType) {
   const text = idea.text || '';
   const date = new Date().toISOString().slice(0, 10);
   switch (noteType) {
     case 'project':
+    case 'project-update':
       return writeProjectUpdate(idea.project || 'idea', `From captured idea (${date}):\n\n${text}`);
     case 'decision':
+    case 'decision-log':
       return writeDecisionLog(`Decision from idea ${date}`, `Context:\n\n${text}\n\nDecision:\n\nTBD`);
     case 'research':
+    case 'research-note':
       return writeResearchNote(`Research: ${text.slice(0, 50)}`, `Source idea:\n\n${text}`);
     case 'meeting':
+    case 'meeting-note':
       return writeMeetingNote(`Meeting note ${date}`, text);
     case 'email':
+    case 'email-draft-note':
       return writeEmailDraftNote(`Draft from idea ${date}`, text);
     case 'tasks':
+    case 'task-list':
       return writeTaskList(idea.project || 'ideas', [text]);
     case 'idea':
     default:
