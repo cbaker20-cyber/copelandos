@@ -28,10 +28,7 @@
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      overflow-x: hidden;
-      color: var(--text);
+      margin: 0; min-height: 100vh; overflow-x: hidden; color: var(--text);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       background:
         radial-gradient(circle at 52% 15%, rgba(43, 139, 206, .16), transparent 29rem),
@@ -39,32 +36,23 @@
         var(--bg);
     }
     body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: .33;
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .33;
       background-image:
         linear-gradient(rgba(111, 223, 255, .035) 1px, transparent 1px),
         linear-gradient(90deg, rgba(111, 223, 255, .035) 1px, transparent 1px);
       background-size: 34px 34px;
       mask-image: linear-gradient(to bottom, black, transparent 92%);
     }
-    button, input { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     button { color: inherit; }
-    button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+    textarea { resize: vertical; }
     .app { display: grid; grid-template-columns: 238px minmax(0, 1fr); min-height: 100vh; }
     .rail {
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      padding: 24px 18px;
+      position: sticky; top: 0; height: 100vh; z-index: 5;
+      display: flex; flex-direction: column; padding: 24px 18px;
       border-right: 1px solid var(--line);
-      background: rgba(3, 8, 15, .86);
-      backdrop-filter: blur(18px);
+      background: rgba(3, 8, 15, .86); backdrop-filter: blur(18px);
     }
     .brand { display: flex; gap: 12px; align-items: center; padding: 0 7px 25px; }
     .brand-mark {
@@ -75,7 +63,7 @@
     .brand-mark::after { inset: 12px; background: var(--cyan); box-shadow: 0 0 15px var(--cyan); }
     .brand strong { display: block; letter-spacing: .12em; font-size: 14px; }
     .brand small { color: var(--muted); font: 10px ui-monospace, monospace; letter-spacing: .16em; }
-    .nav { display: grid; gap: 5px; }
+    .nav { display: grid; gap: 5px; overflow-y: auto; }
     .nav a {
       display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 11px;
       color: var(--muted); text-decoration: none; font-size: 13px; border: 1px solid transparent;
@@ -84,7 +72,7 @@
     .nav-icon { width: 18px; text-align: center; color: var(--cyan); font-family: ui-monospace, monospace; }
     .rail-foot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--line); }
     .system-state { display: flex; gap: 9px; align-items: center; color: var(--muted); font-size: 11px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); box-shadow: 0 0 0 4px rgba(83, 106, 125, .1); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); box-shadow: 0 0 0 4px rgba(83, 106, 125, .1); flex: 0 0 auto; }
     .dot.ok { background: var(--green); box-shadow: 0 0 12px var(--green); }
     .dot.warn { background: var(--amber); box-shadow: 0 0 12px rgba(255, 201, 111, .45); }
     main { min-width: 0; padding: 22px 26px 116px; }
@@ -98,6 +86,7 @@
     }
     .ghost-btn:hover { border-color: var(--line-hot); background: rgba(111, 223, 255, .08); }
     .solid-btn { color: #041019; border-color: transparent; background: linear-gradient(135deg, var(--cyan), #88f2d0); font-weight: 700; }
+    .solid-btn:hover { opacity: .9; }
     .kbd { color: var(--muted); font: 10px ui-monospace, monospace; border: 1px solid var(--line); border-bottom-color: rgba(111,223,255,.35); padding: 2px 5px; border-radius: 5px; }
     .hero-grid { display: grid; grid-template-columns: minmax(360px, 1.35fr) minmax(300px, .85fr); gap: 16px; }
     .panel {
@@ -108,8 +97,11 @@
     .panel-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 18px 19px 0; }
     .panel-title { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
     .panel-sub { margin-top: 4px; color: var(--muted); font-size: 11px; }
-    .badge { border: 1px solid var(--line); padding: 4px 7px; border-radius: 999px; color: var(--muted); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .badge { border: 1px solid var(--line); padding: 4px 7px; border-radius: 999px; color: var(--muted); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
     .badge.ok { color: var(--green); border-color: rgba(110, 240, 173, .3); }
+    .badge.warn { color: var(--amber); border-color: rgba(255, 201, 111, .3); }
+    .badge.high { color: var(--red); border-color: rgba(255, 120, 133, .3); }
+    .badge.medium { color: var(--violet); border-color: rgba(155, 140, 255, .3); }
     .orb-panel { min-height: 410px; display: grid; grid-template-columns: 1fr minmax(180px, .72fr); align-items: center; padding: 10px 28px 24px; }
     .orb-wrap { min-height: 330px; display: grid; place-items: center; position: relative; }
     .orb {
@@ -154,6 +146,7 @@
     .mini-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; padding: 3px; }
     .mini-btn:hover { color: var(--cyan); }
     .dashboard-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .dashboard-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .small-panel { min-height: 190px; padding-bottom: 15px; }
     .empty-state { margin: 20px 18px 0; border: 1px dashed rgba(111,223,255,.17); border-radius: 11px; padding: 15px; color: var(--muted); font-size: 10px; line-height: 1.6; }
     .provider-grid { padding: 16px 18px 4px; display: flex; flex-wrap: wrap; gap: 7px; }
@@ -186,6 +179,61 @@
     .palette-item { width: 100%; display: flex; justify-content: space-between; border: 1px solid transparent; border-radius: 10px; padding: 11px; background: transparent; cursor: pointer; text-align: left; font-size: 11px; }
     .palette-item:hover { border-color: var(--line); background: rgba(111,223,255,.05); }
     .palette-item span:last-child { color: var(--dim); font: 9px ui-monospace, monospace; }
+
+    /* Capture form */
+    .capture-form { padding: 16px 18px; display: grid; gap: 10px; }
+    .capture-form textarea { width: 100%; min-height: 80px; padding: 10px 12px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 12px; line-height: 1.5; }
+    .capture-form textarea::placeholder { color: var(--dim); }
+    .capture-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .capture-select { padding: 8px 10px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 9px; color: var(--text); font-size: 11px; width: 100%; }
+    .capture-btn { padding: 10px; border: 0; border-radius: 10px; background: var(--cyan); color: #041019; font-weight: 700; font-size: 12px; cursor: pointer; }
+    .capture-btn:hover { opacity: .9; }
+    .capture-feedback { font-size: 10px; color: var(--muted); min-height: 18px; }
+    .capture-feedback.ok { color: var(--green); }
+    .capture-feedback.err { color: var(--red); }
+
+    /* Idea inbox */
+    .idea-list { padding: 12px 18px; display: grid; gap: 8px; max-height: 340px; overflow-y: auto; scrollbar-width: thin; }
+    .idea-card { padding: 11px 13px; border: 1px solid rgba(111,223,255,.1); border-radius: 11px; background: rgba(3,9,16,.3); display: grid; gap: 5px; cursor: pointer; transition: border-color .15s; }
+    .idea-card:hover { border-color: rgba(111,223,255,.3); }
+    .idea-card-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .idea-text { font-size: 11px; line-height: 1.45; flex: 1; }
+    .idea-meta { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+    .tag { padding: 2px 6px; border-radius: 999px; font: 8px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .07em; border: 1px solid var(--line); color: var(--muted); }
+    .tag.safe { color: var(--green); border-color: rgba(110,240,173,.3); }
+    .tag.medium { color: var(--amber); border-color: rgba(255,201,111,.3); }
+    .tag.high { color: var(--red); border-color: rgba(255,120,133,.3); }
+    .tag.source { color: var(--violet); border-color: rgba(155,140,255,.3); }
+    .idea-action { color: var(--muted); font-size: 9px; font-style: italic; }
+    .inbox-empty { padding: 24px 18px; text-align: center; color: var(--dim); font-size: 11px; }
+    .inbox-empty span { display: block; font-size: 22px; margin-bottom: 8px; }
+
+    /* AI brain status */
+    .brain-grid { padding: 14px 18px; display: grid; gap: 9px; }
+    .brain-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; }
+    .brain-row-label { color: var(--muted); }
+    .brain-row-val { font-family: ui-monospace, monospace; font-size: 9px; color: var(--cyan); }
+
+    /* Prompt output */
+    .prompt-box { margin: 12px 18px 0; padding: 12px; background: rgba(3,9,16,.6); border: 1px solid var(--line); border-radius: 11px; font: 9px ui-monospace, monospace; line-height: 1.6; white-space: pre-wrap; max-height: 200px; overflow-y: auto; scrollbar-width: thin; color: var(--muted); }
+    .prompt-box.loaded { color: var(--text); }
+    .prompt-actions { padding: 8px 18px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    .prompt-actions button { padding: 6px 10px; font-size: 10px; border-radius: 8px; border: 1px solid var(--line); background: rgba(111,223,255,.04); cursor: pointer; }
+    .prompt-actions button:hover { border-color: var(--line-hot); background: rgba(111,223,255,.08); }
+
+    /* Skills */
+    .skill-grid { padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .skill-chip { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 9px; color: var(--muted); display: flex; gap: 5px; align-items: center; }
+    .skill-chip .risk-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dim); }
+    .skill-chip .risk-dot.safe { background: var(--green); }
+    .skill-chip .risk-dot.medium { background: var(--amber); }
+    .skill-chip .risk-dot.high { background: var(--red); }
+
+    /* Council */
+    .council-roles { padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .council-role { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 9px; color: var(--dim); }
+    .council-role.active { color: var(--violet); border-color: rgba(155,140,255,.4); background: rgba(155,140,255,.06); }
+
     @media (max-width: 1180px) {
       .project-grid { grid-template-columns: repeat(3, minmax(190px, 1fr)); }
       .dashboard-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -196,19 +244,20 @@
       .app { display: block; }
       .rail { position: relative; width: 100%; height: auto; padding: 14px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
       .brand { padding-bottom: 10px; }
-      .nav { display: flex; overflow-x: auto; }
+      .nav { display: flex; overflow-x: auto; gap: 4px; }
       .nav a { flex: 0 0 auto; padding: 8px 10px; }
       .rail-foot { display: none; }
       main { padding: 17px 14px 110px; }
       .topbar { align-items: start; }
       .top-actions .ghost-btn { display: none; }
-      .hero-grid, .dashboard-grid { grid-template-columns: 1fr; }
+      .hero-grid, .dashboard-grid, .dashboard-grid-2 { grid-template-columns: 1fr; }
       .orb-panel { min-height: 0; padding: 6px 12px 24px; }
       .orb-wrap { min-height: 290px; }
       .project-grid { grid-template-columns: repeat(5, 210px); }
       .command-dock { left: 12px; right: 12px; bottom: 10px; }
       .command-shell { grid-template-columns: 1fr auto auto; }
       .prompt-mark { display: none; }
+      .capture-row { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
   </style>
@@ -216,14 +265,19 @@
 <body>
   <div class="app">
     <aside class="rail" aria-label="Primary navigation">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><strong>COPELANDOS</strong><small>JARVIS FOUNDATION</small></div></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><strong>COPELANDOS</strong><small>AI BRAIN PIPELINE</small></div></div>
       <nav class="nav">
-        <a class="active" href="#command"><span class="nav-icon">◉</span>Command center</a>
+        <a class="active" href="#command"><span class="nav-icon">◉</span>Command</a>
+        <a href="#capture"><span class="nav-icon">⊕</span>Capture idea</a>
+        <a href="#inbox"><span class="nav-icon">◈</span>Idea inbox</a>
+        <a href="#brain"><span class="nav-icon">◇</span>AI brain</a>
         <a href="#projects"><span class="nav-icon">⌘</span>Projects</a>
-        <a href="#memory"><span class="nav-icon">◇</span>Memory</a>
+        <a href="#memory"><span class="nav-icon">▣</span>Memory</a>
         <a href="#communications"><span class="nav-icon">△</span>Drafts</a>
-        <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
+        <a href="#local"><span class="nav-icon">▤</span>Local agent</a>
         <a href="#models"><span class="nav-icon">∿</span>Models</a>
+        <a href="#skills"><span class="nav-icon">◎</span>Skills</a>
+        <a href="#tools"><span class="nav-icon">▥</span>Tools / MCP</a>
       </nav>
       <div class="rail-foot"><div class="system-state"><span class="dot" id="rail-dot"></span><span id="rail-state">Worker not connected</span></div></div>
     </aside>
@@ -234,10 +288,11 @@
         <div class="top-actions">
           <button class="ghost-btn" id="speech-toggle" type="button">Voice replies: off</button>
           <button class="ghost-btn" id="palette-open" type="button"><span class="kbd">Ctrl K</span> Commands</button>
-          <span class="badge" id="foundation-badge">foundation</span>
+          <span class="badge" id="foundation-badge">brain pipeline</span>
         </div>
       </header>
 
+      <!-- COMMAND CENTER -->
       <section class="hero-grid" id="command">
         <article class="panel orb-panel">
           <div class="orb-wrap" aria-label="CopelandOS command orb">
@@ -247,11 +302,11 @@
           <div class="mission">
             <div class="eyebrow">Daily mission</div>
             <h2>Build clearly.<br>Move safely.</h2>
-            <p>One command surface for school, code, music, research, and memory—without giving automation permission it has not earned.</p>
+            <p>One command surface for school, code, music, research, and memory — with explicit permissions for every action.</p>
             <div class="mission-list">
-              <div class="mission-item">Review active pull requests before starting duplicate work.</div>
-              <div class="mission-item">Keep Gmail in draft-only mode.</div>
-              <div class="mission-item">Resolve project blockers with evidence, not optimism.</div>
+              <div class="mission-item">Capture ideas on the go. Classify and plan before acting.</div>
+              <div class="mission-item">Keep Gmail in draft-only mode. Review before sending.</div>
+              <div class="mission-item">No provider is claimed as connected unless the env var exists.</div>
             </div>
           </div>
         </article>
@@ -268,11 +323,112 @@
         </article>
       </section>
 
+      <!-- MOBILE / SIRI IDEA CAPTURE -->
+      <section class="section" id="capture">
+        <div class="section-head"><div><h2>Capture idea</h2><p>POST /api/capture/idea — from phone, Siri, Shortcuts, or dashboard</p></div><span class="badge warn">mock mode</span></div>
+        <div class="dashboard-grid-2">
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">New idea</div><div class="panel-sub">Captured, classified, never auto-executed</div></div></div>
+            <div class="capture-form">
+              <textarea id="idea-text" placeholder="Describe your idea… (e.g. &quot;email Mr. Welgoss about NHS&quot;, &quot;fix JazzBackend rhythm tests&quot;, &quot;remember catalase lab notes&quot;)" rows="3"></textarea>
+              <div class="capture-row">
+                <select class="capture-select" id="idea-source">
+                  <option value="dashboard">dashboard</option>
+                  <option value="siri">siri</option>
+                  <option value="shortcuts">shortcuts</option>
+                  <option value="mobile-web">mobile-web</option>
+                  <option value="manual">manual</option>
+                </select>
+                <select class="capture-select" id="idea-urgency">
+                  <option value="medium">urgency: medium</option>
+                  <option value="low">urgency: low</option>
+                  <option value="high">urgency: high</option>
+                </select>
+              </div>
+              <button class="capture-btn" id="capture-btn" type="button">Capture idea →</button>
+              <div class="capture-feedback" id="capture-feedback"></div>
+            </div>
+          </article>
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">Siri / Shortcuts setup</div><div class="panel-sub">iOS capture for on-the-go ideas</div></div><span class="badge">docs/mobile-capture.md</span></div>
+            <div class="brain-grid">
+              <div class="brain-row"><span class="brain-row-label">Shortcut name</span><span class="brain-row-val">Capture Idea</span></div>
+              <div class="brain-row"><span class="brain-row-label">Action</span><span class="brain-row-val">Dictate Text → POST JSON</span></div>
+              <div class="brain-row"><span class="brain-row-label">Endpoint</span><span class="brain-row-val">POST /api/capture/idea</span></div>
+              <div class="brain-row"><span class="brain-row-label">Source field</span><span class="brain-row-val">"source": "siri"</span></div>
+              <div class="brain-row"><span class="brain-row-label">Safety</span><span class="brain-row-val">capture only, no execution</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- IDEA INBOX -->
+      <section class="section" id="inbox">
+        <div class="section-head"><div><h2>Idea inbox</h2><p>GET /api/ideas — classified, never auto-executed</p></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="badge" id="inbox-count-badge">0 ideas</span>
+            <button class="mini-btn" id="refresh-inbox" type="button">Refresh ↻</button>
+          </div>
+        </div>
+        <article class="panel">
+          <div class="panel-head">
+            <div><div class="panel-title">Captured ideas</div><div class="panel-sub">Status: new → triaged → planned → ready-for-cursor → converted-to-note</div></div>
+            <span class="badge" id="inbox-status-badge">empty</span>
+          </div>
+          <div id="idea-inbox-content">
+            <div class="inbox-empty"><span>◈</span>No ideas captured yet. Use the form above or send a Siri shortcut.</div>
+          </div>
+        </article>
+      </section>
+
+      <!-- AI BRAIN STATUS -->
+      <section class="section" id="brain">
+        <div class="section-head"><div><h2>AI brain &amp; planner</h2><p>Classify → Skill → Plan → Council (if needed) → Provider → Prompt</p></div></div>
+        <div class="dashboard-grid">
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">Planner status</div><div class="panel-sub">Deterministic classifier v1</div></div><span class="badge ok">ready</span></div>
+            <div class="brain-grid">
+              <div class="brain-row"><span class="brain-row-label">Classifier</span><span class="brain-row-val">deterministic-v1</span></div>
+              <div class="brain-row"><span class="brain-row-label">Skills loaded</span><span class="brain-row-val" id="skill-count">17</span></div>
+              <div class="brain-row"><span class="brain-row-label">Council mode</span><span class="brain-row-val" id="council-mode-state">simple task → off</span></div>
+              <div class="brain-row"><span class="brain-row-label">AI calls</span><span class="brain-row-val">mock mode (no paid calls)</span></div>
+              <div class="brain-row"><span class="brain-row-label">Cursor prompt</span><span class="brain-row-val">POST /api/ideas/:id/cursor-prompt</span></div>
+              <div class="brain-row"><span class="brain-row-label">Codex prompt</span><span class="brain-row-val">POST /api/ideas/:id/codex-prompt</span></div>
+            </div>
+          </article>
+          <article class="panel small-panel" id="council-panel">
+            <div class="panel-head"><div><div class="panel-title">AI council</div><div class="panel-sub">Multi-role review for complex tasks</div></div><span class="badge" id="council-badge">mock mode</span></div>
+            <div class="council-roles" id="council-roles-list">
+              <span class="council-role active">Planner</span>
+              <span class="council-role">Researcher</span>
+              <span class="council-role">Coder</span>
+              <span class="council-role">Critic</span>
+              <span class="council-role">Security Reviewer</span>
+              <span class="council-role">Designer</span>
+              <span class="council-role">Summarizer</span>
+              <span class="council-role active">Final Judge</span>
+            </div>
+            <div style="padding:8px 18px 12px;font-size:10px;color:var(--muted);">Council activates for high-risk or complex tasks. Mock mode — no paid API calls in this PR.</div>
+          </article>
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">Generated prompt</div><div class="panel-sub">Cursor or Codex output for selected idea</div></div><span class="badge" id="prompt-badge">none</span></div>
+            <div class="prompt-actions">
+              <button id="gen-cursor-btn" type="button" title="Generate Cursor prompt from last captured idea">Cursor prompt</button>
+              <button id="gen-codex-btn" type="button" title="Generate Codex prompt from last captured idea">Codex prompt</button>
+              <button id="copy-prompt-btn" type="button" title="Copy prompt to clipboard">Copy</button>
+            </div>
+            <div class="prompt-box" id="prompt-output">Select an idea from the inbox, then generate a Cursor or Codex prompt.</div>
+          </article>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
       <section class="section" id="projects">
         <div class="section-head"><div><h2>Project command center</h2><p>Registry-backed phases and next actions</p></div><button class="mini-btn" id="refresh-projects" type="button">Refresh registry ↻</button></div>
         <div class="project-grid" id="project-grid" aria-live="polite"></div>
       </section>
 
+      <!-- DASHBOARD GRID -->
       <section class="section dashboard-grid">
         <article class="panel small-panel" id="github">
           <div class="panel-head"><div><div class="panel-title">GitHub / PR status</div><div class="panel-sub">Read-only supervisor</div></div><span class="badge">not connected</span></div>
@@ -280,35 +436,96 @@
         </article>
         <article class="panel small-panel" id="communications">
           <div class="panel-head"><div><div class="panel-title">Email drafts</div><div class="panel-sub">Human review always required</div></div><span class="badge" id="gmail-badge">not connected</span></div>
-          <div class="empty-state"><strong>Draft-only boundary active.</strong><br>No email can be sent by this dashboard. Connect Gmail manually to create reviewable drafts.</div>
+          <div class="empty-state"><strong>Draft-only boundary active.</strong><br>No email can be sent by this dashboard. Connect Gmail to create reviewable drafts.</div>
         </article>
         <article class="panel small-panel" id="memory">
-          <div class="panel-head"><div><div class="panel-title">Obsidian memory</div><div class="panel-sub">CopelandVault</div></div><span class="badge" id="vault-badge">mock mode</span></div>
-          <div class="empty-state">Vault writes produce a safe preview until a private GitHub vault is configured. Paths and obvious secrets are checked before persistence.</div>
+          <div class="panel-head"><div><div class="panel-title">Obsidian memory</div><div class="panel-sub">CopelandVault — Inbox, Projects, Research, Decisions</div></div><span class="badge" id="vault-badge">mock mode</span></div>
+          <div class="empty-state">Vault writes produce a safe preview until a private GitHub vault is configured. Idea notes, daily appends, and all note types supported. Paths and obvious secrets are checked before persistence.</div>
         </article>
         <article class="panel small-panel" id="local">
           <div class="panel-head"><div><div class="panel-title">Local PC control</div><div class="panel-sub">Permissioned Windows bridge</div></div><span class="badge" id="local-badge">not connected</span></div>
           <div class="empty-state">Localhost agent only. No arbitrary shell, deletion, email sending, deploy, package installation, general UI control, or screenshots.</div>
         </article>
         <article class="panel small-panel" id="models">
-          <div class="panel-head"><div><div class="panel-title">Model router</div><div class="panel-sub">Environment-configured providers</div></div><span class="badge" id="model-badge">none configured</span></div>
+          <div class="panel-head"><div><div class="panel-title">Model router</div><div class="panel-sub">Environment-configured providers — free tiers available</div></div><span class="badge" id="model-badge">none configured</span></div>
           <div class="provider-grid" id="providers"></div>
+          <div style="padding:8px 18px;font-size:9px;color:var(--dim);">Free-tier options: Groq, Cerebras, OpenRouter, Gemini, Ollama (local)</div>
         </article>
         <article class="panel small-panel">
           <div class="panel-head"><div><div class="panel-title">Automations</div><div class="panel-sub">Schedules remain review-first</div></div><span class="badge">manual</span></div>
           <div class="automation">
             <div class="auto-row"><span>PR review</span><span>on demand</span></div>
+            <div class="auto-row"><span>Idea capture</span><span>Siri / Shortcuts / dashboard</span></div>
             <div class="auto-row"><span>Daily mission</span><span>not configured</span></div>
             <div class="auto-row"><span>Vault summary</span><span>not configured</span></div>
-            <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
+            <div class="auto-row"><span>Local actions</span><span>confirmation required</span></div>
           </div>
         </article>
       </section>
 
+      <!-- SKILL REGISTRY -->
+      <section class="section" id="skills">
+        <div class="section-head"><div><h2>Skill registry</h2><p>17 skills — keyword-matched, risk-classified</p></div><span class="badge ok">loaded</span></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Available skills</div><div class="panel-sub">Dot color: green = safe, amber = medium, red = high</div></div></div>
+          <div class="skill-grid" id="skills-grid">
+            <span class="skill-chip"><span class="risk-dot safe"></span>School Writing</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Lab Analysis</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Math / Statistics</span>
+            <span class="skill-chip"><span class="risk-dot medium"></span>Coding</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Repo Review</span>
+            <span class="skill-chip"><span class="risk-dot medium"></span>GitHub Issue / PR Planning</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Music Theory</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Score Scanning</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Jazz Generation</span>
+            <span class="skill-chip"><span class="risk-dot medium"></span>Band Council Drafting</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Research Notes</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Design Polish</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Obsidian Memory</span>
+            <span class="skill-chip"><span class="risk-dot medium"></span>Email Drafting</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Schedule Planning</span>
+            <span class="skill-chip"><span class="risk-dot safe"></span>Personal Planning</span>
+            <span class="skill-chip"><span class="risk-dot high"></span>Local Computer Action</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- TOOL + MCP REGISTRY -->
+      <section class="section" id="tools">
+        <div class="section-head"><div><h2>Tool &amp; MCP registry</h2><p>Allowlist-first — no random MCP servers</p></div><span class="badge ok">allowlist active</span></div>
+        <div class="dashboard-grid-2">
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">Tool registry</div><div class="panel-sub">Blocked actions never execute</div></div></div>
+            <div class="brain-grid" id="tool-status-grid">
+              <div class="brain-row"><span class="brain-row-label">GitHub read</span><span class="badge ok">safe</span></div>
+              <div class="brain-row"><span class="brain-row-label">Gmail</span><span class="badge warn">draft-only</span></div>
+              <div class="brain-row"><span class="brain-row-label">Gmail send</span><span class="badge high">BLOCKED</span></div>
+              <div class="brain-row"><span class="brain-row-label">Vault write</span><span class="badge ok">safe-write</span></div>
+              <div class="brain-row"><span class="brain-row-label">Local agent</span><span class="badge warn">confirmation</span></div>
+              <div class="brain-row"><span class="brain-row-label">File delete</span><span class="badge high">BLOCKED</span></div>
+              <div class="brain-row"><span class="brain-row-label">Deploy</span><span class="badge high">BLOCKED</span></div>
+              <div class="brain-row"><span class="brain-row-label">Cursor prompt gen</span><span class="badge ok">safe</span></div>
+            </div>
+          </article>
+          <article class="panel small-panel">
+            <div class="panel-head"><div><div class="panel-title">MCP server registry</div><div class="panel-sub">Allowlist-first, no auto-install</div></div><span class="badge">allowlist-first</span></div>
+            <div class="brain-grid">
+              <div class="brain-row"><span class="brain-row-label">filesystem (read-only)</span><span class="badge ok">approved</span></div>
+              <div class="brain-row"><span class="brain-row-label">cursor-task-generation</span><span class="badge ok">approved</span></div>
+              <div class="brain-row"><span class="brain-row-label">github-supervisor</span><span class="badge warn">pending review</span></div>
+              <div class="brain-row"><span class="brain-row-label">arbitrary-shell</span><span class="badge high">blocked</span></div>
+              <div class="brain-row"><span class="brain-row-label">screen-control</span><span class="badge high">blocked</span></div>
+              <div class="brain-row"><span class="brain-row-label">email-send</span><span class="badge high">blocked</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- TRANSCRIPT -->
       <section class="section">
         <article class="panel small-panel">
           <div class="panel-head"><div><div class="panel-title">Command transcript</div><div class="panel-sub">No commands are executed invisibly</div></div><button class="mini-btn" id="clear-log" type="button">Clear</button></div>
-          <div class="transcript" id="transcript" aria-live="polite"><div class="log"><small>system</small>CopelandOS foundation loaded. Worker and integrations are not assumed connected.</div></div>
+          <div class="transcript" id="transcript" aria-live="polite"><div class="log"><small>system</small>CopelandOS AI brain pipeline loaded. Worker and integrations are not assumed connected.</div></div>
         </article>
       </section>
     </main>
@@ -318,7 +535,7 @@
     <span class="voice-state" id="voice-state">● LISTENING — PUSH TO TALK</span>
     <form class="command-shell" id="command-form">
       <span class="prompt-mark">›_</span>
-      <input id="command-input" autocomplete="off" placeholder="Ask CopelandOS for status, projects, or a safe plan…" aria-label="CopelandOS command">
+      <input id="command-input" autocomplete="off" placeholder="Ask CopelandOS for status, plan a task, capture an idea…" aria-label="CopelandOS command">
       <button class="mic-btn" id="mic-btn" type="button" aria-label="Push to talk">◉</button>
       <button class="send-btn" type="submit" aria-label="Run command">↑</button>
     </form>
@@ -332,6 +549,7 @@
       <button class="palette-item" data-command="project copelandos"><span>CopelandOS project</span><span>SAFE</span></button>
       <button class="palette-item" data-command="model security_review"><span>Route a security review</span><span>SAFE</span></button>
       <button class="palette-item" data-command="Plan today's highest-value project review"><span>Draft daily mission</span><span>SAFE</span></button>
+      <button class="palette-item" data-command="capture idea: fix JazzBackend rhythm tests"><span>Capture a coding idea</span><span>SAFE</span></button>
     </div>
   </dialog>
 
@@ -341,7 +559,7 @@
       ['jazz-backend', 'JazzBackend', 'music-education', 'Baseline tests'],
       ['connectome-perturbation', 'Connectome Perturbation', 'research', 'Provenance blocked'],
       ['band-council-agent', 'Band Council Agent', 'school-operations', 'Human-reviewed ops'],
-      ['copelandos', 'CopelandOS', 'personal-operations', 'Jarvis foundation'],
+      ['copelandos', 'CopelandOS', 'personal-operations', 'AI brain pipeline'],
     ].map(([id, displayName, category, currentPhase]) => ({ id, displayName, category, currentPhase, status: { state: 'registry' } }));
 
     const els = {
@@ -353,12 +571,28 @@
       voice: document.getElementById('voice-state'),
       palette: document.getElementById('palette'),
       paletteInput: document.getElementById('palette-input'),
+      inboxContent: document.getElementById('idea-inbox-content'),
+      inboxCountBadge: document.getElementById('inbox-count-badge'),
+      inboxStatusBadge: document.getElementById('inbox-status-badge'),
+      captureText: document.getElementById('idea-text'),
+      captureSource: document.getElementById('idea-source'),
+      captureUrgency: document.getElementById('idea-urgency'),
+      captureFeedback: document.getElementById('capture-feedback'),
+      promptOutput: document.getElementById('prompt-output'),
+      promptBadge: document.getElementById('prompt-badge'),
     };
     let speechReplies = false;
     let recognition = null;
+    let lastCapturedIdeaId = null;
+    let lastPromptText = '';
 
     function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+      return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+    }
+
+    function riskBadge(risk) {
+      const cls = { safe: 'ok', medium: 'warn', high: 'high' }[risk] || '';
+      return `<span class="badge ${cls}">${escapeHtml(risk)}</span>`;
     }
 
     async function api(path, options = {}) {
@@ -406,18 +640,128 @@
         ['Obsidian vault', modules.vault.mode, modules.vault.connected],
         ['Local Windows agent', 'Localhost + allowlist', modules.localAgent.connected],
       ];
-      document.getElementById('signals').innerHTML = rows.map(([name, detail, connected]) => `<div class="signal"><span class="dot ${connected ? 'ok' : ''}"></span><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></div><span class="signal-state">${connected ? 'connected' : 'not connected'}</span></div>`).join('');
+      document.getElementById('signals').innerHTML = rows.map(([name, detail, connected]) =>
+        `<div class="signal"><span class="dot ${connected ? 'ok' : ''}"></span><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></div><span class="signal-state">${connected ? 'connected' : 'not connected'}</span></div>`
+      ).join('');
       document.getElementById('rail-dot').className = 'dot ok';
       document.getElementById('rail-state').textContent = 'Worker connected';
-      document.getElementById('orb-status').textContent = 'FOUNDATION ONLINE';
+      document.getElementById('orb-status').textContent = 'BRAIN ONLINE';
       document.getElementById('signal-badge').textContent = 'live';
       document.getElementById('signal-badge').className = 'badge ok';
       document.getElementById('gmail-badge').textContent = modules.gmail.connected ? 'draft-only' : 'not connected';
       document.getElementById('vault-badge').textContent = modules.vault.connected ? 'connected' : modules.vault.mode;
       document.getElementById('local-badge').textContent = modules.localAgent.connected ? 'connected' : 'not connected';
       const providers = modules.modelRouter.providers || [];
-      document.getElementById('providers').innerHTML = providers.map(p => `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider)} · ${p.configured ? 'ready' : 'off'}</span>`).join('');
+      document.getElementById('providers').innerHTML = providers.map(p =>
+        `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider)} · ${p.configured ? 'ready' : 'off'}</span>`
+      ).join('');
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
+    }
+
+    function renderIdeas(ideas) {
+      if (!ideas.length) {
+        els.inboxContent.innerHTML = '<div class="inbox-empty"><span>◈</span>Inbox empty. Capture an idea above or send a Siri shortcut.</div>';
+        els.inboxCountBadge.textContent = '0 ideas';
+        els.inboxStatusBadge.textContent = 'empty';
+        els.inboxStatusBadge.className = 'badge';
+        return;
+      }
+      els.inboxCountBadge.textContent = `${ideas.length} idea${ideas.length !== 1 ? 's' : ''}`;
+      els.inboxStatusBadge.textContent = `${ideas.filter(i => i.status === 'new').length} new`;
+      els.inboxStatusBadge.className = 'badge warn';
+      els.inboxContent.innerHTML = `<div class="idea-list">${ideas.map(idea => `
+        <div class="idea-card" data-idea-id="${escapeHtml(idea.id)}" role="button" tabindex="0" title="Click to generate a Cursor prompt">
+          <div class="idea-card-head">
+            <div class="idea-text">${escapeHtml(idea.text.slice(0, 120))}${idea.text.length > 120 ? '…' : ''}</div>
+            ${riskBadge(idea.riskLevel)}
+          </div>
+          <div class="idea-meta">
+            <span class="tag source">${escapeHtml(idea.source)}</span>
+            ${idea.skill ? `<span class="tag">${escapeHtml(idea.skillDisplayName || idea.skill)}</span>` : ''}
+            <span class="tag ${idea.status === 'new' ? 'medium' : 'safe'}">${escapeHtml(idea.status)}</span>
+          </div>
+          <div class="idea-action">${escapeHtml(idea.suggestedAction || '')}</div>
+        </div>`).join('')}</div>`;
+      els.inboxContent.querySelectorAll('[data-idea-id]').forEach(card => {
+        card.addEventListener('click', () => selectIdea(card.dataset.ideaId));
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') selectIdea(card.dataset.ideaId); });
+      });
+    }
+
+    function selectIdea(id) {
+      lastCapturedIdeaId = id;
+      document.querySelectorAll('.idea-card').forEach(c => c.style.borderColor = '');
+      const card = document.querySelector(`[data-idea-id="${id}"]`);
+      if (card) card.style.borderColor = 'rgba(111,223,255,.5)';
+      els.promptOutput.textContent = `Idea ${id} selected. Click "Cursor prompt" or "Codex prompt" to generate.`;
+      els.promptOutput.className = 'prompt-box';
+      els.promptBadge.textContent = 'idea selected';
+      addLog('system', `Idea selected: ${id}`);
+    }
+
+    async function captureIdea() {
+      const text = els.captureText.value.trim();
+      if (!text) {
+        els.captureFeedback.textContent = 'Please enter an idea.';
+        els.captureFeedback.className = 'capture-feedback err';
+        return;
+      }
+      els.captureFeedback.textContent = 'Capturing…';
+      els.captureFeedback.className = 'capture-feedback';
+      try {
+        const result = await api('/api/capture/idea', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            source: els.captureSource.value,
+            urgency: els.captureUrgency.value,
+            tags: ['dashboard'],
+          }),
+        });
+        lastCapturedIdeaId = result.idea?.id;
+        els.captureText.value = '';
+        els.captureFeedback.textContent = `✓ Captured: ${result.idea?.id} — ${result.idea?.skillDisplayName || 'classified'} (${result.idea?.riskLevel})`;
+        els.captureFeedback.className = 'capture-feedback ok';
+        addLog('copelandos', `Idea captured: ${result.idea?.id}\nSkill: ${result.idea?.skillDisplayName || 'unclassified'} | Risk: ${result.idea?.riskLevel} | Action: ${result.idea?.suggestedAction}`);
+        refreshInbox();
+      } catch (err) {
+        els.captureFeedback.textContent = `Error: ${err.message}`;
+        els.captureFeedback.className = 'capture-feedback err';
+      }
+    }
+
+    async function refreshInbox() {
+      try {
+        const result = await api('/api/ideas');
+        renderIdeas(result.ideas || []);
+      } catch {
+        // silently fail — worker may not be connected
+      }
+    }
+
+    async function generatePrompt(kind) {
+      if (!lastCapturedIdeaId) {
+        addLog('system', 'No idea selected. Capture or select an idea first.');
+        return;
+      }
+      try {
+        const result = await api(`/api/ideas/${lastCapturedIdeaId}/${kind}-prompt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        lastPromptText = result.prompt || '';
+        els.promptOutput.textContent = lastPromptText;
+        els.promptOutput.className = 'prompt-box loaded';
+        els.promptBadge.textContent = `${kind} · ready`;
+        els.promptBadge.className = 'badge ok';
+        addLog('copelandos', `${kind === 'cursor' ? 'Cursor' : 'Codex'} prompt generated for idea ${lastCapturedIdeaId}`);
+      } catch (err) {
+        els.promptOutput.textContent = `Error: ${err.message}`;
+        els.promptBadge.textContent = 'error';
+        els.promptBadge.className = 'badge high';
+      }
     }
 
     async function loadFoundation() {
@@ -430,6 +774,7 @@
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
+      refreshInbox();
     }
 
     async function runCommand(command) {
@@ -437,16 +782,29 @@
       if (!text) return;
       addLog('you', text);
       els.input.value = '';
+
+      // Local idea capture command shortcut
+      const ideaMatch = text.match(/^capture\s+idea:\s+(.+)/i);
+      if (ideaMatch) {
+        els.captureText.value = ideaMatch[1].trim();
+        document.getElementById('capture').scrollIntoView({ behavior: 'smooth' });
+        addLog('copelandos', 'Idea text set in capture form. Review and click Capture idea →');
+        return;
+      }
+
       try {
         const result = await api('/api/command', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command: text }),
         });
-        const summary = result.message || result.error || (result.project ? `${result.project.displayName}: ${result.project.currentPhase}\nNext: ${result.project.nextRecommendedTask}` : result.projects ? `${result.projects.length} projects loaded.` : result.next || JSON.stringify(result));
+        const summary = result.message || result.error
+          || (result.project ? `${result.project.displayName}: ${result.project.currentPhase}\nNext: ${result.project.nextRecommendedTask}` : result.projects ? `${result.projects.length} projects loaded.` : result.next || JSON.stringify(result));
         addLog('copelandos', summary);
       } catch (error) {
-        const blocked = error.data?.confirmation_required ? `Blocked (${error.data.risk}): ${error.data.message}` : `Not connected: ${error.message}`;
+        const blocked = error.data?.confirmation_required
+          ? `Blocked (${error.data.risk}): ${error.data.message}`
+          : `Not connected: ${error.message}`;
         addLog('copelandos', blocked);
       }
     }
@@ -477,8 +835,18 @@
     }
 
     els.form.addEventListener('submit', event => { event.preventDefault(); runCommand(els.input.value); });
+    document.getElementById('capture-btn').addEventListener('click', captureIdea);
+    document.getElementById('refresh-inbox').addEventListener('click', refreshInbox);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
+    document.getElementById('gen-cursor-btn').addEventListener('click', () => generatePrompt('cursor'));
+    document.getElementById('gen-codex-btn').addEventListener('click', () => generatePrompt('codex'));
+    document.getElementById('copy-prompt-btn').addEventListener('click', () => {
+      if (!lastPromptText) return;
+      navigator.clipboard.writeText(lastPromptText).then(() => {
+        addLog('system', 'Prompt copied to clipboard.');
+      }).catch(() => addLog('system', 'Clipboard copy failed — select text manually.'));
+    });
     document.getElementById('speech-toggle').addEventListener('click', event => {
       speechReplies = !speechReplies;
       event.currentTarget.textContent = `Voice replies: ${speechReplies ? 'on' : 'off'}`;
@@ -496,6 +864,21 @@
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); }
       if (event.key === 'Escape' && els.palette.open) els.palette.close();
     });
+
+    // Nav active state on scroll
+    const sections = document.querySelectorAll('section[id], article[id]');
+    const navLinks = document.querySelectorAll('.nav a');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          navLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+          });
+        }
+      });
+    }, { threshold: 0.3 });
+    sections.forEach(s => observer.observe(s));
 
     setupVoice();
     loadFoundation();
