@@ -1,3 +1,9 @@
+import projectRegistry from './config/projects.json' with { type: 'json' };
+import modelConfig from './config/models.json' with { type: 'json' };
+import { handleFoundationRequest } from './src/foundationApi.js';
+import { evaluatePermission } from './src/permissions.js';
+import { getProviderCredential, routeModel } from './src/modelRouter.js';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -30,13 +36,15 @@ export default {
       if (path === '/api/health') {
         return json({
           ok: true,
-          caps: {
-            ai: !!(env.CEREBRAS_KEY || env.GROQ_KEY || env.GEMINI_KEY),
+          capabilities: {
+            ai: !!(env.OPENAI_API_KEY || env.ANTHROPIC_API_KEY || env.CEREBRAS_API_KEY || env.CEREBRAS_KEY || env.GROQ_API_KEY || env.GROQ_KEY || env.GEMINI_API_KEY || env.GEMINI_KEY || env.OPENROUTER_API_KEY || env.OPENROUTER_KEY || env.OLLAMA_BASE_URL),
             search: !!env.SERPER_KEY,
             gmail: !!env.GMAIL_REFRESH_TOKEN,
             obsidian: !!(env.GITHUB_TOKEN && env.GITHUB_REPO),
-            ai_providers: ['cerebras','groq','gemini','openrouter']
-              .filter(p => env[p.toUpperCase()+'_KEY']),
+            ai_providers: Object.keys(modelConfig.providers).filter((provider) => routeModel('reasoning', env, {
+              ...modelConfig,
+              routes: { reasoning: [provider] },
+            }).ok),
           }
         });
       }
@@ -46,26 +54,40 @@ export default {
         body = await request.json().catch(() => ({}));
       }
 
+      const foundationResponse = await handleFoundationRequest({
+        path,
+        request,
+        body,
+        env,
+        json,
+        projectRegistry,
+        modelConfig,
+        createEmailDraft: createGmailDraft,
+      });
+      if (foundationResponse) return foundationResponse;
+
       // ── /api/ai ───────────────────────────────────────────
       if (path === '/api/ai') {
         const { messages, system } = body;
-        const providers = [
-          { name: 'cerebras',   key: env.CEREBRAS_KEY,   fn: callCerebras },
-          { name: 'groq',       key: env.GROQ_KEY,       fn: callGroq },
-          { name: 'gemini',     key: env.GEMINI_KEY,     fn: callGemini },
-          { name: 'openrouter', key: env.OPENROUTER_KEY, fn: callOpenRouter },
-        ].filter(p => p.key);
-
-        if (!providers.length) return json({ error: 'No AI keys set. Add CEREBRAS_KEY or GROQ_KEY in Cloudflare → Settings → Variables.' }, 503);
-
-        let lastErr;
-        for (const p of providers) {
-          try {
-            const text = await p.fn(messages, system, p.key, env);
-            return json({ text, provider: p.name });
-          } catch(e) { lastErr = e; }
+        if (!Array.isArray(messages)) return json({ error: 'messages must be an array' }, 400);
+        const selected = routeModel(body.taskType || 'reasoning', env, modelConfig);
+        if (!selected.ok) return json({ error: selected.error, tried: selected.tried }, 503);
+        const clients = {
+          openai: callOpenAI,
+          anthropic: callAnthropic,
+          cerebras: callCerebras,
+          groq: callGroq,
+          gemini: callGemini,
+          openrouter: callOpenRouter,
+          ollama: callOllama,
+        };
+        try {
+          const key = getProviderCredential(env, selected.provider, modelConfig);
+          const text = await clients[selected.provider](messages, system, key, env, selected.model);
+          return json({ text, provider: selected.provider, model: selected.model, taskType: selected.taskType });
+        } catch (error) {
+          return json({ error: `${selected.provider} request failed: ${error.message}` }, 503);
         }
-        return json({ error: 'All providers failed: ' + lastErr?.message }, 503);
       }
 
       // ── /api/search ───────────────────────────────────────
@@ -124,18 +146,9 @@ export default {
 
       // ── /api/mail/send ────────────────────────────────────
       if (path === '/api/mail/send') {
-        if (!body.to || !body.subject || !body.body) return json({ error: 'to, subject, body required' }, 400);
-        const token = await getGmailToken(env);
-        const raw = [`To: ${body.to}`, `Subject: ${body.subject}`, 'Content-Type: text/plain; charset=utf-8', '', body.body].join('\r\n');
-        const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,'-').replace(/\//g,'_');
-        const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: { raw: encoded } }),
-        });
-        if (!r.ok) return json({ error: 'Gmail draft failed: ' + r.status }, 502);
-        const draft = await r.json();
-        return json({ success: true, draft: true, id: draft.id });
+        const permission = evaluatePermission('create_gmail_draft', { confirmed: body.confirmed === true });
+        if (!permission.allowed) return json(permission, 409);
+        return json({ ...(await createGmailDraft(body, env)), permission });
       }
 
       // ── /api/obsidian/save ────────────────────────────────
@@ -296,31 +309,76 @@ function corsHeaders(request, env) {
 }
 
 // ── AI PROVIDERS ─────────────────────────────────────────
-async function callCerebras(messages, system, key, env) {
+async function callOpenAI(messages, system, key, env, model) {
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages],
+      max_tokens: 2048,
+      temperature: 0.7,
+    }),
+  });
+  if (!r.ok) throw new Error(`OpenAI ${r.status}`);
+  return (await r.json()).choices?.[0]?.message?.content || '';
+}
+
+async function callAnthropic(messages, system, key, env, model) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model, system: system || undefined, messages, max_tokens: 2048 }),
+  });
+  if (!r.ok) throw new Error(`Anthropic ${r.status}`);
+  return ((await r.json()).content || []).map((part) => part.text || '').join('');
+}
+
+async function callOllama(messages, system, key, env, model) {
+  const base = new URL(env.OLLAMA_BASE_URL);
+  if (base.username || base.password || !['http:', 'https:'].includes(base.protocol)) throw new Error('Unsafe OLLAMA_BASE_URL');
+  const r = await fetch(new URL('/api/chat', base), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages],
+    }),
+  });
+  if (!r.ok) throw new Error(`Ollama ${r.status}`);
+  return (await r.json()).message?.content || '';
+}
+
+async function callCerebras(messages, system, key, env, model) {
   const r = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: env?.CEREBRAS_MODEL || 'llama-4-scout-17b-16e-instruct', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
+    body: JSON.stringify({ model: model || env?.CEREBRAS_MODEL || 'llama-4-scout-17b-16e-instruct', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
   });
   if (r.status === 429) throw new Error('Cerebras rate limited');
   if (!r.ok) throw new Error('Cerebras ' + r.status);
   return (await r.json()).choices[0].message.content;
 }
 
-async function callGroq(messages, system, key, env) {
+async function callGroq(messages, system, key, env, model) {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: env?.GROQ_MODEL || 'llama-4-scout-17b-16e-instruct', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
+    body: JSON.stringify({ model: model || env?.GROQ_MODEL || 'llama-4-scout-17b-16e-instruct', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
   });
   if (r.status === 429) throw new Error('Groq rate limited');
   if (!r.ok) throw new Error('Groq ' + r.status);
   return (await r.json()).choices[0].message.content;
 }
 
-async function callGemini(messages, system, key, env) {
-  const model = env?.GEMINI_MODEL || 'gemini-2.5-flash-preview-05-20';
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+async function callGemini(messages, system, key, env, model) {
+  const selectedModel = model || env?.GEMINI_MODEL || 'gemini-2.5-flash';
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: messages.map(m => ({ role: m.role==='assistant'?'model':'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: 2048, temperature: 0.7 } }),
@@ -330,11 +388,11 @@ async function callGemini(messages, system, key, env) {
   return (await r.json()).candidates[0].content.parts.map(p => p.text).join('');
 }
 
-async function callOpenRouter(messages, system, key, env) {
+async function callOpenRouter(messages, system, key, env, model) {
   const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://copelandos.pages.dev', 'X-Title': 'CopelandOS' },
-    body: JSON.stringify({ model: env?.OPENROUTER_MODEL || 'qwen/qwen3-coder:free', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
+    body: JSON.stringify({ model: model || env?.OPENROUTER_MODEL || 'qwen/qwen3-coder:free', messages: [{ role:'system', content:system }, ...messages], max_tokens: 2048, temperature: 0.7 }),
   });
   if (r.status === 429) throw new Error('OpenRouter rate limited');
   if (!r.ok) throw new Error('OpenRouter ' + r.status);
@@ -352,6 +410,23 @@ async function getGmailToken(env) {
   const d = await r.json();
   if (!d.access_token) throw new Error('Gmail token failed');
   return d.access_token;
+}
+
+async function createGmailDraft({ to, subject, body, threadId }, env) {
+  if (!to || !subject || !body) throw new Error('to, subject, body required');
+  const token = await getGmailToken(env);
+  const raw = [`To: ${to}`, `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('\r\n');
+  const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g, '-').replace(/\//g, '_');
+  const message = { raw: encoded };
+  if (threadId) message.threadId = threadId;
+  const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) throw new Error(`Gmail draft failed (${response.status}).`);
+  const draft = await response.json();
+  return { ok: true, success: true, draft: true, id: draft.id };
 }
 
 function extractEmailBody(payload) {

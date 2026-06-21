@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "providers": {
+    "openai": { "keyEnv": "OPENAI_API_KEY", "modelEnv": "OPENAI_MODEL", "defaultModel": "gpt-4.1-mini" },
+    "anthropic": { "keyEnv": "ANTHROPIC_API_KEY", "modelEnv": "ANTHROPIC_MODEL", "defaultModel": "claude-sonnet-4-20250514" },
+    "groq": { "keyEnv": "GROQ_API_KEY", "legacyKeyEnv": "GROQ_KEY", "modelEnv": "GROQ_MODEL", "defaultModel": "llama-4-scout-17b-16e-instruct" },
+    "cerebras": { "keyEnv": "CEREBRAS_API_KEY", "legacyKeyEnv": "CEREBRAS_KEY", "modelEnv": "CEREBRAS_MODEL", "defaultModel": "llama-4-scout-17b-16e-instruct" },
+    "gemini": { "keyEnv": "GEMINI_API_KEY", "legacyKeyEnv": "GEMINI_KEY", "modelEnv": "GEMINI_MODEL", "defaultModel": "gemini-2.5-flash" },
+    "openrouter": { "keyEnv": "OPENROUTER_API_KEY", "legacyKeyEnv": "OPENROUTER_KEY", "modelEnv": "OPENROUTER_MODEL", "defaultModel": "qwen/qwen3-coder:free" },
+    "ollama": { "baseUrlEnv": "OLLAMA_BASE_URL", "modelEnv": "OLLAMA_MODEL", "defaultModel": "llama3.2" }
+  },
+  "routes": {
+    "fast": ["groq", "cerebras", "gemini", "openai", "ollama"],
+    "reasoning": ["anthropic", "openai", "gemini", "openrouter", "ollama"],
+    "coding": ["anthropic", "openai", "openrouter", "gemini", "ollama"],
+    "summarization": ["groq", "cerebras", "gemini", "openai", "ollama"],
+    "research": ["openai", "anthropic", "gemini", "openrouter", "ollama"],
+    "planning": ["anthropic", "openai", "gemini", "openrouter", "ollama"],
+    "music": ["openai", "anthropic", "gemini", "openrouter", "ollama"],
+    "security_review": ["anthropic", "openai", "gemini", "openrouter", "ollama"],
+    "local_fallback": ["ollama"]
+  }
+}

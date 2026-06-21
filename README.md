@@ -1,30 +1,64 @@
 # CopelandOS
 
-CopelandOS is a static browser UI backed by a Cloudflare Worker API. The API can call configured AI providers and Serper, read Gmail, save Gmail drafts, and write notes to a GitHub-backed vault.
+CopelandOS is a secure foundation for a personal operations system: one Jarvis-style dashboard coordinating project status, planning, model routing, Obsidian memory, Gmail drafts, and an optional permissioned Windows bridge.
+
+It is not complete, and disconnected integrations say so. The current foundation deliberately does not send email, merge PRs, deploy, install software, run arbitrary shell commands, or control the screen, mouse, or keyboard.
 
 ## Canonical architecture
 
-The canonical deployment is defined by `wrangler.toml`:
+- `worker.js` is the only canonical Cloudflare Worker backend.
+- `frontend/index.html` is the responsive dashboard served by Wrangler assets.
+- `src/` contains pure routing, permission, project, and vault modules.
+- `config/` contains non-secret project and provider policy.
+- `local-agent/` is an optional localhost-only Node service with a shared token and explicit allowlist.
+- `functions/api/[[route]].js` is legacy migration evidence, not a second active backend. Do not add features there.
 
-- `frontend/index.html` is served as the static asset UI.
-- `worker.js` is the canonical Worker entry point and serves `/api/*`.
-- `functions/api/[[route]].js` is a legacy Cloudflare Pages Functions implementation retained for migration/reference. It is security-patched too, but new behavior should be implemented in `worker.js` first and the legacy file should not be deployed as a second backend.
+See [architecture](docs/architecture.md), [security model](docs/security-model.md), and [roadmap](docs/roadmap.md).
 
-Cloudflare PR #1 adds a `wrangler.jsonc` that declares only `frontend/` assets and omits the canonical `worker.js` entry point. Do not merge that configuration until it is reconciled with this architecture.
+## What works in this foundation
 
-## Security defaults
+- Five-project registry and safe prompt generation.
+- Model selection across environment-configured providers with clear missing-provider errors.
+- SAFE/MEDIUM/HIGH permission decisions; HIGH actions never execute automatically.
+- GitHub-backed or mock-mode Obsidian vault document creation with path and secret checks.
+- Draft-only Gmail routes with explicit medium-risk confirmation.
+- Foundation API routes for status, projects, commands, vault notes, prompts, remote status, and provider routing.
+- Local Windows-agent skeleton for allowlisted status, launches, exact tests, and vault writes.
+- Push-to-talk browser voice input with visible state; no always-on microphone.
 
-- Browser requests are allowed only from the exact `ALLOWED_ORIGIN`. With no configured origin, cross-origin browser requests are denied.
-- Gmail's compatibility route `/api/mail/send` creates a draft; it never calls the Gmail send endpoint.
-- Secrets belong in Cloudflare secret storage, never in Git or client-side code.
-- `.env.example` contains placeholders only. Real `.env`, `.dev.vars`, Wrangler state, and dependencies are ignored.
-
-## Local checks
-
-No third-party Node packages are required for the security tests.
+## Quick checks
 
 ```bash
 npm test
+node --check worker.js
+node --check local-agent/server.js
 ```
 
-See `SETUP.md` for deployment details and `docs/cursor-ready-issues.md` for the security-first work queue.
+## Local dashboard
+
+Serve the repository root with any static server and open `frontend/index.html`, or use Wrangler after configuring placeholder-free local variables outside Git:
+
+```bash
+npx wrangler dev
+```
+
+The dashboard works in honest offline/demo mode when integrations are absent. Provider keys and OAuth credentials belong only in Cloudflare secrets or local environment variables.
+
+## Local agent
+
+Review and edit `local-agent/allowlist.json`, set a long `LOCAL_AGENT_TOKEN`, then run:
+
+```bash
+npm run local-agent
+```
+
+It binds to `127.0.0.1:43120` by default. See [local-agent/README.md](local-agent/README.md) and [local-agent protocol](docs/local-agent-protocol.md).
+
+## Manual setup still required
+
+- Cloudflare deployment and exact `ALLOWED_ORIGIN`.
+- Any AI provider keys/models.
+- Gmail OAuth credentials and refresh token; Gmail remains draft-only.
+- A private GitHub vault repository or local vault path.
+- Local-agent token and reviewed allowlist.
+- GitHub supervision connector; current API reports it as not connected.
