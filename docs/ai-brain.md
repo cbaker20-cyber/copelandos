@@ -99,6 +99,45 @@ See `config/skills.json` for the full skill list. Key skills:
 - `band-council` — privacy caution (medium)
 - `local-computer-action` — requires confirmation (high)
 
+## API endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/capture/idea` | Capture + classify idea, write vault note (mock) |
+| GET | `/api/ideas` | List ideas with status/limit/offset filters |
+| GET | `/api/ideas/:id` | Get single idea |
+| GET | `/api/ideas/stats` | Inbox statistics by status, category, risk |
+| POST | `/api/ideas/:id/triage` | Update status + get a plan |
+| POST | `/api/ideas/:id/convert` | Convert idea to vault note |
+| POST | `/api/ideas/:id/cursor-prompt` | Generate Cursor task prompt |
+| POST | `/api/ideas/:id/codex-prompt` | Generate Codex prompt |
+| GET | `/api/brain/status` | Full pipeline stage status |
+| GET | `/api/skills` | List all skills |
+| POST | `/api/plan` | Create a task plan |
+| POST | `/api/plan/brief` | Create a concise task brief |
+| POST | `/api/council` | Run mock AI council for a task |
+| GET | `/api/council/roles` | List all council roles and selection rules |
+| POST | `/api/council/role-prompt` | Get a role-specific council prompt |
+| GET | `/api/providers` | List provider statuses |
+| POST | `/api/providers/route` | Explain routing decision for a task type |
+| GET | `/api/providers/local-fallback` | Local/Ollama fallback info |
+| GET | `/api/providers/no-subscription` | Free-tier routing info |
+| GET | `/api/tools` | List tool registry |
+| POST | `/api/tools/check` | Check a tool permission |
+| GET | `/api/mcp/registry` | List MCP servers |
+| POST | `/api/mcp/check` | Check an MCP server permission |
+| GET | `/api/registry/summary` | Tool + MCP registry summary |
+
+## Urgency detection
+
+The classifier now extracts urgency from idea text:
+
+- **High urgency**: `today`, `now`, `immediately`, `urgent`, `deadline`, `asap`, `critical`, `emergency`
+- **Low urgency**: `eventually`, `someday`, `whenever`, `no rush`, `low priority`, `backlog`
+- **Medium** (default): no urgency signal detected
+
+Urgency is returned in the `classification.urgency` field. The idea store also accepts an explicit `urgency` field from the request body.
+
 ## Safety rules
 
 - High-risk actions are never executed automatically
@@ -106,3 +145,4 @@ See `config/skills.json` for the full skill list. Key skills:
 - Email is draft-only; sending is permanently blocked
 - Private student data is blocked from vault writes
 - Deploys, merges, deletes, and shell execution are blocked
+- No provider shown as connected without a real configured API key
