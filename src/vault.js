@@ -94,7 +94,9 @@ export function writeEmailDraftNote(subject, content, options) {
 
 export function writeIdeaNote(idea, options) {
   const date = new Date().toISOString().slice(0, 10);
-  const title = `idea-${date}-${String(idea.id || '').slice(0, 8)}`;
+  // Sanitize the id slice to strip any path-traversal characters before use in filename.
+  const idSlice = String(idea.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'unknown';
+  const title = `idea-${date}-${idSlice}`;
   const content = [
     `**Source:** ${idea.source || 'manual'}`,
     `**Tags:** ${(idea.tags || []).join(', ') || 'none'}`,
@@ -142,6 +144,19 @@ export function writeTaskList(projectId, tasks, options) {
 function obsidianUri(action, params) {
   const query = new URLSearchParams(params);
   return `obsidian://${action}?${query.toString()}`;
+}
+
+export function buildDailyIdeaAppend(idea) {
+  const time = new Date().toISOString().slice(11, 16);
+  const riskBadge = idea.riskLevel === 'high' ? ' ⚠ HIGH RISK' : idea.riskLevel === 'medium' ? ' ⚡ medium' : '';
+  const tags = (idea.tags || []).length ? ` #${idea.tags.slice(0, 3).join(' #')}` : '';
+  return {
+    line: `- ${time} [${idea.source || 'manual'}] ${idea.text?.slice(0, 120) || ''}${riskBadge}${tags}`,
+    folder: 'Daily',
+    notePrefix: 'daily-ideas-',
+    id: idea.id || null,
+    riskLevel: idea.riskLevel || 'unknown',
+  };
 }
 
 export function buildObsidianOpenUri(vault, file) {

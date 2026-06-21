@@ -21,6 +21,11 @@ const HIGH_RISK_PATTERNS = [
   /\bcontrol\s+(screen|mouse|keyboard)\b/i,
   /\bsend\s+email\b/i,
   /\bforce\s+push\b/i,
+  /\bdrop\s+(table|database|db)\b/i,
+  /\btruncate\b/i,
+  /\brm\s+-rf\b/i,
+  /\bexecute\s+(shell|command|script)\b/i,
+  /\bauto.*merge\b/i,
 ];
 
 const MEDIUM_RISK_PATTERNS = [
@@ -35,19 +40,23 @@ const MEDIUM_RISK_PATTERNS = [
   /\bopen\s+(cursor|vscode|terminal)\b/i,
   /\blaunch\b/i,
   /\bstart\s+cursor\b/i,
+  /\bcommit\s+and\s+push\b/i,
+  /\bopen\s+(pr|pull\s+request)\b/i,
+  /\bcreate\s+branch\b/i,
+  /\bpost\s+(to|on)\s+(slack|discord|twitter|linkedin)\b/i,
 ];
 
 const CATEGORY_PATTERNS = [
-  { category: 'coding', patterns: [/\b(code|fix|bug|implement|function|class|test|build|debug|script|algorithm|refactor)\b/i] },
-  { category: 'music', patterns: [/\b(music|chord|jazz|score|midi|musicxml|theory|rhythm|harmony|scale|band|piano|violin)\b/i] },
-  { category: 'school', patterns: [/\b(essay|homework|assignment|lab|class|course|grade|ap |test|exam|study|report|biology|chemistry|calculus|english)\b/i] },
-  { category: 'research', patterns: [/\b(research|paper|literature|study|connectome|neuroscience|evidence|journal|source|citation)\b/i] },
-  { category: 'email', patterns: [/\b(email|message|draft|send|compose|reply|welgoss|nhs|teacher|professor)\b/i] },
-  { category: 'planning', patterns: [/\b(plan|schedule|calendar|deadline|internship|scholarship|goal|roadmap|timeline|milestone)\b/i] },
-  { category: 'memory', patterns: [/\b(remember|note|save|obsidian|vault|journal|log|capture|record)\b/i] },
-  { category: 'design', patterns: [/\b(design|ui|ux|css|style|layout|visual|dashboard|polish|color|typography)\b/i] },
-  { category: 'github', patterns: [/\b(github|issue|pr|pull request|repo|branch|commit|merge|review)\b/i] },
-  { category: 'local-action', patterns: [/\b(open|launch|start|run|execute|cursor|vscode|terminal|pc|computer|local agent)\b/i] },
+  { category: 'coding', patterns: [/\b(code|fix|bug|implement|function|class|test|build|debug|script|algorithm|refactor|endpoint|api|module|lint|type\s*error)\b/i] },
+  { category: 'music', patterns: [/\b(music|chord|jazz|score|midi|musicxml|theory|rhythm|harmony|scale|band|piano|violin|triplet|melody|counterpoint)\b/i] },
+  { category: 'school', patterns: [/\b(essay|homework|assignment|lab|class|course|grade|ap |test|exam|study|report|biology|chemistry|calculus|english|catalase|ap\s+\w+)\b/i] },
+  { category: 'research', patterns: [/\b(research|paper|literature|study|connectome|neuroscience|evidence|journal|source|citation|dataset|experiment|hypothesis)\b/i] },
+  { category: 'email', patterns: [/\b(email|message|draft|send|compose|reply|welgoss|nhs|teacher|professor|write\s+to)\b/i] },
+  { category: 'planning', patterns: [/\b(plan|schedule|calendar|deadline|internship|scholarship|goal|roadmap|timeline|milestone|organize|prioritize)\b/i] },
+  { category: 'memory', patterns: [/\b(remember|note|save|obsidian|vault|journal|log|capture|record|bookmark|store)\b/i] },
+  { category: 'design', patterns: [/\b(design|ui|ux|css|style|layout|visual|dashboard|polish|color|typography|font|padding|margin|figma)\b/i] },
+  { category: 'github', patterns: [/\b(github|issue|pr|pull request|repo|branch|commit|merge|review|workflow|action|ci)\b/i] },
+  { category: 'local-action', patterns: [/\b(open|launch|start|run|execute|cursor|vscode|terminal|pc|computer|local agent|my computer)\b/i] },
 ];
 
 function detectCategory(text) {
@@ -101,9 +110,20 @@ function buildSuggestedAction(skill, riskLevel, category) {
   }
 }
 
+function detectUrgency(text) {
+  if (/\b(urgent|asap|immediately|right now|critical|emergency|deadline today|due today)\b/i.test(text)) {
+    return 'high';
+  }
+  if (/\b(soon|this week|by friday|by monday|important|priority)\b/i.test(text)) {
+    return 'medium';
+  }
+  return 'low';
+}
+
 export function classify(text) {
   const category = detectCategory(text);
   const riskLevel = detectRiskLevel(text);
+  const urgency = detectUrgency(text);
   const keywords = extractKeywords(text);
   const skill = findSkillByKeyword(keywords);
   const confirmationRequired = riskLevel !== 'safe' || (skill && skill.confirmationRequired);
@@ -114,6 +134,7 @@ export function classify(text) {
     skill: skill ? skill.id : null,
     skillDetail: skill || null,
     riskLevel,
+    urgency,
     confirmationRequired: Boolean(confirmationRequired),
     suggestedAction,
     keywords: keywords.slice(0, 10),

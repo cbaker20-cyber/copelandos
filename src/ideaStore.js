@@ -126,4 +126,44 @@ export function triageIdea(id, triageData) {
   return { ok: true, idea: updateIdea(id, triageData) };
 }
 
+export function getIdeaStats() {
+  const all = [...inbox.values()];
+  const byStatus = {};
+  for (const status of VALID_STATUSES) byStatus[status] = 0;
+  for (const idea of all) {
+    if (byStatus[idea.status] !== undefined) byStatus[idea.status]++;
+    else byStatus[idea.status] = 1;
+  }
+
+  const bySource = {};
+  for (const idea of all) {
+    bySource[idea.source] = (bySource[idea.source] || 0) + 1;
+  }
+
+  const byRisk = { safe: 0, medium: 0, high: 0, unknown: 0 };
+  for (const idea of all) {
+    const r = idea.riskLevel || 'unknown';
+    byRisk[r] = (byRisk[r] || 0) + 1;
+  }
+
+  const pendingConfirmation = all.filter(i => i.confirmationRequired && i.status === 'new').length;
+  const readyForAction = all.filter(i =>
+    i.status === 'ready-for-cursor' || i.status === 'ready-for-codex'
+  ).length;
+
+  return {
+    total: all.length,
+    byStatus,
+    bySource,
+    byRisk,
+    pendingConfirmation,
+    readyForAction,
+  };
+}
+
+// Test helper only — clears the in-memory inbox for isolation.
+export function _clearInbox() {
+  inbox.clear();
+}
+
 export { VALID_STATUSES, VALID_SOURCES };

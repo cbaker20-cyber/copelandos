@@ -11,16 +11,64 @@ CopelandVault/
   Music/
   Research/
   Decisions/
-  Inbox/
+  Inbox/          ← idea captures and email drafts land here
   Templates/
 ```
 
-The vault module creates daily notes, project updates, decision logs, research notes, meeting notes, email-draft notes, and task lists. Email notes always include `DRAFT — NOT SENT`.
+## Idea inbox integration
 
-Reusable Markdown versions live in `templates/vault/` for direct use inside Obsidian.
+Captured ideas are written to `Inbox/` as dated markdown notes using `writeIdeaNote(idea)`. Each idea note includes:
 
-When `GITHUB_TOKEN` and `GITHUB_REPO` are absent, writes return a mock preview with `connected: false`; this supports setup/testing without pretending persistence occurred.
+- Source (Siri, Shortcuts, mobile-web, dashboard, manual)
+- Tags
+- Risk level badge
+- Status
+- Project association
+- The idea text
+- Suggested next action
 
-GitHub mode requires a private vault repository, narrow token permissions, configured `VAULT_ROOT`/`VAULT_BRANCH`, and human review. Filenames reject traversal, separators, nulls, and unsafe characters. Obvious credential patterns and content explicitly marked as private student data are blocked.
+Ideas can be appended to daily notes using `buildDailyIdeaAppend(idea)`, which returns a single-line bullet with time, source, risk badge, and tags for daily log tracking.
 
-Obsidian URI builders support `open`, `new`, and `daily` links. The Worker only returns URIs; the browser or local agent decides whether to open them.
+Ideas can be converted to other note types via `convertIdeaToNote(idea, type)`:
+
+| Type | Folder | Notes |
+|------|--------|-------|
+| `idea` | Inbox | Default — raw capture |
+| `research` | Research | Promotes idea to research note |
+| `decision` | Decisions | Decision log with context |
+| `meeting` | BandCouncil | Meeting note with agenda slots |
+| `email` | Inbox | Draft email — always shows `DRAFT — NOT SENT` |
+| `tasks` | Projects | Checkbox task list |
+| `project` | Projects | Project update note |
+
+## Security guarantees
+
+- Email notes always include `DRAFT — NOT SENT` — no auto-send
+- `validateVaultContent` blocks API keys, GitHub tokens, and private key patterns
+- `sanitizePathSegment` blocks path traversal (`..`), null bytes, and backslashes
+- Content explicitly marked `containsPrivateStudentData: true` is blocked
+- Filenames are normalized (NFKC), stripped of special characters, and limited to 80 characters
+- Path traversal in idea IDs is neutralized by the sanitization pipeline
+
+## Vault persistence modes
+
+| Mode | When | Behavior |
+|------|------|----------|
+| Mock | No `GITHUB_TOKEN` or `GITHUB_REPO` | Returns preview with `connected: false` |
+| GitHub | Both env vars present | Writes to private GitHub repo via API |
+
+GitHub mode requires a private vault repository, narrow token permissions (`contents:write`), and configured `VAULT_ROOT` / `VAULT_BRANCH` environment variables.
+
+## Obsidian URI builders
+
+The worker generates Obsidian deep-link URIs but never opens them automatically:
+
+- `buildObsidianOpenUri(vault, file)` — open an existing note
+- `buildObsidianNewUri(vault, file, content)` — create a new note
+- `buildObsidianDailyUri(vault)` — open today's daily note
+
+The browser or local agent decides whether to follow these URIs.
+
+## Templates
+
+Reusable Markdown templates live in `templates/vault/` for direct use inside Obsidian. The `templates/idea-capture.md` and `templates/idea-triage.md` templates match the API structure.

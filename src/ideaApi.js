@@ -5,6 +5,7 @@ import {
   listIdeas,
   triageIdea,
   updateIdea,
+  getIdeaStats,
   VALID_STATUSES,
 } from './ideaStore.js';
 import { classify, classifyWithContext } from './ideaClassifier.js';
@@ -34,6 +35,13 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
 
     const idea = createIdea(validation, classification);
     return json({ ok: true, idea, classification }, 201);
+  }
+
+  // GET /api/ideas/stats
+  if (path === '/api/ideas/stats') {
+    const guard = methodGuard(request, ['GET'], json);
+    if (guard) return guard;
+    return json({ ok: true, stats: getIdeaStats() });
   }
 
   // GET /api/ideas

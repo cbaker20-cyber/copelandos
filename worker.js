@@ -5,10 +5,12 @@ import { evaluatePermission } from './src/permissions.js';
 import { getProviderCredential, routeModel } from './src/modelRouter.js';
 import { handleIdeaRequest } from './src/ideaApi.js';
 import { listSkills, publicSkillSummary } from './src/skills.js';
-import { createPlan, createTaskBrief } from './src/planner.js';
+import { createPlan, createTaskBrief, selectRoles } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
-import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan, createRolePrompt } from './src/council.js';
+import { getIdeaStats } from './src/ideaStore.js';
+import planningRolesConfig from './config/planning-roles.json' with { type: 'json' };
 
 export default {
   async fetch(request, env, ctx) {
@@ -166,12 +168,58 @@ export default {
       if (path === '/api/council') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
-        const { selectRoles } = await import('./src/planner.js');
         const roles = selectRoles(body.task);
         const prompt = createCouncilPrompt(body.task, roles);
         const mockResults = roles.map(r => createMockCouncilResult(r.id, body.task));
         const finalPlan = produceFinalPlan(mockResults, body.task);
         return json({ ok: true, task: body.task, roles: roles.map(r => r.id), prompt, mockResults, finalPlan, mode: 'mock' });
+      }
+
+      // ── /api/council/roles ────────────────────────────────
+      if (path === '/api/council/roles') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, roles: planningRolesConfig.roles, selectionRules: planningRolesConfig.selectionRules });
+      }
+
+      // ── /api/council/role-prompt ──────────────────────────
+      if (path === '/api/council/role-prompt') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.roleId) return json({ ok: false, error: 'roleId is required.' }, 400);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        try {
+          const prompt = createRolePrompt(body.roleId, body.task);
+          return json({ ok: true, roleId: body.roleId, prompt });
+        } catch (err) {
+          return json({ ok: false, error: err.message }, 400);
+        }
+      }
+
+      // ── /api/brain/status ─────────────────────────────────
+      if (path === '/api/brain/status') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const providerStatuses = listProviderStatuses(env);
+        const configuredProviders = providerStatuses.filter(p => p.configured);
+        const ideaStats = getIdeaStats();
+        return json({
+          ok: true,
+          system: 'CopelandOS Brain Pipeline',
+          version: '1.0',
+          modules: {
+            ideaCapture: { status: 'active', inbox: ideaStats.total, byStatus: ideaStats.byStatus },
+            classifier: { status: 'active', mode: 'deterministic-rules', aiReady: configuredProviders.length > 0 },
+            planner: { status: 'active', skillCount: listSkills().length },
+            council: { status: configuredProviders.length > 0 ? 'ready' : 'mock-mode', configuredProviders: configuredProviders.length },
+            providerRouter: {
+              status: configuredProviders.length > 0 ? 'configured' : 'no-providers',
+              configured: configuredProviders.map(p => p.id),
+              localFallback: providerStatuses.find(p => p.type === 'ollama')?.status || 'unknown',
+            },
+            toolRegistry: { status: 'active', policy: 'allowlist-first' },
+            mcpRegistry: { status: 'active', policy: 'allowlist-first' },
+            vault: { status: 'active', mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
+          },
+          honestStatus: 'Only providers with confirmed env vars are shown as configured. No fake connected states.',
+        });
       }
 
       // ── /api/ai ───────────────────────────────────────────
