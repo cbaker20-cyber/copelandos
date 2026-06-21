@@ -79,3 +79,23 @@ test('classify handles send email as medium risk', () => {
   const result = classify('draft email to professor about the lab report');
   assert.equal(result.riskLevel, 'medium');
 });
+
+test('classify returns urgency field', () => {
+  const result = classify('implement the new scoring algorithm');
+  assert.ok(['low', 'medium', 'high'].includes(result.urgency));
+});
+
+test('classify urgency is high for urgent tasks', () => {
+  const result = classify('fix the critical bug in auth module today asap');
+  assert.equal(result.urgency, 'high');
+});
+
+test('classify urgency is low for backlog tasks', () => {
+  const result = classify('eventually refactor the old vault module someday');
+  assert.equal(result.urgency, 'low');
+});
+
+test('classify urgency is medium by default', () => {
+  const result = classify('implement a new dashboard panel');
+  assert.equal(result.urgency, 'medium');
+});

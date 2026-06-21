@@ -139,6 +139,29 @@ export function writeTaskList(projectId, tasks, options) {
   return createDocument('tasks', `${projectId}-tasks`, lines, options);
 }
 
+/**
+ * Build a markdown block to append to an existing daily note for a captured idea.
+ * Returns a plain string — callers may append this to a daily note's content
+ * or persist it via persistVaultDocument on the daily note path.
+ */
+export function buildDailyIdeaAppend(idea) {
+  const time = new Date().toISOString().replace('T', ' ').slice(0, 16);
+  const riskBadge = idea.riskLevel === 'high' ? '🔴' : idea.riskLevel === 'medium' ? '🟡' : '🟢';
+  return [
+    '',
+    `## ${time} — Captured idea`,
+    '',
+    `> ${String(idea.text || '').slice(0, 300)}`,
+    '',
+    `- **Source:** ${idea.source || 'manual'}  `,
+    `- **Skill:** ${idea.skill || 'unclassified'}  `,
+    `- **Risk:** ${riskBadge} ${idea.riskLevel || 'unknown'}  `,
+    idea.suggestedAction ? `- **Suggested action:** ${idea.suggestedAction}` : '',
+    idea.project ? `- **Project:** ${idea.project}` : '',
+    '',
+  ].filter(line => line !== null).join('\n');
+}
+
 function obsidianUri(action, params) {
   const query = new URLSearchParams(params);
   return `obsidian://${action}?${query.toString()}`;

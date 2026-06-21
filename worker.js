@@ -8,7 +8,8 @@ import { listSkills, publicSkillSummary } from './src/skills.js';
 import { createPlan, createTaskBrief } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
-import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import { createCouncilPrompt, createRolePrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import planningRoles from './config/planning-roles.json' with { type: 'json' };
 
 export default {
   async fetch(request, env, ctx) {
@@ -172,6 +173,67 @@ export default {
         const mockResults = roles.map(r => createMockCouncilResult(r.id, body.task));
         const finalPlan = produceFinalPlan(mockResults, body.task);
         return json({ ok: true, task: body.task, roles: roles.map(r => r.id), prompt, mockResults, finalPlan, mode: 'mock' });
+      }
+
+      // ── /api/council/roles ───────────────────────────────
+      if (path === '/api/council/roles') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({
+          ok: true,
+          roles: planningRoles.roles,
+          selectionRules: planningRoles.selectionRules || planningRoles.selection_rules || [],
+          policy: 'allowlist-first — only configured roles are used.',
+        });
+      }
+
+      // ── /api/council/role-prompt ─────────────────────────
+      if (path === '/api/council/role-prompt') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.roleId) return json({ ok: false, error: 'roleId is required.' }, 400);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        try {
+          const prompt = createRolePrompt(body.roleId, body.task);
+          return json({ ok: true, roleId: body.roleId, task: body.task, prompt });
+        } catch (err) {
+          return json({ ok: false, error: err.message }, 400);
+        }
+      }
+
+      // ── /api/brain/status ────────────────────────────────
+      if (path === '/api/brain/status') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const { getIdeaStats } = await import('./src/ideaStore.js');
+        const stats = getIdeaStats();
+        const providerStatuses = listProviderStatuses(env);
+        const connectedProviders = providerStatuses.filter(p => p.configured);
+        const { getRegistrySummary: regSummary } = await import('./src/toolRegistry.js');
+        const registrySummary = regSummary();
+        return json({
+          ok: true,
+          pipeline: {
+            capture: { status: 'ready', description: 'POST /api/capture/idea' },
+            inbox: { status: 'ready', total: stats.total, byStatus: stats.byStatus },
+            classifier: { status: 'ready', mode: 'deterministic-rules', aiLayerAvailable: false },
+            planner: { status: 'ready', mode: 'template-based', councilAvailable: true },
+            council: { status: 'mock', mode: 'mock', note: 'AI providers not connected for council.' },
+            providerRouter: {
+              status: connectedProviders.length > 0 ? 'configured' : 'no-providers-connected',
+              connectedCount: connectedProviders.length,
+              localFallbackAvailable: true,
+            },
+            toolRegistry: {
+              status: 'ready',
+              toolCount: registrySummary.toolCount,
+              mcpServerCount: registrySummary.mcpServerCount,
+              policy: 'allowlist-first',
+            },
+            vaultMemory: {
+              status: env && env.GITHUB_TOKEN && env.GITHUB_REPO ? 'configured' : 'mock',
+              mode: env && env.GITHUB_TOKEN && env.GITHUB_REPO ? 'github' : 'mock',
+            },
+            cursorCodexPrompts: { status: 'ready', description: 'POST /api/ideas/:id/cursor-prompt or codex-prompt' },
+          },
+        });
       }
 
       // ── /api/ai ───────────────────────────────────────────

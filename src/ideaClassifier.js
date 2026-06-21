@@ -7,13 +7,14 @@ import { findSkillByKeyword, getSkill } from './skills.js';
 
 const HIGH_RISK_PATTERNS = [
   /\bdeploy\b/i,
-  /\bpublish\b/i,
+  /\bpublish\s+(to|on)\b/i,
   /\bmerge\s+pr\b/i,
   /\bdelete\b/i,
+  /\bremove\s+(all|the)\b/i,
   /\bdelete\s+repo\b/i,
   /\binstall\b/i,
   /\buninstall\b/i,
-  /\bformat\b/i,
+  /\bformat\s+(drive|disk|partition)\b/i,
   /\bwipe\b/i,
   /\broot\b/i,
   /\bsudo\b/i,
@@ -21,6 +22,11 @@ const HIGH_RISK_PATTERNS = [
   /\bcontrol\s+(screen|mouse|keyboard)\b/i,
   /\bsend\s+email\b/i,
   /\bforce\s+push\b/i,
+  /\bmerge\s+to\s+main\b/i,
+  /\bauto.?merge\b/i,
+  /\bexecute\s+(script|command|shell)\b/i,
+  /\brun\s+(shell|script|arbitrary)\b/i,
+  /\bdrop\s+(table|database|collection)\b/i,
 ];
 
 const MEDIUM_RISK_PATTERNS = [
@@ -35,6 +41,33 @@ const MEDIUM_RISK_PATTERNS = [
   /\bopen\s+(cursor|vscode|terminal)\b/i,
   /\blaunch\b/i,
   /\bstart\s+cursor\b/i,
+  /\bcommit\s+and\s+push\b/i,
+  /\bpush\s+to\b/i,
+  /\bopen\s+pr\b/i,
+  /\bclose\s+issue\b/i,
+  /\bprivate\s+(student|personal|data)\b/i,
+  /\bfirebase|supabase|vercel\b/i,
+];
+
+// Urgency patterns used to infer urgency from text when not explicitly set
+const HIGH_URGENCY_PATTERNS = [
+  /\btoday\b/i,
+  /\bnow\b/i,
+  /\bimmediately\b/i,
+  /\burgent\b/i,
+  /\bdeadline\b/i,
+  /\basap\b/i,
+  /\bcritical\b/i,
+  /\bemergency\b/i,
+];
+
+const LOW_URGENCY_PATTERNS = [
+  /\beventually\b/i,
+  /\bsomeday\b/i,
+  /\bwhenever\b/i,
+  /\bno\s+rush\b/i,
+  /\blow\s+priority\b/i,
+  /\bbacklog\b/i,
 ];
 
 const CATEGORY_PATTERNS = [
@@ -62,6 +95,12 @@ function detectRiskLevel(text) {
   if (HIGH_RISK_PATTERNS.some(p => p.test(text))) return 'high';
   if (MEDIUM_RISK_PATTERNS.some(p => p.test(text))) return 'medium';
   return 'safe';
+}
+
+function detectUrgency(text) {
+  if (HIGH_URGENCY_PATTERNS.some(p => p.test(text))) return 'high';
+  if (LOW_URGENCY_PATTERNS.some(p => p.test(text))) return 'low';
+  return 'medium';
 }
 
 function extractKeywords(text) {
@@ -109,11 +148,14 @@ export function classify(text) {
   const confirmationRequired = riskLevel !== 'safe' || (skill && skill.confirmationRequired);
   const suggestedAction = buildSuggestedAction(skill, riskLevel, category);
 
+  const urgency = detectUrgency(text);
+
   return {
     category,
     skill: skill ? skill.id : null,
     skillDetail: skill || null,
     riskLevel,
+    urgency,
     confirmationRequired: Boolean(confirmationRequired),
     suggestedAction,
     keywords: keywords.slice(0, 10),

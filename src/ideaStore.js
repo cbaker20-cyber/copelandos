@@ -126,4 +126,32 @@ export function triageIdea(id, triageData) {
   return { ok: true, idea: updateIdea(id, triageData) };
 }
 
+export function getIdeaStats() {
+  const all = [...inbox.values()];
+  const byStatus = {};
+  for (const status of VALID_STATUSES) byStatus[status] = 0;
+  for (const idea of all) {
+    if (byStatus[idea.status] !== undefined) byStatus[idea.status]++;
+  }
+  const byCategory = {};
+  const byRisk = { safe: 0, medium: 0, high: 0, unknown: 0 };
+  for (const idea of all) {
+    if (idea.category) byCategory[idea.category] = (byCategory[idea.category] || 0) + 1;
+    const rk = idea.riskLevel || 'unknown';
+    byRisk[rk] = (byRisk[rk] || 0) + 1;
+  }
+  return {
+    total: all.length,
+    byStatus,
+    byCategory,
+    byRisk,
+    confirmationRequired: all.filter(i => i.confirmationRequired).length,
+  };
+}
+
+/** Test helper — clears the inbox between test runs. */
+export function _clearInbox() {
+  inbox.clear();
+}
+
 export { VALID_STATUSES, VALID_SOURCES };

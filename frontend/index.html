@@ -225,6 +225,30 @@
     /* Prompt output */
     .prompt-box { margin: 12px 18px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; font: 10px/1.6 ui-monospace, monospace; color: var(--muted); max-height: 180px; overflow-y: auto; white-space: pre-wrap; scrollbar-width: thin; }
 
+    /* Triage + convert + plan */
+    .idea-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .triage-panel { margin: 10px 18px; background: rgba(79,140,255,.06); border: 1px solid rgba(79,140,255,.2); border-radius: 11px; padding: 12px 14px; display: grid; gap: 8px; }
+    .triage-panel h4 { margin: 0; font-size: 11px; color: var(--blue); letter-spacing: .06em; }
+    .triage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .triage-select { background: rgba(3,9,16,.45); border: 1px solid var(--line); border-radius: 7px; color: var(--muted); padding: 5px 9px; font-size: 10px; }
+    .plan-box { margin: 12px 18px; background: rgba(110,240,173,.04); border: 1px solid rgba(110,240,173,.18); border-radius: 11px; padding: 12px 14px; font-size: 10px; line-height: 1.6; color: var(--muted); }
+    .plan-box strong { color: var(--green); display: block; margin-bottom: 6px; }
+    .plan-step { padding: 2px 0; display: flex; gap: 6px; }
+    .plan-step::before { content: "→"; color: var(--green); flex-shrink: 0; font-family: ui-monospace, monospace; }
+    .council-result { margin: 12px 18px; background: rgba(155,140,255,.04); border: 1px solid rgba(155,140,255,.18); border-radius: 11px; padding: 12px 14px; font-size: 10px; line-height: 1.6; }
+    .council-result strong { color: var(--violet); display: block; margin-bottom: 6px; }
+    .status-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(111,223,255,.06); font-size: 10px; }
+    .status-row:last-child { border-bottom: 0; }
+    .status-row span:first-child { color: var(--muted); }
+    .status-val { font-family: ui-monospace, monospace; font-size: 9px; }
+    .status-val.ok { color: var(--green); }
+    .status-val.mock { color: var(--violet); }
+    .status-val.warn { color: var(--amber); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 18px; }
+    .stat-card { background: rgba(3,9,16,.3); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; text-align: center; }
+    .stat-num { font-size: 22px; font-weight: 700; color: var(--cyan); line-height: 1; }
+    .stat-label { font-size: 9px; color: var(--muted); margin-top: 3px; font-family: ui-monospace, monospace; text-transform: uppercase; }
+
     @media (max-width: 1180px) {
       .project-grid { grid-template-columns: repeat(3, minmax(190px, 1fr)); }
       .dashboard-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -343,6 +367,11 @@
               </div>
               <div id="capture-result" style="display:none"></div>
             </form>
+            <div class="stats-grid" id="inbox-stats" style="display:none">
+              <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
+              <div class="stat-card"><div class="stat-num" id="stat-new">0</div><div class="stat-label">New</div></div>
+              <div class="stat-card"><div class="stat-num" id="stat-confirm">0</div><div class="stat-label">Confirm req.</div></div>
+            </div>
           </article>
 
           <article class="panel">
@@ -352,19 +381,35 @@
             </div>
           </article>
         </div>
+
+        <!-- Plan and Council output panels (shown after triage/plan) -->
+        <div class="two-col-grid" style="margin-top:12px;">
+          <div class="plan-box" id="plan-output" style="display:none">
+            <strong>📋 Plan</strong>
+            <div id="plan-steps"></div>
+          </div>
+          <div class="council-result" id="council-output" style="display:none">
+            <strong>🧠 AI Council result (mock mode)</strong>
+            <div id="council-content"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ── AI Brain ── -->
       <section class="section" id="brain">
-        <div class="section-head"><div><h2>AI brain pipeline</h2><p>Classify → plan → route → council → prompt</p></div></div>
+        <div class="section-head"><div><h2>AI brain pipeline</h2><p>Classify → plan → route → council → prompt</p></div><button class="mini-btn" id="refresh-brain" type="button">Refresh status ↻</button></div>
         <div class="dashboard-grid">
           <article class="panel small-panel">
-            <div class="panel-head"><div><div class="panel-title">Idea classifier</div><div class="panel-sub">Deterministic rules + AI layer</div></div><span class="badge ok">active</span></div>
-            <div class="brain-pipeline">
-              <div class="pipeline-step"><span class="pipeline-node">1</span><div class="pipeline-content"><strong>Capture</strong><small>Text, source, tags, urgency</small></div></div>
-              <div class="pipeline-step"><span class="pipeline-node">2</span><div class="pipeline-content"><strong>Classify</strong><small>Category, skill, risk level</small></div></div>
-              <div class="pipeline-step"><span class="pipeline-node">3</span><div class="pipeline-content"><strong>Triage</strong><small>Human review, status update</small></div></div>
-              <div class="pipeline-step"><span class="pipeline-node">4</span><div class="pipeline-content"><strong>Plan</strong><small>Steps, warnings, roles</small></div></div>
+            <div class="panel-head"><div><div class="panel-title">Pipeline status</div><div class="panel-sub">Live from /api/brain/status</div></div><span class="badge" id="brain-badge">loading</span></div>
+            <div id="brain-status-rows" style="padding:12px 18px;">
+              <div class="status-row"><span>Capture</span><span class="status-val ok">ready</span></div>
+              <div class="status-row"><span>Classifier</span><span class="status-val ok">deterministic</span></div>
+              <div class="status-row"><span>Planner</span><span class="status-val ok">template-based</span></div>
+              <div class="status-row"><span>Council</span><span class="status-val mock">mock mode</span></div>
+              <div class="status-row"><span>Provider router</span><span class="status-val warn" id="brain-router-status">checking…</span></div>
+              <div class="status-row"><span>Tool registry</span><span class="status-val ok">ready</span></div>
+              <div class="status-row"><span>Vault memory</span><span class="status-val mock" id="brain-vault-status">mock</span></div>
+              <div class="status-row"><span>Cursor/Codex prompts</span><span class="status-val ok">ready</span></div>
             </div>
           </article>
 
@@ -376,11 +421,15 @@
               <div class="pipeline-step"><span class="pipeline-node">→</span><div class="pipeline-content"><strong>Security Reviewer</strong><small>Always on for sensitive tasks</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">→</span><div class="pipeline-content"><strong>Final Judge</strong><small>Consensus → human review</small></div></div>
             </div>
+            <div style="padding:0 18px 14px;display:flex;gap:7px;flex-wrap:wrap;">
+              <input id="council-task-input" class="capture-select" style="flex:1;min-width:180px;" placeholder="Task for council review…">
+              <button class="ghost-btn" style="font-size:10px;" id="run-council-btn" type="button">Run council →</button>
+            </div>
           </article>
 
           <article class="panel small-panel">
             <div class="panel-head"><div><div class="panel-title">Cursor / Codex prompts</div><div class="panel-sub">Generated from triaged ideas</div></div><span class="badge ok">ready</span></div>
-            <div class="empty-state" id="prompt-panel-state">Triage an idea and click "Generate Cursor prompt" to see a scoped prompt here.</div>
+            <div class="empty-state" id="prompt-panel-state">Select an idea below and click "Cursor prompt" or "Codex prompt" to generate a scoped task prompt.</div>
             <pre class="prompt-box" id="prompt-output" style="display:none"></pre>
           </article>
         </div>
@@ -438,7 +487,8 @@
         <article class="panel small-panel" id="providers">
           <div class="panel-head"><div><div class="panel-title">Provider router</div><div class="panel-sub">No single-subscription lock-in</div></div><span class="badge" id="model-badge">none configured</span></div>
           <div class="provider-grid" id="providers-grid"></div>
-          <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. No provider shown as connected without an API key.</div>
+          <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. No provider shown as configured without an API key.</div>
+          <div style="padding:0 18px 10px;"><button class="mini-btn" id="load-providers" type="button">Refresh providers ↻</button></div>
         </article>
         <article class="panel small-panel">
           <div class="panel-head"><div><div class="panel-title">Automations</div><div class="panel-sub">Review-first schedules</div></div><span class="badge">manual</span></div>
@@ -588,6 +638,11 @@
       return 'tag-safe';
     }
 
+    function statusBadgeClass(status) {
+      const map = { 'new': '', 'triaged': 'ok', 'planned': 'ok', 'ready-for-cursor': 'ok', 'ready-for-codex': 'ok', 'converted-to-note': 'ok', 'dismissed': 'hi' };
+      return map[status] || '';
+    }
+
     function renderIdeas(ideas) {
       if (!ideas || ideas.length === 0) {
         els.ideaList.innerHTML = '<div class="empty-state">No ideas captured yet. Use the form or your Siri Shortcut to add the first one.</div>';
@@ -598,23 +653,156 @@
       els.inboxBadge.textContent = `${ideas.length} idea${ideas.length !== 1 ? 's' : ''}`;
       els.inboxBadge.className = 'badge warn';
       els.ideaList.innerHTML = ideas.map(idea => `
-        <div class="idea-card">
+        <div class="idea-card" id="idea-${escapeHtml(idea.id)}">
           <div class="idea-card-top">
-            <div class="idea-text">${escapeHtml(idea.text.slice(0, 120))}${idea.text.length > 120 ? '…' : ''}</div>
+            <div class="idea-text">${escapeHtml(idea.text.slice(0, 140))}${idea.text.length > 140 ? '…' : ''}</div>
           </div>
           <div class="idea-meta">
             <span class="idea-tag tag-source">${escapeHtml(idea.source)}</span>
             ${idea.riskLevel ? `<span class="idea-tag ${riskClass(idea.riskLevel)}">${escapeHtml(idea.riskLevel)}</span>` : ''}
-            <span class="idea-tag tag-status">${escapeHtml(idea.status)}</span>
+            <span class="idea-tag tag-status ${statusBadgeClass(idea.status)}">${escapeHtml(idea.status)}</span>
             ${idea.skill ? `<span class="idea-tag tag-source">${escapeHtml(idea.skill)}</span>` : ''}
-            ${(idea.tags || []).map(t => `<span class="idea-tag tag-source">${escapeHtml(t)}</span>`).join('')}
+            ${idea.urgency && idea.urgency !== 'medium' ? `<span class="idea-tag ${idea.urgency === 'high' ? 'tag-high' : 'tag-safe'}">${escapeHtml(idea.urgency)} urgency</span>` : ''}
           </div>
-          ${idea.suggestedAction ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">${escapeHtml(idea.suggestedAction)}</div>` : ''}
-          <div style="display:flex;gap:6px;margin-top:6px;">
+          ${idea.suggestedAction ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">→ ${escapeHtml(idea.suggestedAction.slice(0, 100))}</div>` : ''}
+          <div class="idea-actions">
+            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="triageIdea('${escapeHtml(idea.id)}', 'triaged')">Triage</button>
+            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="planIdea('${escapeHtml(idea.id)}', '${escapeHtml(idea.text.replace(/'/g, "\\'").slice(0, 80))}')">Plan →</button>
             <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor prompt</button>
             <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex prompt</button>
+            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="convertIdea('${escapeHtml(idea.id)}', 'research')">→ Research note</button>
+            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="convertIdea('${escapeHtml(idea.id)}', 'idea')">→ Vault note</button>
           </div>
+          ${idea.confirmationRequired ? `<div style="font-size:9px;color:var(--amber);margin-top:3px;">⚠ Confirmation required before action</div>` : ''}
         </div>`).join('');
+    }
+
+    async function loadIdeaStats() {
+      try {
+        const result = await api('/api/ideas/stats');
+        const s = result.stats;
+        document.getElementById('inbox-stats').style.display = 'grid';
+        document.getElementById('stat-total').textContent = s.total;
+        document.getElementById('stat-new').textContent = s.byStatus?.new ?? 0;
+        document.getElementById('stat-confirm').textContent = s.confirmationRequired ?? 0;
+      } catch (_) {}
+    }
+
+    async function triageIdea(ideaId, status) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        addLog('copelandos', `Idea ${ideaId.slice(0, 8)}… triaged → ${status}`);
+        if (result.plan) showPlan(result.plan);
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `Triage failed: ${e.message}`);
+      }
+    }
+
+    async function planIdea(ideaId, text) {
+      try {
+        const result = await api('/api/plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task: text }),
+        });
+        showPlan(result.plan);
+        addLog('copelandos', `Plan created for "${text.slice(0, 50)}…"`);
+      } catch (e) {
+        addLog('system', `Plan failed: ${e.message}`);
+      }
+    }
+
+    function showPlan(plan) {
+      const planBox = document.getElementById('plan-output');
+      const planSteps = document.getElementById('plan-steps');
+      planBox.style.display = 'block';
+      const steps = plan.steps || plan.recommendedSteps || [];
+      const warnings = plan.warnings || [];
+      planSteps.innerHTML = [
+        `<div style="margin-bottom:6px;color:var(--cyan);font-size:9px;font-family:ui-monospace,monospace;">SKILL: ${escapeHtml(plan.skill || 'general')} · RISK: ${escapeHtml(plan.riskLevel || 'unknown')} · COUNCIL: ${plan.councilMode?.useCouncil ? 'YES' : 'no'}</div>`,
+        ...steps.map(s => `<div class="plan-step">${escapeHtml(String(s))}</div>`),
+        ...warnings.map(w => `<div style="color:var(--amber);font-size:9px;padding:2px 0;">⚠ ${escapeHtml(String(w))}</div>`),
+      ].join('');
+      document.getElementById('capture').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function convertIdea(ideaId, noteType) {
+      try {
+        const result = await api(`/api/ideas/${ideaId}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: noteType }),
+        });
+        addLog('copelandos', `Idea ${ideaId.slice(0, 8)}… converted to ${noteType} note → ${result.document?.path || 'vault'}`);
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `Convert failed: ${e.message}`);
+      }
+    }
+
+    async function runCouncil(task) {
+      if (!task) { addLog('system', 'Enter a task for the council.'); return; }
+      const councilOutput = document.getElementById('council-output');
+      const councilContent = document.getElementById('council-content');
+      councilOutput.style.display = 'block';
+      councilContent.innerHTML = '<div style="color:var(--violet);font-size:10px;">Running council (mock mode)…</div>';
+      try {
+        const result = await api('/api/council', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task }),
+        });
+        const fp = result.finalPlan || {};
+        councilContent.innerHTML = [
+          `<div class="status-row"><span>Consensus</span><span class="status-val mock">${escapeHtml(fp.consensus || 'N/A')}</span></div>`,
+          `<div class="status-row"><span>Roles</span><span class="status-val">${escapeHtml((result.roles || []).join(', '))}</span></div>`,
+          `<div class="status-row"><span>Risks</span><span class="status-val ${(fp.risks||[]).length ? 'warn' : 'ok'}">${(fp.risks||[]).length} identified</span></div>`,
+          `<div class="status-row"><span>Human confirmation</span><span class="status-val ${fp.requiresHumanConfirmation ? 'warn' : 'ok'}">${fp.requiresHumanConfirmation ? 'REQUIRED' : 'not required'}</span></div>`,
+          `<div class="status-row"><span>Next action</span><span class="status-val">${escapeHtml((fp.recommendedNextAction||'').slice(0, 60))}</span></div>`,
+          `<div style="margin-top:6px;font-size:9px;color:var(--violet);">Mode: mock — no real AI calls made</div>`,
+        ].join('');
+        addLog('copelandos', `Council complete. Roles: ${(result.roles||[]).join(', ')}. Consensus: ${fp.consensus?.slice(0,60)}`);
+      } catch (e) {
+        councilContent.innerHTML = `<div style="color:var(--red);">${escapeHtml(e.message)}</div>`;
+        addLog('system', `Council failed: ${e.message}`);
+      }
+    }
+
+    async function loadBrainStatus() {
+      try {
+        const result = await api('/api/brain/status');
+        const p = result.pipeline;
+        document.getElementById('brain-badge').textContent = 'live';
+        document.getElementById('brain-badge').className = 'badge ok';
+        const routerStatus = p.providerRouter?.connectedCount > 0 ? 'configured' : 'no providers';
+        document.getElementById('brain-router-status').textContent = routerStatus;
+        document.getElementById('brain-router-status').className = `status-val ${p.providerRouter?.connectedCount > 0 ? 'ok' : 'warn'}`;
+        const vaultMode = p.vaultMemory?.mode || 'mock';
+        document.getElementById('brain-vault-status').textContent = vaultMode;
+        document.getElementById('brain-vault-status').className = `status-val ${vaultMode === 'github' ? 'ok' : 'mock'}`;
+      } catch (_) {
+        document.getElementById('brain-badge').textContent = 'not connected';
+      }
+    }
+
+    async function loadProviders() {
+      try {
+        const result = await api('/api/providers');
+        const providers = result.providers || [];
+        els.providersGrid.innerHTML = providers.map(p =>
+          `<span class="provider ${p.configured ? 'on' : ''}" title="${escapeHtml(p.strengths?.join(', ') || '')}">${escapeHtml(p.id || p.provider)} · ${p.configured ? 'configured' : 'not connected'}</span>`
+        ).join('');
+        const anyConfigured = providers.some(p => p.configured);
+        document.getElementById('model-badge').textContent = anyConfigured ? 'router ready' : 'none configured';
+        document.getElementById('providers-empty').style.display = anyConfigured ? 'none' : 'block';
+      } catch (e) {
+        els.providersGrid.innerHTML = `<span class="provider">Could not load: ${escapeHtml(e.message)}</span>`;
+      }
     }
 
     async function loadIdeas() {
@@ -622,6 +810,7 @@
         const result = await api('/api/ideas');
         capturedIdeas = result.ideas || [];
         renderIdeas(capturedIdeas);
+        await loadIdeaStats();
       } catch (e) {
         els.ideaList.innerHTML = `<div class="empty-state">Could not load inbox: ${escapeHtml(e.message)}</div>`;
       }
@@ -719,12 +908,6 @@
       document.getElementById('gmail-badge').textContent = modules.gmail.connected ? 'draft-only' : 'not connected';
       document.getElementById('vault-badge').textContent = modules.vault.connected ? 'connected' : modules.vault.mode;
       document.getElementById('local-badge').textContent = modules.localAgent.connected ? 'connected' : 'not connected';
-
-      const providers = modules.modelRouter.providers || [];
-      els.providersGrid.innerHTML = providers.map(p =>
-        `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider)} · ${p.configured ? 'configured' : 'not connected'}</span>`
-      ).join('');
-      document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
     async function loadFoundation() {
@@ -739,6 +922,9 @@
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
+      // Load providers from the brain pipeline API (non-blocking)
+      loadProviders();
+      loadBrainStatus();
     }
 
     async function runCommand(command) {
@@ -803,6 +989,17 @@
           `<span class="chip ${s.riskLevel}">${escapeHtml(s.id)} · ${escapeHtml(s.riskLevel)}</span>`
         ).join('');
       } catch (e) { addLog('system', `Skills: ${e.message}`); }
+    });
+
+    document.getElementById('refresh-brain').addEventListener('click', async () => {
+      await Promise.all([loadBrainStatus(), loadProviders()]);
+    });
+
+    document.getElementById('load-providers').addEventListener('click', loadProviders);
+
+    document.getElementById('run-council-btn').addEventListener('click', () => {
+      const task = document.getElementById('council-task-input').value.trim();
+      runCouncil(task);
     });
 
     function openPalette() { els.palette.showModal(); els.paletteInput.focus(); }

@@ -194,3 +194,113 @@ test('Cursor prompt includes repo, constraints, and forbidden actions', async ()
   assert.ok(data.prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(data.prompt.toLowerCase().includes('forbidden') || data.prompt.toLowerCase().includes('constraints'));
 });
+
+test('GET /api/ideas/stats returns inbox statistics', async () => {
+  await postIdea({ text: 'stats test idea one', source: 'manual' });
+  await postIdea({ text: 'stats test idea two', source: 'siri' });
+  const response = await worker.fetch(makeRequest('/api/ideas/stats'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(data.stats);
+  assert.ok(typeof data.stats.total === 'number');
+  assert.ok(data.stats.byStatus);
+  assert.ok(data.stats.byRisk);
+  assert.ok(typeof data.stats.confirmationRequired === 'number');
+});
+
+test('POST /api/ideas/:id/convert changes idea status to converted-to-note', async () => {
+  const { data: created } = await postIdea({ text: 'research the vault module architecture', source: 'manual' });
+  const id = created.idea.id;
+  const convertReq = makeRequest(`/api/ideas/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'research' }),
+  });
+  const response = await worker.fetch(convertReq, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.idea.status, 'converted-to-note');
+  assert.ok(data.document);
+  assert.ok(data.document.folder === 'Research');
+});
+
+test('POST /api/ideas/:id/convert rejects invalid note type', async () => {
+  const { data: created } = await postIdea({ text: 'test invalid convert type', source: 'manual' });
+  const id = created.idea.id;
+  const convertReq = makeRequest(`/api/ideas/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'invalid-type' }),
+  });
+  const response = await worker.fetch(convertReq, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(data.ok, false);
+});
+
+test('GET /api/brain/status returns pipeline status', async () => {
+  const response = await worker.fetch(makeRequest('/api/brain/status'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(data.pipeline);
+  assert.ok(data.pipeline.capture);
+  assert.ok(data.pipeline.classifier);
+  assert.ok(data.pipeline.planner);
+  assert.ok(data.pipeline.council);
+  assert.ok(data.pipeline.providerRouter);
+  assert.ok(data.pipeline.toolRegistry);
+  assert.ok(data.pipeline.vaultMemory);
+});
+
+test('GET /api/council/roles returns roles list', async () => {
+  const response = await worker.fetch(makeRequest('/api/council/roles'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(Array.isArray(data.roles));
+  assert.ok(data.roles.length > 0);
+  assert.ok(data.policy);
+});
+
+test('POST /api/council/role-prompt returns a role-specific prompt', async () => {
+  const req = makeRequest('/api/council/role-prompt', {
+    method: 'POST',
+    body: JSON.stringify({ roleId: 'planner', task: 'Implement OAuth login for CopelandOS' }),
+  });
+  const response = await worker.fetch(req, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(typeof data.prompt === 'string');
+  assert.ok(data.prompt.length > 0);
+  assert.equal(data.roleId, 'planner');
+});
+
+test('POST /api/council/role-prompt rejects unknown role', async () => {
+  const req = makeRequest('/api/council/role-prompt', {
+    method: 'POST',
+    body: JSON.stringify({ roleId: 'nonexistent-role', task: 'some task' }),
+  });
+  const response = await worker.fetch(req, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 400);
+  assert.equal(data.ok, false);
+});
+
+test('POST /api/capture/idea response includes vaultNote field', async () => {
+  const { data } = await postIdea({ text: 'vault note integration test idea', source: 'manual' });
+  assert.equal(data.ok, true);
+  assert.ok('vaultNote' in data, 'response should include vaultNote field');
+  if (data.vaultNote) {
+    assert.ok(typeof data.vaultNote.path === 'string');
+    assert.ok(data.vaultNote.mode === 'mock' || data.vaultNote.mode === 'github');
+  }
+});
+
+test('classifier urgency is present in captured idea classification', async () => {
+  const { data } = await postIdea({ text: 'fix the critical auth bug today', source: 'manual' });
+  assert.equal(data.ok, true);
+  assert.ok(data.classification.urgency, 'classification should have urgency');
+  assert.ok(['low', 'medium', 'high'].includes(data.classification.urgency));
+});

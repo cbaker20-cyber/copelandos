@@ -5,6 +5,7 @@ import {
   listIdeas,
   triageIdea,
   updateIdea,
+  getIdeaStats,
   VALID_STATUSES,
 } from './ideaStore.js';
 import { classify, classifyWithContext } from './ideaClassifier.js';
@@ -33,7 +34,28 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
     });
 
     const idea = createIdea(validation, classification);
-    return json({ ok: true, idea, classification }, 201);
+
+    // Write idea vault note in mock mode (GitHub not required for capture to succeed)
+    let vaultNote = null;
+    try {
+      const doc = writeIdeaNote(idea);
+      vaultNote = { path: doc.path, mode: 'mock' };
+      // Persist to GitHub vault if configured (fire-and-forget)
+      if (env && (env.GITHUB_TOKEN && env.GITHUB_REPO)) {
+        persistVaultDocumentIfConfigured(doc, env).catch(() => null);
+      }
+    } catch (_) {
+      // Vault write failure must not block idea capture
+    }
+
+    return json({ ok: true, idea, classification, vaultNote }, 201);
+  }
+
+  // GET /api/ideas/stats
+  if (path === '/api/ideas/stats') {
+    const guard = methodGuard(request, ['GET'], json);
+    if (guard) return guard;
+    return json({ ok: true, stats: getIdeaStats() });
   }
 
   // GET /api/ideas
