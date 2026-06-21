@@ -14,6 +14,7 @@ import {
   writeProjectUpdate,
   writeResearchNote,
   writeTaskList,
+  writeIdeaNote,
 } from './vault.js';
 
 function methodNotAllowed(json, allowed) {
@@ -49,6 +50,7 @@ function createVaultDocument(body) {
     case 'meeting': return writeMeetingNote(body.title, body.content, options);
     case 'email': return writeEmailDraftNote(body.subject || body.title, body.content, options);
     case 'tasks': return writeTaskList(body.projectId, body.tasks, options);
+    case 'idea': return writeIdeaNote(body.idea || { text: body.content, source: 'manual', tags: [], status: 'new' }, options);
     default: throw new Error('Unsupported vault note type.');
   }
 }

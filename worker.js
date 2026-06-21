@@ -3,6 +3,12 @@ import modelConfig from './config/models.json' with { type: 'json' };
 import { handleFoundationRequest } from './src/foundationApi.js';
 import { evaluatePermission } from './src/permissions.js';
 import { getProviderCredential, routeModel } from './src/modelRouter.js';
+import { handleIdeaRequest } from './src/ideaApi.js';
+import { listSkills, publicSkillSummary } from './src/skills.js';
+import { createPlan, createTaskBrief } from './src/planner.js';
+import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
+import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
+import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -65,6 +71,108 @@ export default {
         createEmailDraft: createGmailDraft,
       });
       if (foundationResponse) return foundationResponse;
+
+      // ── Brain pipeline: idea capture ──────────────────────
+      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas')) {
+        const ideaResponse = await handleIdeaRequest({ path, request, body, env, json });
+        if (ideaResponse) return ideaResponse;
+      }
+
+      // ── /api/skills ───────────────────────────────────────
+      if (path === '/api/skills') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, skills: listSkills().map(publicSkillSummary) });
+      }
+
+      // ── /api/plan ─────────────────────────────────────────
+      if (path === '/api/plan') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        const plan = createPlan(body.task);
+        return json({ ok: true, plan });
+      }
+
+      // ── /api/plan/brief ───────────────────────────────────
+      if (path === '/api/plan/brief') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        const brief = createTaskBrief(body.task);
+        return json({ ok: true, brief });
+      }
+
+      // ── /api/providers ────────────────────────────────────
+      if (path === '/api/providers') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const statuses = listProviderStatuses(env);
+        return json({ ok: true, providers: statuses });
+      }
+
+      // ── /api/providers/route ──────────────────────────────
+      if (path === '/api/providers/route') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        const taskProfile = { taskType: body.taskType || 'reasoning' };
+        const decision = explainRoutingDecision(taskProfile, env);
+        return json({ ok: true, decision });
+      }
+
+      // ── /api/providers/local-fallback ─────────────────────
+      if (path === '/api/providers/local-fallback') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, localFallback: getLocalFallback({}, env) });
+      }
+
+      // ── /api/providers/no-subscription ───────────────────
+      if (path === '/api/providers/no-subscription') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, ...getNoSubscriptionRoute({}, env) });
+      }
+
+      // ── /api/tools ────────────────────────────────────────
+      if (path === '/api/tools') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const url2 = new URL(request.url);
+        const category = url2.searchParams.get('category') || '';
+        const family = url2.searchParams.get('family') || '';
+        return json({ ok: true, tools: listTools({ category: category || null, family: family || null }) });
+      }
+
+      // ── /api/tools/check ─────────────────────────────────
+      if (path === '/api/tools/check') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.toolId) return json({ ok: false, error: 'toolId is required.' }, 400);
+        return json(checkToolPermission(body.toolId, body.action || null));
+      }
+
+      // ── /api/mcp/registry ─────────────────────────────────
+      if (path === '/api/mcp/registry') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, servers: listMcpServers(), policy: 'allowlist-first' });
+      }
+
+      // ── /api/mcp/check ────────────────────────────────────
+      if (path === '/api/mcp/check') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.serverId) return json({ ok: false, error: 'serverId is required.' }, 400);
+        return json(checkMcpPermission(body.serverId, body.operation || null));
+      }
+
+      // ── /api/registry/summary ────────────────────────────
+      if (path === '/api/registry/summary') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, ...getRegistrySummary() });
+      }
+
+      // ── /api/council ─────────────────────────────────────
+      if (path === '/api/council') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.task) return json({ ok: false, error: 'task is required.' }, 400);
+        const { selectRoles } = await import('./src/planner.js');
+        const roles = selectRoles(body.task);
+        const prompt = createCouncilPrompt(body.task, roles);
+        const mockResults = roles.map(r => createMockCouncilResult(r.id, body.task));
+        const finalPlan = produceFinalPlan(mockResults, body.task);
+        return json({ ok: true, task: body.task, roles: roles.map(r => r.id), prompt, mockResults, finalPlan, mode: 'mock' });
+      }
 
       // ── /api/ai ───────────────────────────────────────────
       if (path === '/api/ai') {
