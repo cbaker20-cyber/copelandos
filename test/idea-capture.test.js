@@ -194,3 +194,102 @@ test('Cursor prompt includes repo, constraints, and forbidden actions', async ()
   assert.ok(data.prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(data.prompt.toLowerCase().includes('forbidden') || data.prompt.toLowerCase().includes('constraints'));
 });
+
+// ── Stats endpoint ─────────────────────────────────────────────────────
+
+test('GET /api/ideas/stats returns statistics object', async () => {
+  // Capture at least one idea to ensure non-zero state
+  await postIdea({ text: 'stats test idea', source: 'manual' });
+  const request = makeRequest('/api/ideas/stats', { method: 'GET' });
+  const response = await worker.fetch(request, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(data.stats);
+  assert.ok(typeof data.stats.total === 'number');
+  assert.ok(typeof data.stats.confirmationRequired === 'number');
+  assert.ok(data.stats.byStatus);
+  assert.ok(data.stats.byCategory);
+  assert.ok(data.stats.byRisk);
+});
+
+test('GET /api/ideas/stats total reflects captured ideas', async () => {
+  const before = await (await worker.fetch(makeRequest('/api/ideas/stats', { method: 'GET' }), {}, {})).json();
+  await postIdea({ text: 'another idea for stats', source: 'manual' });
+  const after = await (await worker.fetch(makeRequest('/api/ideas/stats', { method: 'GET' }), {}, {})).json();
+  assert.ok(after.stats.total >= before.stats.total + 1);
+});
+
+// ── Dismiss endpoint ───────────────────────────────────────────────────
+
+test('POST /api/ideas/:id/dismiss marks idea as dismissed', async () => {
+  const { data: created } = await postIdea({ text: 'dismiss this idea', source: 'manual' });
+  const id = created.idea.id;
+  const request = makeRequest(`/api/ideas/${id}/dismiss`, { method: 'POST', body: JSON.stringify({}) });
+  const response = await worker.fetch(request, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.idea.status, 'dismissed');
+});
+
+test('POST /api/ideas/:id/dismiss returns 404 for unknown id', async () => {
+  const request = makeRequest('/api/ideas/nonexistent-id-xyz/dismiss', { method: 'POST', body: JSON.stringify({}) });
+  const response = await worker.fetch(request, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 404);
+  assert.equal(data.ok, false);
+});
+
+// ── Brain status endpoint ──────────────────────────────────────────────
+
+test('GET /api/brain/status returns pipeline status', async () => {
+  const request = makeRequest('/api/brain/status', { method: 'GET' });
+  const response = await worker.fetch(request, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.ok(data.status);
+  assert.ok(Array.isArray(data.status.stages));
+  assert.ok(data.status.stages.length > 0);
+  assert.ok(data.status.summary);
+  assert.ok(data.status.generatedAt);
+});
+
+test('GET /api/brain/status stages all have id, name, and status', async () => {
+  const request = makeRequest('/api/brain/status', { method: 'GET' });
+  const response = await worker.fetch(request, {}, {});
+  const { data } = { data: await response.json() };
+  for (const stage of data.status.stages) {
+    assert.ok(stage.id, `Stage missing id: ${JSON.stringify(stage)}`);
+    assert.ok(stage.name, `Stage missing name: ${JSON.stringify(stage)}`);
+    assert.ok(stage.status, `Stage missing status: ${JSON.stringify(stage)}`);
+  }
+});
+
+// ── Urgency in classification ──────────────────────────────────────────
+
+test('captured idea includes urgency field from classifier', async () => {
+  const { data } = await postIdea({ text: 'urgent: fix production bug ASAP', source: 'manual' });
+  assert.ok('urgency' in data.idea, 'idea should have urgency field');
+  assert.equal(data.classification.urgency, 'high');
+});
+
+test('idea with low-priority keywords gets low urgency', async () => {
+  const { data } = await postIdea({ text: 'someday I should reorganize my notes backlog', source: 'manual' });
+  assert.equal(data.classification.urgency, 'low');
+});
+
+test('idea with explicit urgency field respects it', async () => {
+  const { data } = await postIdea({ text: 'general task', source: 'manual', urgency: 'high' });
+  assert.ok(data.idea.urgency === 'high');
+});
+
+// ── Vault note on capture ──────────────────────────────────────────────
+
+test('captured idea includes vault note path in mock mode', async () => {
+  const { data } = await postIdea({ text: 'remember to update the readme file', source: 'manual' });
+  assert.ok(data.idea._vaultNote, 'captured idea should include _vaultNote');
+  assert.ok(data.idea._vaultNote.path, '_vaultNote should have a path');
+  assert.equal(data.idea._vaultNote.mode, 'mock');
+});

@@ -79,3 +79,39 @@ test('classify handles send email as medium risk', () => {
   const result = classify('draft email to professor about the lab report');
   assert.equal(result.riskLevel, 'medium');
 });
+
+// ── Urgency detection ──────────────────────────────────────────────────
+
+test('classify detects high urgency from "urgent" keyword', () => {
+  const result = classify('urgent: fix production database crash');
+  assert.equal(result.urgency, 'high');
+});
+
+test('classify detects high urgency from "asap" keyword', () => {
+  const result = classify('fix this ASAP or we miss the deadline');
+  assert.equal(result.urgency, 'high');
+});
+
+test('classify detects low urgency from "someday" keyword', () => {
+  const result = classify('someday refactor the old utility module');
+  assert.equal(result.urgency, 'low');
+});
+
+test('classify detects low urgency from "backlog" keyword', () => {
+  const result = classify('add to backlog: improve error messages');
+  assert.equal(result.urgency, 'low');
+});
+
+test('classify defaults to medium urgency for neutral ideas', () => {
+  const result = classify('write a helper function for date parsing');
+  assert.equal(result.urgency, 'medium');
+});
+
+test('classify includes urgency field in all results', () => {
+  const texts = ['fix bug', 'email teacher', 'deploy to prod', 'remember lab notes'];
+  for (const text of texts) {
+    const result = classify(text);
+    assert.ok('urgency' in result, `Expected urgency field in classify result for: "${text}"`);
+    assert.ok(['low', 'medium', 'high'].includes(result.urgency));
+  }
+});

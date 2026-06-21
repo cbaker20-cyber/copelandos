@@ -32,7 +32,8 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
     const classification = classifyWithContext(validation.text, {
       project: validation.project,
       tags: validation.tags,
-      urgency: validation.urgency,
+      // Only pass explicit user-provided urgency; null triggers text-pattern detection
+      urgency: validation.urgencyOverride,
     });
 
     const idea = createIdea(validation, classification);

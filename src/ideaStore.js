@@ -59,9 +59,12 @@ export function validateIdeaInput(body) {
   const source = VALID_SOURCES.has(body.source) ? body.source : 'manual';
   const tags = sanitizeTags(body.tags);
   const project = sanitizeText(body.project, 80) || null;
-  const urgency = ['low', 'medium', 'high'].includes(body.urgency) ? body.urgency : 'medium';
+  // urgencyOverride is only set when the caller explicitly passes a valid urgency;
+  // null means "let the classifier detect it from text patterns".
+  const urgencyOverride = ['low', 'medium', 'high'].includes(body.urgency) ? body.urgency : null;
+  const urgency = urgencyOverride || 'medium';
 
-  return { ok: true, text, source, tags, project, urgency };
+  return { ok: true, text, source, tags, project, urgency, urgencyOverride };
 }
 
 export function createIdea(validated, classification = {}) {
