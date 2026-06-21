@@ -17,6 +17,7 @@ const VALID_SOURCES = new Set([
 const MAX_TEXT_LENGTH = 5000;
 const MAX_TAG_LENGTH = 64;
 const MAX_TAGS = 10;
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
 
 function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -27,7 +28,11 @@ function generateId() {
 }
 
 function sanitizeText(value, maxLength = MAX_TEXT_LENGTH) {
-  const str = String(value || '').trim();
+  const str = String(value || '')
+    .normalize('NFKC')
+    .replace(CONTROL_CHARS, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return str.slice(0, maxLength);
 }
 
@@ -42,24 +47,29 @@ function sanitizeTag(value) {
 }
 
 function sanitizeTags(raw) {
-  if (!Array.isArray(raw)) return [];
-  return raw
+  const values = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  return values
     .map(sanitizeTag)
     .filter(Boolean)
     .slice(0, MAX_TAGS);
 }
 
 export function validateIdeaInput(body) {
-  const text = sanitizeText(body.text);
+  const input = body && typeof body === 'object' ? body : {};
+  const text = sanitizeText(input.text);
   if (!text) return { ok: false, error: 'Idea text is required.' };
-  if ((body.text || '').length > MAX_TEXT_LENGTH) {
+  if (String(input.text || '').length > MAX_TEXT_LENGTH) {
     return { ok: false, error: `Idea text exceeds ${MAX_TEXT_LENGTH} character limit.` };
   }
 
-  const source = VALID_SOURCES.has(body.source) ? body.source : 'manual';
-  const tags = sanitizeTags(body.tags);
-  const project = sanitizeText(body.project, 80) || null;
-  const urgency = ['low', 'medium', 'high'].includes(body.urgency) ? body.urgency : 'medium';
+  const source = VALID_SOURCES.has(input.source) ? input.source : 'manual';
+  const tags = sanitizeTags(input.tags || input.tag);
+  const project = sanitizeText(input.project, 80)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || null;
+  const urgency = ['low', 'medium', 'high'].includes(input.urgency) ? input.urgency : 'medium';
 
   return { ok: true, text, source, tags, project, urgency };
 }
@@ -102,6 +112,59 @@ export function listIdeas({ status, limit = 50, offset = 0 } = {}) {
   };
 }
 
+export function getIdeaStats() {
+  const ideas = [...inbox.values()];
+  const byStatus = Object.fromEntries([...VALID_STATUSES].map(status => [status, 0]));
+  const byRisk = { safe: 0, medium: 0, high: 0, unknown: 0 };
+  const bySkill = {};
+  for (const idea of ideas) {
+    byStatus[idea.status] = (byStatus[idea.status] || 0) + 1;
+    byRisk[idea.riskLevel || 'unknown'] = (byRisk[idea.riskLevel || 'unknown'] || 0) + 1;
+    if (idea.skill) bySkill[idea.skill] = (bySkill[idea.skill] || 0) + 1;
+  }
+  return {
+    total: ideas.length,
+    byStatus,
+    byRisk,
+    bySkill,
+    open: ideas.filter(idea => !['converted-to-note', 'dismissed'].includes(idea.status)).length,
+    readyForCursor: ideas.filter(idea => idea.status === 'ready-for-cursor').length,
+    readyForCodex: ideas.filter(idea => idea.status === 'ready-for-codex').length,
+  };
+}
+
+export function getProjectQueues() {
+  const queues = {};
+  for (const idea of inbox.values()) {
+    const project = idea.project || 'unassigned';
+    if (!queues[project]) {
+      queues[project] = {
+        project,
+        total: 0,
+        open: 0,
+        highRisk: 0,
+        readyForCursor: 0,
+        readyForCodex: 0,
+        ideas: [],
+      };
+    }
+    queues[project].total += 1;
+    if (!['converted-to-note', 'dismissed'].includes(idea.status)) queues[project].open += 1;
+    if (idea.riskLevel === 'high') queues[project].highRisk += 1;
+    if (idea.status === 'ready-for-cursor') queues[project].readyForCursor += 1;
+    if (idea.status === 'ready-for-codex') queues[project].readyForCodex += 1;
+    queues[project].ideas.push({
+      id: idea.id,
+      text: idea.text,
+      status: idea.status,
+      skill: idea.skill,
+      riskLevel: idea.riskLevel,
+      updatedAt: idea.updatedAt,
+    });
+  }
+  return Object.values(queues).sort((a, b) => b.open - a.open || a.project.localeCompare(b.project));
+}
+
 export function updateIdea(id, patch) {
   const idea = inbox.get(String(id));
   if (!idea) return null;
@@ -120,10 +183,27 @@ export function updateIdea(id, patch) {
 export function triageIdea(id, triageData) {
   const idea = getIdea(id);
   if (!idea) return null;
-  if (!VALID_STATUSES.has(triageData.status || '')) {
+  const next = { ...triageData, status: triageData.status || 'triaged' };
+  if (!VALID_STATUSES.has(next.status || '')) {
     return { ok: false, error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` };
   }
-  return { ok: true, idea: updateIdea(id, triageData) };
+  return { ok: true, idea: updateIdea(id, next) };
+}
+
+export function planIdea(id, plan) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'planned', suggestedAction: plan?.steps?.[0] || idea.suggestedAction });
+}
+
+export function dismissIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'dismissed' });
+}
+
+export function _clearInbox() {
+  inbox.clear();
 }
 
 export { VALID_STATUSES, VALID_SOURCES };

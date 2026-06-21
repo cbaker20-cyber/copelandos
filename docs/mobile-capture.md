@@ -46,6 +46,20 @@ Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the Cop
 
 ### Example Shortcut body
 
+Minimal body matching the Shortcut variables:
+
+```json
+{
+  "text": "",
+  "source": "siri",
+  "tags": ["mobile"]
+}
+```
+
+Fill `text` with the Dictated Text variable in Shortcuts.
+
+Project-tagged example:
+
 ```json
 {
   "text": "Fix the JazzBackend rhythm test — the triplet subdivision is off",
@@ -91,6 +105,7 @@ The form submits to `POST /api/capture/idea` with `source: "mobile-web"`.
 - No emails are sent
 - No files are modified
 - No PRs are merged
+- No Cursor/Codex agent is launched
 - The idea enters the inbox with status `new`
 - A human must triage the idea before any action is taken
 

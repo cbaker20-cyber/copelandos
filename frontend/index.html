@@ -185,9 +185,10 @@
 
     /* Idea capture */
     .capture-form { padding: 16px 18px; display: grid; gap: 10px; }
-    .capture-form textarea { width: 100%; background: rgba(3,9,16,.45); border: 1px solid var(--line); border-radius: 11px; color: var(--text); padding: 12px 14px; font-size: 12px; resize: vertical; min-height: 72px; line-height: 1.5; }
-    .capture-form textarea:focus { border-color: var(--line-hot); }
-    .capture-form textarea::placeholder { color: var(--dim); }
+    .capture-form textarea, .capture-form input { width: 100%; background: rgba(3,9,16,.45); border: 1px solid var(--line); border-radius: 11px; color: var(--text); padding: 12px 14px; font-size: 12px; resize: vertical; line-height: 1.5; }
+    .capture-form textarea { min-height: 72px; }
+    .capture-form textarea:focus, .capture-form input:focus { border-color: var(--line-hot); }
+    .capture-form textarea::placeholder, .capture-form input::placeholder { color: var(--dim); }
     .capture-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .capture-select { background: rgba(3,9,16,.45); border: 1px solid var(--line); border-radius: 8px; color: var(--muted); padding: 6px 10px; font-size: 11px; }
     .capture-tag { background: rgba(111,223,255,.06); border: 1px solid var(--line); border-radius: 6px; color: var(--muted); padding: 4px 8px; font-size: 10px; }
@@ -206,6 +207,13 @@
     .tag-high { background: rgba(255,120,133,.10); color: var(--red); }
     .tag-source { background: rgba(111,223,255,.06); color: var(--cyan); }
     .tag-status { background: rgba(155,140,255,.08); color: var(--violet); }
+    .idea-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .idea-actions .ghost-btn { font-size: 9px; padding: 4px 8px; }
+    .stats-grid { padding: 12px 18px 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 7px; }
+    .stat { border: 1px solid rgba(111,223,255,.1); border-radius: 10px; padding: 8px; background: rgba(3,9,16,.25); }
+    .stat strong { display: block; font-size: 14px; }
+    .stat span { color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .state-note { margin: 8px 18px 0; color: var(--muted); font-size: 10px; min-height: 14px; }
 
     /* Brain / planner */
     .brain-pipeline { padding: 14px 18px; display: grid; gap: 9px; }
@@ -251,6 +259,7 @@
       .command-dock { left: 12px; right: 12px; bottom: 10px; }
       .command-shell { grid-template-columns: 1fr auto auto; }
       .prompt-mark { display: none; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
   </style>
@@ -327,6 +336,10 @@
             <form class="capture-form" id="idea-form">
               <textarea id="idea-text" placeholder="Describe your idea — fix a bug, draft an email, remember something, plan ahead…" aria-label="Idea text"></textarea>
               <div class="capture-row">
+                <input id="idea-project" placeholder="Optional project id, e.g. copelandos" aria-label="Project">
+                <input id="idea-tags" placeholder="Optional tags, comma-separated" aria-label="Tags">
+              </div>
+              <div class="capture-row">
                 <select class="capture-select" id="idea-source" aria-label="Source">
                   <option value="dashboard">Dashboard</option>
                   <option value="siri">Siri</option>
@@ -341,12 +354,18 @@
                 </select>
                 <button class="solid-btn capture-submit" type="submit">Capture →</button>
               </div>
-              <div id="capture-result" style="display:none"></div>
+              <div class="state-note" id="capture-result" style="display:none"></div>
             </form>
           </article>
 
           <article class="panel">
             <div class="panel-head"><div><div class="panel-title">Idea inbox</div><div class="panel-sub">Captured ideas awaiting triage</div></div><span class="badge" id="inbox-badge">empty</span></div>
+            <div class="stats-grid" id="idea-stats">
+              <div class="stat"><strong>0</strong><span>Total</span></div>
+              <div class="stat"><strong>0</strong><span>Open</span></div>
+              <div class="stat"><strong>0</strong><span>Cursor</span></div>
+              <div class="stat"><strong>0</strong><span>Codex</span></div>
+            </div>
             <div class="idea-list" id="idea-list" aria-live="polite">
               <div class="empty-state">No ideas captured yet. Use the form or your Siri Shortcut to add the first one.</div>
             </div>
@@ -360,6 +379,7 @@
         <div class="dashboard-grid">
           <article class="panel small-panel">
             <div class="panel-head"><div><div class="panel-title">Idea classifier</div><div class="panel-sub">Deterministic rules + AI layer</div></div><span class="badge ok">active</span></div>
+            <div class="state-note" id="brain-status-text">Planner scaffold loading…</div>
             <div class="brain-pipeline">
               <div class="pipeline-step"><span class="pipeline-node">1</span><div class="pipeline-content"><strong>Capture</strong><small>Text, source, tags, urgency</small></div></div>
               <div class="pipeline-step"><span class="pipeline-node">2</span><div class="pipeline-content"><strong>Classify</strong><small>Category, skill, risk level</small></div></div>
@@ -439,6 +459,12 @@
           <div class="panel-head"><div><div class="panel-title">Provider router</div><div class="panel-sub">No single-subscription lock-in</div></div><span class="badge" id="model-badge">none configured</span></div>
           <div class="provider-grid" id="providers-grid"></div>
           <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. No provider shown as connected without an API key.</div>
+        </article>
+        <article class="panel small-panel">
+          <div class="panel-head"><div><div class="panel-title">Project task queue</div><div class="panel-sub">Ideas grouped by project</div></div><span class="badge" id="queue-badge">empty</span></div>
+          <div class="automation" id="project-queue">
+            <div class="auto-row"><span>No queued project ideas yet</span><span>ready</span></div>
+          </div>
         </article>
         <article class="panel small-panel">
           <div class="panel-head"><div><div class="panel-title">Automations</div><div class="panel-sub">Review-first schedules</div></div><span class="badge">manual</span></div>
@@ -542,12 +568,16 @@
       ideaText: document.getElementById('idea-text'),
       ideaSource: document.getElementById('idea-source'),
       ideaUrgency: document.getElementById('idea-urgency'),
+      ideaProject: document.getElementById('idea-project'),
+      ideaTags: document.getElementById('idea-tags'),
       captureResult: document.getElementById('capture-result'),
       ideaList: document.getElementById('idea-list'),
       inboxBadge: document.getElementById('inbox-badge'),
+      ideaStats: document.getElementById('idea-stats'),
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      projectQueue: document.getElementById('project-queue'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -610,20 +640,58 @@
             ${(idea.tags || []).map(t => `<span class="idea-tag tag-source">${escapeHtml(t)}</span>`).join('')}
           </div>
           ${idea.suggestedAction ? `<div style="font-size:9px;color:var(--muted);margin-top:4px;">${escapeHtml(idea.suggestedAction)}</div>` : ''}
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCursorPrompt('${escapeHtml(idea.id)}')">Cursor prompt</button>
-            <button class="ghost-btn" style="font-size:9px;padding:4px 8px;" onclick="generateCodexPrompt('${escapeHtml(idea.id)}')">Codex prompt</button>
+          <div class="idea-actions">
+            <button class="ghost-btn" data-idea-action="triage" data-id="${escapeHtml(idea.id)}">Triage</button>
+            <button class="ghost-btn" data-idea-action="plan" data-id="${escapeHtml(idea.id)}">Plan</button>
+            <button class="ghost-btn" data-idea-action="convert" data-id="${escapeHtml(idea.id)}">Vault note</button>
+            <button class="ghost-btn" data-idea-action="cursor" data-id="${escapeHtml(idea.id)}">Cursor</button>
+            <button class="ghost-btn" data-idea-action="codex" data-id="${escapeHtml(idea.id)}">Codex</button>
+            <button class="ghost-btn" data-idea-action="dismiss" data-id="${escapeHtml(idea.id)}">Dismiss</button>
           </div>
         </div>`).join('');
+      els.ideaList.querySelectorAll('[data-idea-action]').forEach(button => {
+        button.addEventListener('click', () => handleIdeaAction(button.dataset.ideaAction, button.dataset.id));
+      });
+    }
+
+    function renderStats(stats) {
+      const safe = stats || { total: 0, open: 0, readyForCursor: 0, readyForCodex: 0 };
+      els.ideaStats.innerHTML = [
+        ['Total', safe.total || 0],
+        ['Open', safe.open || 0],
+        ['Cursor', safe.readyForCursor || 0],
+        ['Codex', safe.readyForCodex || 0],
+      ].map(([label, value]) => `<div class="stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`).join('');
+    }
+
+    function renderQueue(queues) {
+      if (!queues || queues.length === 0) {
+        document.getElementById('queue-badge').textContent = 'empty';
+        els.projectQueue.innerHTML = '<div class="auto-row"><span>No queued project ideas yet</span><span>ready</span></div>';
+        return;
+      }
+      document.getElementById('queue-badge').textContent = `${queues.length} queue${queues.length !== 1 ? 's' : ''}`;
+      document.getElementById('queue-badge').className = 'badge warn';
+      els.projectQueue.innerHTML = queues.slice(0, 5).map(queue =>
+        `<div class="auto-row"><span>${escapeHtml(queue.project)}</span><span>${queue.open} open / ${queue.highRisk} high</span></div>`
+      ).join('');
     }
 
     async function loadIdeas() {
       try {
-        const result = await api('/api/ideas');
+        els.ideaList.innerHTML = '<div class="empty-state">Loading idea inbox…</div>';
+        const [result, stats, queue] = await Promise.all([
+          api('/api/ideas'),
+          api('/api/ideas/stats'),
+          api('/api/project-queue'),
+        ]);
         capturedIdeas = result.ideas || [];
         renderIdeas(capturedIdeas);
+        renderStats(stats.stats);
+        renderQueue(queue.queues);
       } catch (e) {
         els.ideaList.innerHTML = `<div class="empty-state">Could not load inbox: ${escapeHtml(e.message)}</div>`;
+        renderStats(null);
       }
     }
 
@@ -635,7 +703,8 @@
         text,
         source: els.ideaSource.value,
         urgency: els.ideaUrgency.value,
-        tags: ['dashboard'],
+        tags: ['dashboard', ...els.ideaTags.value.split(',').map(t => t.trim()).filter(Boolean)],
+        project: els.ideaProject.value.trim() || undefined,
       };
       try {
         const result = await api('/api/capture/idea', {
@@ -644,11 +713,45 @@
           body: JSON.stringify(body),
         });
         els.ideaText.value = '';
+        els.ideaTags.value = '';
+        els.captureResult.style.display = 'block';
+        els.captureResult.textContent = `Captured. Status: ${result.idea.status}; vault: ${result.vault?.ideaNote?.mode || 'mock'}.`;
         addLog('copelandos', `Idea captured: "${text.slice(0, 60)}" → ${result.classification?.category || 'general'} · ${result.classification?.riskLevel || 'unknown'} risk`);
         await loadIdeas();
         document.getElementById('capture').scrollIntoView({ behavior: 'smooth' });
       } catch (e) {
+        els.captureResult.style.display = 'block';
+        els.captureResult.textContent = `Error: ${e.message}`;
         addLog('system', `Capture failed: ${e.message}`);
+      }
+    }
+
+    async function handleIdeaAction(action, ideaId) {
+      if (action === 'cursor') return generateCursorPrompt(ideaId);
+      if (action === 'codex') return generateCodexPrompt(ideaId);
+      const endpoints = {
+        triage: [`/api/ideas/${ideaId}/triage`, { status: 'triaged' }],
+        plan: [`/api/ideas/${ideaId}/plan`, {}],
+        convert: [`/api/ideas/${ideaId}/convert`, { type: 'idea-note' }],
+        dismiss: [`/api/ideas/${ideaId}/dismiss`, {}],
+      };
+      const [endpoint, payload] = endpoints[action] || [];
+      if (!endpoint) return;
+      try {
+        const result = await api(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        addLog('copelandos', `Idea ${ideaId.slice(0, 8)} ${action}: ${result.idea?.status || 'updated'}`);
+        if (result.plan) {
+          els.promptPanelState.style.display = 'none';
+          els.promptOutput.style.display = 'block';
+          els.promptOutput.textContent = result.plan.steps.join('\n');
+        }
+        await loadIdeas();
+      } catch (e) {
+        addLog('system', `${action} failed: ${e.message}`);
       }
     }
 
@@ -722,9 +825,26 @@
 
       const providers = modules.modelRouter.providers || [];
       els.providersGrid.innerHTML = providers.map(p =>
-        `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider)} · ${p.configured ? 'configured' : 'not connected'}</span>`
+        `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider || p.id)} · ${p.configured ? 'configured' : 'not connected'}</span>`
       ).join('');
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
+    }
+
+    function renderProviders(providers) {
+      els.providersGrid.innerHTML = providers.map(p =>
+        `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.id)} · ${escapeHtml(p.status || (p.configured ? 'configured' : 'not connected'))}</span>`
+      ).join('');
+      document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'configured' : 'local fallback';
+    }
+
+    async function loadBrainStatus() {
+      try {
+        const [brain, providers] = await Promise.all([api('/api/brain/status'), api('/api/providers')]);
+        document.getElementById('brain-status-text').textContent = `${brain.classifier}; planner ${brain.planner}; council ${brain.council}; execution ${brain.execution}.`;
+        renderProviders(providers.providers || []);
+      } catch (e) {
+        document.getElementById('brain-status-text').textContent = `Brain status unavailable: ${e.message}`;
+      }
     }
 
     async function loadFoundation() {
@@ -736,6 +856,7 @@
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        await loadBrainStatus();
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
@@ -832,6 +953,7 @@
 
     setupVoice();
     loadFoundation();
+    loadBrainStatus();
     loadIdeas();
   </script>
 </body>

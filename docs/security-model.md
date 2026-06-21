@@ -13,6 +13,7 @@
 - Browser code receives capability status, never provider credentials.
 - Cloudflare secrets remain in `env` and are never logged or returned.
 - Exact-origin CORS reduces browser exposure but is not authentication.
+- Captured ideas are stored as inbox items and vault notes only; they are never treated as executable commands.
 - The local agent requires a shared token and exact allowlist and binds to localhost by default.
 - GitHub-backed vault paths are constructed from fixed folders and sanitized segments.
 
@@ -22,6 +23,7 @@
 - MEDIUM actions require explicit confirmation and are logged in the response: issues, Gmail drafts, tasks, status updates, exact tests, and configured app launches.
 - HIGH actions always return `confirmation_required` and never execute automatically: sending mail, merging, deleting, deploying, installing, arbitrary shell, secret changes, publishing, private-student access, and general screen/input control.
 - Unknown actions default to HIGH.
+- Cursor/Codex prompt generation is a draft/planning action. It creates text prompts only and cannot launch agents by itself.
 
 ## Known limitations
 

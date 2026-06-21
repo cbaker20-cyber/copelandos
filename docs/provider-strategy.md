@@ -7,9 +7,9 @@ CopelandOS is designed to avoid single-subscription lock-in. The multi-provider 
 1. **Free-tier first** — Prefer providers with free tiers (Groq, Cerebras, Gemini, OpenRouter) before paid providers.
 2. **No fake connections** — A provider is only shown as "configured" when the required environment variable is present. Never fake a connection.
 3. **Local fallback always available** — Ollama is always represented as a fallback option even if not running.
-4. **Rate-limit aware** — The router fails over to the next provider on 429 responses.
-5. **Budget aware** — Never escalate to a paid provider unless free-tier options are exhausted.
-6. **Tool-support aware** — Routes that require tool calling prefer providers that support it.
+4. **Rate-limit aware** — The router returns ordered fallback chains for clients to use after 429/timeout/server-error responses.
+5. **Budget aware** — `maxCostTier` can constrain routing so paid providers are skipped when the task should stay free-tier/local.
+6. **Tool-support aware** — `requiresToolCalling` and `requiresStructuredOutput` skip providers that cannot satisfy the task profile.
 
 ## Provider inventory (`config/providers.json`)
 
@@ -62,6 +62,19 @@ The following providers have free tiers that work without a paid subscription (a
 - `POST /api/providers/route` — Get routing decision for a task type
 - `GET /api/providers/local-fallback` — Get Ollama fallback status
 - `GET /api/providers/no-subscription` — Get routes available without paid subscription
+
+Example task profile:
+
+```json
+{
+  "taskType": "coding",
+  "requiresToolCalling": true,
+  "requiresStructuredOutput": true,
+  "maxCostTier": "free-tier"
+}
+```
+
+If no matching provider has the required env var, the router returns `ok: false` with a clear `No provider configured` message and the local Ollama fallback representation.
 
 ## Implementation
 

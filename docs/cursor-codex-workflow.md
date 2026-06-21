@@ -10,6 +10,20 @@
 
 ## Prompt templates
 
+CopelandOS generates Cursor and Codex prompts from captured ideas with these required sections:
+
+- `REPO`
+- `ISSUE OR IDEA ID`
+- `GOAL`
+- `FILES TO INSPECT`
+- `CONSTRAINTS`
+- `SAFETY RULES`
+- `TESTS TO RUN`
+- `DRAFT PR TITLE`
+- `FORBIDDEN ACTIONS`
+
+Prompt generation is a safe-write/draft operation only. It does not launch Cursor, run Codex, merge PRs, or deploy.
+
 ### Cursor implementation
 
 > Inspect the repository and open PRs first. Implement only `[task]` on a branch. Read the repo task source and security rules. Add tests, run them, open a draft PR, and stop on blockers. Do not merge, deploy, send messages, commit secrets, or expand scope.

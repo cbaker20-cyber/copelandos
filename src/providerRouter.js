@@ -3,6 +3,7 @@ import providersConfig from '../config/providers.json' with { type: 'json' };
 const PROVIDERS = providersConfig.providers;
 const ROUTING_STRATEGY = providersConfig.routingStrategy;
 const FAILOVER_POLICY = providersConfig.failoverPolicy;
+const COST_ORDER = ['free', 'free-tier', 'pay-per-token', 'depends-on-model'];
 
 function isProviderConfigured(provider, env) {
   const envKey = provider.envKey;
@@ -32,6 +33,18 @@ function providerStatus(provider, env) {
   };
 }
 
+function matchesTaskConstraints(provider, taskProfile = {}) {
+  if (taskProfile.requiresToolCalling && !provider.supportsToolCalling) return false;
+  if (taskProfile.requiresStructuredOutput && !provider.supportsStructuredOutput) return false;
+  if (taskProfile.privacyTier === 'local' && provider.privacyTier !== 'local') return false;
+  if (taskProfile.maxCostTier) {
+    const max = COST_ORDER.indexOf(taskProfile.maxCostTier);
+    const current = COST_ORDER.indexOf(provider.costTier);
+    if (max >= 0 && current >= 0 && current > max) return false;
+  }
+  return true;
+}
+
 export function listProviderStatuses(env) {
   return PROVIDERS.map(p => providerStatus(p, env));
 }
@@ -43,6 +56,7 @@ export function chooseProvider(taskProfile, env) {
   for (const providerId of route) {
     const provider = PROVIDERS.find(p => p.id === providerId);
     if (!provider) continue;
+    if (!matchesTaskConstraints(provider, taskProfile)) continue;
     if (isProviderConfigured(provider, env)) {
       return {
         ok: true,
@@ -52,7 +66,9 @@ export function chooseProvider(taskProfile, env) {
         modelAlias: provider.modelAlias,
         taskType,
         costTier: provider.costTier,
-        reason: `Selected ${provider.displayName} as first configured provider for ${taskType}.`,
+        supportsToolCalling: provider.supportsToolCalling,
+        supportsStructuredOutput: provider.supportsStructuredOutput,
+        reason: `Selected ${provider.displayName} as first configured provider for ${taskType} that matches routing constraints.`,
       };
     }
   }
@@ -78,6 +94,7 @@ export function chooseFallbacks(taskProfile, env) {
   for (const providerId of route) {
     const provider = PROVIDERS.find(p => p.id === providerId);
     if (!provider) continue;
+    if (!matchesTaskConstraints(provider, taskProfile)) continue;
     const status = providerStatus(provider, env);
     if (status.configured) {
       configured.push({ id: provider.id, displayName: provider.displayName, costTier: provider.costTier });

@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import worker from '../worker.js';
+import { _clearInbox } from '../src/ideaStore.js';
+
+test.beforeEach(() => {
+  _clearInbox();
+});
 
 function makeRequest(path, options = {}) {
   const url = `https://worker.example${path}`;
@@ -35,6 +40,8 @@ test('capture valid idea returns 201 with classified idea', async () => {
   assert.ok(data.idea.createdAt);
   assert.ok(data.idea.updatedAt);
   assert.ok(data.classification);
+  assert.equal(data.vault.ideaNote.mode, 'mock');
+  assert.equal(data.vault.dailyAppend.mode, 'mock');
 });
 
 test('reject empty idea text returns 400', async () => {
@@ -91,6 +98,27 @@ test('GET /api/ideas returns idea list', async () => {
   assert.ok(typeof data.total === 'number');
 });
 
+test('GET /api/ideas/stats returns inbox counts', async () => {
+  await postIdea({ text: 'remember catalase lab analysis notes', source: 'siri', project: 'copelandos' });
+  const response = await worker.fetch(makeRequest('/api/ideas/stats'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.stats.total, 1);
+  assert.equal(data.stats.open, 1);
+  assert.equal(data.stats.byStatus.new, 1);
+});
+
+test('GET /api/project-queue groups ideas by sanitized project', async () => {
+  await postIdea({ text: 'fix CopelandOS idea queue', source: 'manual', project: '../CopelandOS Main' });
+  const response = await worker.fetch(makeRequest('/api/project-queue'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.queues[0].project, 'copelandos-main');
+  assert.equal(data.queues[0].open, 1);
+});
+
 test('GET /api/ideas/:id returns a specific idea', async () => {
   const { data: created } = await postIdea({ text: 'get by id test', source: 'manual' });
   const id = created.idea.id;
@@ -121,6 +149,53 @@ test('POST /api/ideas/:id/triage updates idea status', async () => {
   assert.equal(response.status, 200);
   assert.equal(data.ok, true);
   assert.equal(data.idea.status, 'triaged');
+});
+
+test('POST /api/ideas/:id/plan creates plan and planned status', async () => {
+  const { data: created } = await postIdea({ text: 'plan a safe CopelandOS dashboard polish task', source: 'manual' });
+  const id = created.idea.id;
+  const planReq = makeRequest(`/api/ideas/${id}/plan`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  const response = await worker.fetch(planReq, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.idea.status, 'planned');
+  assert.ok(Array.isArray(data.plan.steps));
+});
+
+test('POST /api/ideas/:id/convert accepts explicit idea-note alias', async () => {
+  const { data: created } = await postIdea({ text: 'remember project decision for CopelandOS', source: 'manual' });
+  const id = created.idea.id;
+  const convertReq = makeRequest(`/api/ideas/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'idea-note' }),
+  });
+  const response = await worker.fetch(convertReq, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.idea.status, 'converted-to-note');
+  assert.match(data.document.path, /^Inbox\//);
+  assert.equal(data.vault.mode, 'mock');
+});
+
+test('POST /api/ideas/:id/dismiss archives idea without deleting it', async () => {
+  const { data: created } = await postIdea({ text: 'dismiss this captured thought', source: 'manual' });
+  const id = created.idea.id;
+  const response = await worker.fetch(makeRequest(`/api/ideas/${id}/dismiss`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.idea.status, 'dismissed');
+
+  const lookup = await worker.fetch(makeRequest(`/api/ideas/${id}`), {}, {});
+  const lookupData = await lookup.json();
+  assert.equal(lookupData.idea.id, id);
 });
 
 test('POST /api/capture/idea classifies coding tasks correctly', async () => {
@@ -193,4 +268,17 @@ test('Cursor prompt includes repo, constraints, and forbidden actions', async ()
   const data = await response.json();
   assert.ok(data.prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(data.prompt.toLowerCase().includes('forbidden') || data.prompt.toLowerCase().includes('constraints'));
+  assert.ok(data.prompt.includes('REPO:'));
+  assert.ok(data.prompt.includes('ISSUE OR IDEA ID:'));
+  assert.ok(data.prompt.includes('TESTS TO RUN:'));
+});
+
+test('GET /api/brain/status reports mock/scaffold mode honestly', async () => {
+  const response = await worker.fetch(makeRequest('/api/brain/status'), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.council, 'mock-mode');
+  assert.equal(data.execution, 'disabled');
+  assert.ok(Array.isArray(data.providers));
 });

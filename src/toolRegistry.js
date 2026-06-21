@@ -3,6 +3,28 @@ import mcpConfig from '../config/mcp-servers.json' with { type: 'json' };
 
 const TOOLS = toolsConfig.tools;
 const MCP_SERVERS = mcpConfig.servers;
+const HIGH_RISK_ACTIONS = new Set([
+  'send_message',
+  'delete_message',
+  'delete_file',
+  'delete_files',
+  'deploy',
+  'publish',
+  'release',
+  'wrangler_publish',
+  'merge_pr',
+  'push_to_main',
+  'arbitrary_shell',
+  'screen_control',
+  'keyboard_control',
+  'mouse_control',
+  'take_screenshot',
+  'install_packages',
+]);
+
+function blockedNeedsConfirmation(tool, action) {
+  return tool.riskLevel === 'high' || HIGH_RISK_ACTIONS.has(action);
+}
 
 export function getTool(id) {
   return TOOLS.find(t => t.id === id) || null;
@@ -41,8 +63,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Tool '${toolId}' is permanently blocked.`,
-      confirmation_required: false,
+      confirmation_required: blockedNeedsConfirmation(tool, action),
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -51,8 +74,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Action '${action}' is blocked for tool '${toolId}'.`,
-      confirmation_required: false,
+      confirmation_required: blockedNeedsConfirmation(tool, action),
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -102,6 +126,7 @@ export function checkMcpPermission(serverId, operation) {
       allowed: false,
       reason: `MCP server '${serverId}' is not in the allowlist registry.`,
       blocked: true,
+      confirmation_required: true,
       policyNote: mcpConfig.policy,
     };
   }
@@ -121,6 +146,7 @@ export function checkMcpPermission(serverId, operation) {
       allowed: false,
       reason: `Operation '${operation}' is blocked for MCP server '${serverId}'.`,
       blocked: true,
+      confirmation_required: server.riskLevel === 'high' || HIGH_RISK_ACTIONS.has(operation),
     };
   }
 

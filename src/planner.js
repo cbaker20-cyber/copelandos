@@ -6,6 +6,25 @@ import { getSkill } from './skills.js';
 const ROLES = Object.fromEntries(planningRoles.roles.map(r => [r.id, r]));
 const SELECTION_RULES = planningRoles.selectionRules;
 
+const PROJECT_RULES = Object.freeze({
+  'score-scanner': [
+    'Score Scanner: no fake PDF/photo OMR; MusicXML-only unless explicitly implemented and tested.',
+    'Do not claim PDF or photo optical music recognition works unless the repository contains real implementation evidence.',
+  ],
+  'jazz-backend': [
+    'JazzBackend: preserve musical constraints, MusicXML validity, rhythm integrity, and existing generator invariants.',
+  ],
+  'band-council-agent': [
+    'Band Council: privacy-safe, draft-only, no private student data, no autonomous communication.',
+  ],
+  'connectome-perturbation': [
+    'Connectome: evidence-first, reproducible methods, no invented research claims or provenance.',
+  ],
+  copelandos: [
+    'CopelandOS: security-first, canonical Worker entry point, no fake connected claims, no unsafe local control.',
+  ],
+});
+
 export function classifyTask(input) {
   return classify(String(input || ''));
 }
@@ -158,64 +177,117 @@ export function createTaskBrief(task) {
 }
 
 export function createCursorPrompt({ idea, project, task }) {
+  return createAgentPrompt('cursor', { idea, project, task });
+}
+
+export function createCodexPrompt({ idea, project, task }) {
+  return createAgentPrompt('codex', { idea, project, task });
+}
+
+function createAgentPrompt(kind, { idea, project, task }) {
   const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
+  const goal = String(task || idea?.text || '').trim() || 'Review the captured idea and propose the safest next step.';
+  const classification = classifyTask(goal);
+  const repo = proj?.repo || 'unknown-repo';
+  const projectRules = proj ? (PROJECT_RULES[proj.id] || []) : [];
+  const forbiddenActions = [
+    ...(proj?.forbiddenActions || []),
+    'commit secrets',
+    'send email',
+    'merge PRs',
+    'deploy',
+    'delete files',
+    'run arbitrary shell',
+    'control screen/mouse/keyboard',
+    'claim integrations are connected without evidence',
+  ];
+  const filesToInspect = inferFilesToInspect(proj, classification);
+  const testsToRun = inferTestsToRun(proj, classification);
+  const agentName = kind === 'cursor'
+    ? 'Cursor implementation agent'
+    : 'Codex architecture and security agent';
+
   const lines = [
-    `You are the Cursor implementation agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    proj ? `Current phase: ${proj.currentPhase}` : '',
-    `Idea: ${idea?.id ? `[${idea.id}]` : ''} ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    `Risk level: ${classification.riskLevel}`,
+    `You are the ${agentName}${proj ? ` for ${proj.displayName}` : ''}.`,
+    '',
+    'REPO:',
+    repo,
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'captured-idea-without-id',
+    '',
+    'GOAL:',
+    goal,
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect.map(file => `- ${file}`),
     '',
     'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
-    '- Do not commit secrets, tokens, or private data.',
-    '- Use a branch and draft PR. Do not push to main directly.',
-    '- Stop and report blockers instead of guessing.',
-    '- Run tests before proposing a merge.',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
+    proj ? `- Current phase: ${proj.currentPhase}` : '- Project registry entry was not matched; inspect before editing.',
+    ...(proj?.forbiddenClaims || []).map(claim => `- Forbidden claim: ${claim}`),
+    ...projectRules.map(rule => `- ${rule}`),
     '',
-    'REQUIRED STEPS:',
-    '1. Read the repository and understand the existing code.',
-    '2. Identify the files that need to change.',
-    '3. Implement the minimal change that satisfies the goal.',
-    '4. Add or update tests.',
-    '5. Open a draft PR with a clear description.',
+    'SAFETY RULES:',
+    '- Do not execute captured ideas automatically.',
+    '- Add or update focused tests for behavioral changes.',
+    '- Preserve existing security boundaries and exact-origin CORS.',
+    '- Stop on blockers instead of guessing.',
+    '- Open a branch and draft PR; never push directly to main.',
     '',
-    proj ? `SAFE ACTIONS: ${proj.safeActions.join(', ')}` : '',
-    `TASK BRIEF: ${task || idea?.text || 'See idea above'}`,
-  ].filter(Boolean);
+    'TESTS TO RUN:',
+    ...testsToRun.map(test => `- ${test}`),
+    '',
+    'DRAFT PR TITLE:',
+    draftPrTitle(proj, goal, kind),
+    '',
+    'FORBIDDEN ACTIONS:',
+    ...[...new Set(forbiddenActions)].map(action => `- ${action}`),
+    '',
+    kind === 'cursor' ? 'IMPLEMENTATION MODE:' : 'REVIEW MODE:',
+    kind === 'cursor'
+      ? 'Implement the smallest safe change, verify it, and prepare a draft PR summary.'
+      : 'Analyze architecture, security, tests, and risks before recommending implementation.',
+  ];
 
   return lines.join('\n');
 }
 
-export function createCodexPrompt({ idea, project, task }) {
-  const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
-  const lines = [
-    `You are the Codex architecture and security agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    `Goal: ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    '',
-    'REVIEW FOCUS:',
-    '- Architecture decisions and trade-offs',
-    '- Security: auth, CORS, input validation, secret handling',
-    '- Test coverage and testability',
-    '- Dependency choices and risk',
-    '',
-    'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    '- Do not claim integration is connected without evidence.',
-    '- Do not weaken existing tests.',
-    '- Never add secrets or tokens to the codebase.',
-    '',
-    proj ? `FORBIDDEN CLAIMS: ${proj.forbiddenClaims.join('; ')}` : '',
-    `TASK: ${task || idea?.text || 'See idea above'}`,
-  ].filter(Boolean);
+function inferFilesToInspect(project, classification) {
+  if (!project) return ['README.md', 'docs/', 'src/', 'test/'];
+  if (project.id === 'copelandos') {
+    const files = ['README.md', 'worker.js', 'src/', 'config/', 'docs/', 'test/'];
+    if (classification.category === 'design') files.push('frontend/index.html');
+    if (classification.category === 'memory') files.push('src/vault.js', 'docs/obsidian-vault.md');
+    return files;
+  }
+  if (project.id === 'score-scanner') return ['README.md', 'src/', 'tests/', 'docs/', 'fixtures/musicxml/'];
+  if (project.id === 'jazz-backend') return ['README.md', 'src/', 'tests/', 'docs/', 'musicxml fixtures'];
+  if (project.id === 'band-council-agent') return ['README.md', 'templates/', 'docs/', 'privacy policy'];
+  if (project.id === 'connectome-perturbation') return ['README.md', 'docs/', 'scripts/', 'data manifest', 'environment files'];
+  return ['README.md', 'src/', 'test/', 'docs/'];
+}
 
-  return lines.join('\n');
+function inferTestsToRun(project, classification) {
+  if (project?.id === 'copelandos') {
+    const checks = ['npm test', 'node --check worker.js', 'git diff --check'];
+    if (classification.category === 'coding' || classification.category === 'memory') checks.push('node --check src/foundationApi.js', 'node --check src/vault.js');
+    return checks;
+  }
+  if (project?.id === 'jazz-backend') return ['Run the existing rhythm/MusicXML test suite', 'Add focused regression tests for changed musical behavior'];
+  if (project?.id === 'score-scanner') return ['Run existing MusicXML parser/reorder tests', 'Do not add fake OMR tests unless OMR is actually implemented'];
+  return ['Run the repository test suite', 'Run syntax/type checks used by the project', 'Add focused tests for the requested behavior'];
+}
+
+function draftPrTitle(project, goal, kind) {
+  const prefix = kind === 'cursor' ? 'Implement' : 'Review';
+  const projectName = project?.displayName || 'Project';
+  const compactGoal = goal
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w .:/-]/g, '')
+    .slice(0, 72)
+    .trim();
+  return `${prefix} ${projectName}: ${compactGoal || 'captured idea'}`;
 }

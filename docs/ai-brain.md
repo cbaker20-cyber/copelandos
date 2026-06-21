@@ -34,6 +34,8 @@ Output
   ├─ Cursor prompt (/api/ideas/:id/cursor-prompt)
   ├─ Codex prompt (/api/ideas/:id/codex-prompt)
   ├─ Vault note (/api/ideas/:id/convert)
+  ├─ Project queue (/api/project-queue)
+  ├─ Brain status (/api/brain/status)
   └─ AI council result (/api/council)
 ```
 
@@ -65,6 +67,8 @@ Implements the planning layer:
 - `createTaskBrief(task)` — returns a concise summary
 - `createCursorPrompt({ idea, project, task })` — generates a Cursor implementation prompt
 - `createCodexPrompt({ idea, project, task })` — generates a Codex architecture prompt
+
+Generated Cursor/Codex prompts always include repo, issue or idea id, goal, files to inspect, constraints, safety rules, tests to run, draft PR title, and forbidden actions. Project-specific rules come from `config/projects.json` plus hard-coded safety notes for Score Scanner, JazzBackend, Band Council, Connectome, and CopelandOS.
 
 ### `src/council.js`
 
@@ -106,3 +110,4 @@ See `config/skills.json` for the full skill list. Key skills:
 - Email is draft-only; sending is permanently blocked
 - Private student data is blocked from vault writes
 - Deploys, merges, deletes, and shell execution are blocked
+- Provider and tool status is honest: missing env vars report `not connected`, `mock mode`, `local fallback`, or `ready for setup`.

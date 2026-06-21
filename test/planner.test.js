@@ -98,6 +98,9 @@ test('createCursorPrompt includes repo and constraints', () => {
   assert.ok(prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(prompt.toLowerCase().includes('forbidden') || prompt.toLowerCase().includes('constraint'));
   assert.ok(prompt.toLowerCase().includes('tests') || prompt.toLowerCase().includes('test'));
+  for (const section of ['REPO:', 'ISSUE OR IDEA ID:', 'GOAL:', 'FILES TO INSPECT:', 'CONSTRAINTS:', 'SAFETY RULES:', 'TESTS TO RUN:', 'DRAFT PR TITLE:', 'FORBIDDEN ACTIONS:']) {
+    assert.ok(prompt.includes(section), `missing section ${section}`);
+  }
 });
 
 test('createCodexPrompt includes security review focus', () => {
@@ -109,4 +112,22 @@ test('createCodexPrompt includes security review focus', () => {
 test('createCursorPrompt has forbidden actions from project config', () => {
   const prompt = createCursorPrompt({ idea: { id: 'test-3', text: 'do music stuff' }, project: 'score-scanner', task: 'scan a PDF score' });
   assert.ok(prompt.toLowerCase().includes('forbidden'));
+  assert.ok(prompt.includes('MusicXML-only'));
+  assert.ok(prompt.includes('no fake PDF/photo OMR'));
+});
+
+test('createCodexPrompt includes required prompt sections and CopelandOS rule', () => {
+  const prompt = createCodexPrompt({ idea: { id: 'test-4', text: 'review provider routing' }, project: 'copelandos', task: 'review provider routing for fake connected claims' });
+  for (const section of ['REPO:', 'ISSUE OR IDEA ID:', 'GOAL:', 'FILES TO INSPECT:', 'CONSTRAINTS:', 'SAFETY RULES:', 'TESTS TO RUN:', 'DRAFT PR TITLE:', 'FORBIDDEN ACTIONS:']) {
+    assert.ok(prompt.includes(section), `missing section ${section}`);
+  }
+  assert.ok(prompt.includes('security-first'));
+  assert.ok(prompt.includes('no fake connected claims'));
+});
+
+test('Band Council prompt stays privacy-safe and draft-only', () => {
+  const prompt = createCursorPrompt({ idea: { id: 'test-5', text: 'make Band Council agenda' }, project: 'band-council-agent' });
+  assert.ok(prompt.includes('privacy-safe'));
+  assert.ok(prompt.includes('draft-only'));
+  assert.ok(prompt.includes('no private student data'));
 });

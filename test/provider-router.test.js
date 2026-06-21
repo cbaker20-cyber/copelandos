@@ -101,3 +101,29 @@ test('provider router explains decision when provider is configured', () => {
   assert.ok(result.selected);
   assert.ok(result.reason);
 });
+
+test('provider router honors tool-calling and free-tier constraints', () => {
+  const env = {
+    CEREBRAS_API_KEY: 'cerebras-key',
+    GROQ_API_KEY: 'groq-key',
+    OPENAI_API_KEY: 'openai-key',
+  };
+  const result = chooseProvider({
+    taskType: 'fast',
+    requiresToolCalling: true,
+    maxCostTier: 'free-tier',
+  }, env);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'groq');
+  assert.equal(result.supportsToolCalling, true);
+});
+
+test('provider router returns no provider when constraints exclude configured provider', () => {
+  const result = chooseProvider({
+    taskType: 'coding',
+    privacyTier: 'local',
+  }, { ANTHROPIC_API_KEY: 'configured-cloud-only' });
+  assert.equal(result.ok, false);
+  assert.ok(result.localFallback);
+  assert.equal(result.localFallback.privacyTier, 'local');
+});

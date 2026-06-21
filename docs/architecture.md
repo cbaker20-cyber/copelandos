@@ -7,6 +7,7 @@ Browser dashboard
   └─ HTTPS → canonical Cloudflare Worker (`worker.js`)
                 ├─ permission engine
                 ├─ command and project routers
+                ├─ mobile idea capture and brain planner
                 ├─ provider/model router
                 ├─ Gmail draft API
                 └─ GitHub-backed Obsidian vault
@@ -25,6 +26,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 
 - **Jarvis dashboard:** command bar, central orb, missions, projects, integration status, and push-to-talk UI.
 - **Command router:** interprets a small deterministic command set before any model request.
+- **Mobile idea pipeline:** captures phone/Siri/Shortcuts ideas, classifies them, plans them, and stores them in an inbox without executing them.
 - **Project command center:** reads `config/projects.json` and creates scoped Cursor/Codex prompts.
 - **Obsidian memory:** builds safe notes and URIs; writes to a configured private GitHub vault or returns a mock preview.
 - **GitHub supervisor:** route and UI placeholder only; currently reports not connected.
@@ -43,11 +45,12 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 
 ## Data flow
 
-1. Dashboard fetches `/api/status` and `/api/projects`.
-2. A typed or transcribed command is posted to `/api/command`.
-3. Deterministic routing returns a status/project response or a proposed plan/model route.
-4. Action routes consult the permission engine.
-5. HIGH actions stop with `confirmation_required`; MEDIUM actions require explicit confirmation; SAFE actions may proceed.
+1. Dashboard fetches `/api/status`, `/api/projects`, `/api/brain/status`, and `/api/ideas`.
+2. Phone/Siri/Shortcuts/mobile web posts an idea to `/api/capture/idea`.
+3. The idea is sanitized, classified, assigned a skill/risk level, written to the in-memory inbox, and previewed/written to the vault if configured.
+4. The human triages or plans the idea through `/api/ideas/:id/triage` and `/api/ideas/:id/plan`.
+5. The system can convert the idea to a vault note or generate Cursor/Codex prompts, but it does not execute the idea.
+6. HIGH actions stop with `confirmation_required`; MEDIUM actions require explicit confirmation; SAFE actions may proceed only through their bounded routes.
 
 ## Foundation API
 
@@ -55,6 +58,17 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 |---|---|
 | `GET /api/status` | Honest module/provider connection status |
 | `GET /api/projects` / `GET /api/projects/:id` | Project registry |
+| `POST /api/capture/idea` | Mobile/Siri idea capture |
+| `GET /api/ideas` / `GET /api/ideas/:id` | Idea inbox |
+| `GET /api/ideas/stats` | Inbox counts by status/risk/skill |
+| `POST /api/ideas/:id/triage` | Human triage update |
+| `POST /api/ideas/:id/plan` | Planner output and `planned` status |
+| `POST /api/ideas/:id/convert` | Convert idea to a safe vault document |
+| `POST /api/ideas/:id/cursor-prompt` | Generate a scoped Cursor task prompt |
+| `POST /api/ideas/:id/codex-prompt` | Generate a scoped Codex task prompt |
+| `POST /api/ideas/:id/dismiss` | Archive an idea without deleting it |
+| `GET /api/project-queue` | Ideas grouped by project |
+| `GET /api/brain/status` | Honest brain/planner/router registry status |
 | `POST /api/command` | Deterministic command routing |
 | `POST /api/vault/write` | Bounded GitHub/mock vault note |
 | `POST /api/obsidian/open` | Return a safe Obsidian URI without opening it |

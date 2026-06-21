@@ -44,12 +44,19 @@ function createVaultDocument(body) {
   const options = { containsPrivateStudentData: body.containsPrivateStudentData === true };
   switch (body.type) {
     case 'daily': return writeDailyNote(body.date || new Date().toISOString().slice(0, 10), body.content, options);
+    case 'project-update':
     case 'project': return writeProjectUpdate(body.projectId, body.content, options);
+    case 'decision-log':
     case 'decision': return writeDecisionLog(body.title, body.content, options);
+    case 'research-note':
     case 'research': return writeResearchNote(body.topic || body.title, body.content, options);
+    case 'meeting-note':
     case 'meeting': return writeMeetingNote(body.title, body.content, options);
+    case 'email-draft-note':
     case 'email': return writeEmailDraftNote(body.subject || body.title, body.content, options);
+    case 'task-list':
     case 'tasks': return writeTaskList(body.projectId, body.tasks, options);
+    case 'idea-note':
     case 'idea': return writeIdeaNote(body.idea || { text: body.content, source: 'manual', tags: [], status: 'new' }, options);
     default: throw new Error('Unsupported vault note type.');
   }
