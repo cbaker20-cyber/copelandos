@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "school-writing",
+      "displayName": "School Writing",
+      "description": "Essays, reports, and academic documents for school courses",
+      "keywords": ["essay", "paper", "writing", "english", "report", "homework", "assignment", "thesis", "outline", "draft"],
+      "riskLevel": "safe",
+      "outputType": "draft",
+      "provider": "reasoning",
+      "confirmationRequired": false
+    },
+    {
+      "id": "lab-analysis",
+      "displayName": "Lab Analysis",
+      "description": "Science lab data analysis including catalase and biology experiments",
+      "keywords": ["lab", "catalase", "biology", "experiment", "analysis", "enzyme", "ap bio", "chemistry", "data", "results", "hypothesis"],
+      "riskLevel": "safe",
+      "outputType": "note",
+      "provider": "reasoning",
+      "confirmationRequired": false
+    },
+    {
+      "id": "math-statistics",
+      "displayName": "Math / Statistics",
+      "description": "Mathematics, statistics, calculus, and quantitative analysis",
+      "keywords": ["math", "statistics", "calculus", "algebra", "probability", "statistics", "regression", "graph", "equation", "proof"],
+      "riskLevel": "safe",
+      "outputType": "note",
+      "provider": "reasoning",
+      "confirmationRequired": false
+    },
+    {
+      "id": "coding",
+      "displayName": "Coding",
+      "description": "Software development, debugging, and implementation tasks",
+      "keywords": ["code", "fix", "implement", "bug", "function", "class", "test", "build", "refactor", "script", "program", "algorithm"],
+      "riskLevel": "safe",
+      "outputType": "cursor-prompt",
+      "provider": "coding",
+      "confirmationRequired": false
+    },
+    {
+      "id": "repo-review",
+      "displayName": "Repo Review",
+      "description": "Code repository review, PR analysis, and architecture inspection",
+      "keywords": ["review", "inspect", "pr", "pull request", "repo", "repository", "codebase", "architecture", "audit"],
+      "riskLevel": "safe",
+      "outputType": "cursor-prompt",
+      "provider": "coding",
+      "confirmationRequired": false
+    },
+    {
+      "id": "github-planning",
+      "displayName": "GitHub Issue / PR Planning",
+      "description": "Planning GitHub issues, PRs, and project milestones",
+      "keywords": ["issue", "github", "milestone", "roadmap", "sprint", "backlog", "ticket", "feature", "epic"],
+      "riskLevel": "medium",
+      "outputType": "plan",
+      "provider": "planning",
+      "confirmationRequired": true
+    },
+    {
+      "id": "music-theory",
+      "displayName": "Music Theory",
+      "description": "Music theory analysis, chord progressions, and harmonic analysis",
+      "keywords": ["music theory", "chord", "harmony", "scale", "key", "interval", "counterpoint", "voice leading"],
+      "riskLevel": "safe",
+      "outputType": "note",
+      "provider": "music",
+      "confirmationRequired": false
+    },
+    {
+      "id": "score-scanning",
+      "displayName": "Score Scanning",
+      "description": "MusicXML score inspection and analysis (no fake PDF/photo OMR)",
+      "keywords": ["score", "musicxml", "sheet music", "scan", "notation", "score scanner"],
+      "riskLevel": "safe",
+      "outputType": "cursor-prompt",
+      "provider": "music",
+      "confirmationRequired": false
+    },
+    {
+      "id": "jazz-generation",
+      "displayName": "Jazz Generation",
+      "description": "Jazz MusicXML generation and sight-reading practice material",
+      "keywords": ["jazz", "jazzbackend", "sight reading", "generate music", "musicxml", "rhythm", "voicing"],
+      "riskLevel": "safe",
+      "outputType": "cursor-prompt",
+      "provider": "music",
+      "confirmationRequired": false
+    },
+    {
+      "id": "band-council",
+      "displayName": "Band Council Drafting",
+      "description": "Band Council agenda, meeting notes, and privacy-safe drafts",
+      "keywords": ["band council", "agenda", "meeting", "council", "minutes", "delegation", "announcement"],
+      "riskLevel": "medium",
+      "outputType": "draft",
+      "provider": "reasoning",
+      "confirmationRequired": true,
+      "privacyCaution": "Do not include private student data in vault or drafts."
+    },
+    {
+      "id": "research-notes",
+      "displayName": "Research Notes",
+      "description": "Academic research, literature review, and evidence-based notes",
+      "keywords": ["research", "literature", "sources", "paper", "study", "connectome", "neuroscience", "evidence"],
+      "riskLevel": "safe",
+      "outputType": "note",
+      "provider": "research",
+      "confirmationRequired": false
+    },
+    {
+      "id": "design-polish",
+      "displayName": "Design Polish",
+      "description": "UI/UX design, visual improvements, and dashboard polish",
+      "keywords": ["design", "ui", "ux", "css", "style", "layout", "visual", "polish", "color", "typography"],
+      "riskLevel": "safe",
+      "outputType": "cursor-prompt",
+      "provider": "coding",
+      "confirmationRequired": false
+    },
+    {
+      "id": "obsidian-memory",
+      "displayName": "Obsidian Memory",
+      "description": "Save notes, ideas, and information to the Obsidian vault",
+      "keywords": ["obsidian", "vault", "remember", "note", "save", "memory", "log", "journal", "capture"],
+      "riskLevel": "safe",
+      "outputType": "vault-note",
+      "provider": "summarization",
+      "confirmationRequired": false
+    },
+    {
+      "id": "email-drafting",
+      "displayName": "Email Drafting",
+      "description": "Draft emails for review — never sent automatically",
+      "keywords": ["email", "draft", "write", "compose", "message", "send", "welgoss", "nhs", "teacher", "professor"],
+      "riskLevel": "medium",
+      "outputType": "email-draft",
+      "provider": "reasoning",
+      "confirmationRequired": true
+    },
+    {
+      "id": "schedule-planning",
+      "displayName": "Schedule Planning",
+      "description": "Calendar planning, time management, and scheduling",
+      "keywords": ["schedule", "calendar", "appointment", "deadline", "plan", "time", "week", "today", "tomorrow"],
+      "riskLevel": "safe",
+      "outputType": "plan",
+      "provider": "planning",
+      "confirmationRequired": false
+    },
+    {
+      "id": "personal-planning",
+      "displayName": "Personal Planning",
+      "description": "Personal goals, internships, scholarships, and life planning",
+      "keywords": ["internship", "scholarship", "college", "application", "goal", "plan", "nhs", "gpa", "personal"],
+      "riskLevel": "safe",
+      "outputType": "plan",
+      "provider": "planning",
+      "confirmationRequired": false
+    },
+    {
+      "id": "local-computer-action",
+      "displayName": "Local Computer Action Request",
+      "description": "Request a permissioned local-agent action on the PC",
+      "keywords": ["open", "launch", "start", "run", "execute", "cursor", "vscode", "terminal", "pc", "computer", "local"],
+      "riskLevel": "high",
+      "outputType": "local-action",
+      "provider": "local_fallback",
+      "confirmationRequired": true
+    }
+  ]
+}
