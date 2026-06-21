@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "roles": [
+    {
+      "id": "planner",
+      "displayName": "Planner",
+      "description": "Decomposes goals into actionable steps and identifies dependencies",
+      "systemPrompt": "You are the Planner. Break down the given task into clear, numbered steps. Identify dependencies, unknowns, and the first concrete action.",
+      "usedFor": ["all tasks requiring structure"],
+      "alwaysIncluded": true
+    },
+    {
+      "id": "researcher",
+      "displayName": "Researcher",
+      "description": "Finds relevant prior work, documentation, and evidence",
+      "systemPrompt": "You are the Researcher. Identify what information is needed, what sources are relevant, and what is already known versus uncertain.",
+      "usedFor": ["research", "connectome", "school-writing", "lab-analysis"],
+      "taskCategories": ["research", "school"]
+    },
+    {
+      "id": "coder",
+      "displayName": "Coder",
+      "description": "Implements solutions, writes tests, and reviews code quality",
+      "systemPrompt": "You are the Coder. Propose a concrete implementation, identify the files to change, and specify what tests need to pass. Never skip tests.",
+      "usedFor": ["coding", "repo-review", "debugging"],
+      "taskCategories": ["coding", "tech"]
+    },
+    {
+      "id": "critic",
+      "displayName": "Critic",
+      "description": "Challenges assumptions, finds flaws, and improves the plan",
+      "systemPrompt": "You are the Critic. Find weaknesses, edge cases, and missed requirements in the proposed plan. Be specific and constructive.",
+      "usedFor": ["coding tasks", "complex plans"],
+      "taskCategories": ["coding", "planning"]
+    },
+    {
+      "id": "security-reviewer",
+      "displayName": "Security Reviewer",
+      "description": "Reviews for security risks, secrets, unsafe patterns, and permission violations",
+      "systemPrompt": "You are the Security Reviewer. Identify any security risks: exposed secrets, unsafe inputs, missing permission checks, CORS issues, or dangerous actions that should be blocked. Never approve arbitrary shell, email sends, or deploys without explicit human confirmation.",
+      "usedFor": ["all security-sensitive tasks"],
+      "taskCategories": ["security", "deploy", "high-risk", "coding"]
+    },
+    {
+      "id": "designer",
+      "displayName": "Designer",
+      "description": "Reviews UI/UX decisions, visual hierarchy, and accessibility",
+      "systemPrompt": "You are the Designer. Evaluate the visual hierarchy, spacing, typography, mobile-first layout, and accessibility. Flag anything that looks like AI slop or breaks the design system.",
+      "usedFor": ["UI/UX tasks", "dashboard changes"],
+      "taskCategories": ["design", "ui"]
+    },
+    {
+      "id": "summarizer",
+      "displayName": "Summarizer",
+      "description": "Synthesizes council output into a concise final recommendation",
+      "systemPrompt": "You are the Summarizer. Synthesize the council's analysis into a concise recommendation: what to do, what risks exist, and what the immediate next step is.",
+      "usedFor": ["complex council tasks"],
+      "taskCategories": ["all"]
+    },
+    {
+      "id": "final-judge",
+      "displayName": "Final Judge",
+      "description": "Makes the final call and produces the actionable plan",
+      "systemPrompt": "You are the Final Judge. Review all council input and produce a final, unambiguous recommendation. State what is approved, what requires human confirmation, and what is blocked.",
+      "usedFor": ["council mode only"],
+      "taskCategories": ["all"]
+    }
+  ],
+  "selectionRules": {
+    "simple": ["planner"],
+    "complex": ["planner", "researcher", "coder", "critic", "summarizer", "final-judge"],
+    "security": ["planner", "security-reviewer", "final-judge"],
+    "coding": ["planner", "coder", "critic", "security-reviewer"],
+    "research": ["planner", "researcher", "summarizer"],
+    "design": ["planner", "designer", "critic"],
+    "council": ["planner", "researcher", "coder", "critic", "security-reviewer", "designer", "summarizer", "final-judge"]
+  }
+}

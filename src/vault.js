@@ -6,6 +6,7 @@ const NOTE_TYPES = Object.freeze({
   meeting: 'BandCouncil',
   email: 'Inbox',
   tasks: 'Projects',
+  idea: 'Inbox',
 });
 
 const SECRET_PATTERNS = [
@@ -89,6 +90,48 @@ export function writeMeetingNote(title, content, options) {
 
 export function writeEmailDraftNote(subject, content, options) {
   return createDocument('email', subject, content, options);
+}
+
+export function writeIdeaNote(idea, options) {
+  const date = new Date().toISOString().slice(0, 10);
+  const title = `idea-${date}-${String(idea.id || '').slice(0, 8)}`;
+  const content = [
+    `**Source:** ${idea.source || 'manual'}`,
+    `**Tags:** ${(idea.tags || []).join(', ') || 'none'}`,
+    `**Risk level:** ${idea.riskLevel || 'unknown'}`,
+    `**Status:** ${idea.status || 'new'}`,
+    idea.project ? `**Project:** ${idea.project}` : '',
+    '',
+    '## Idea',
+    '',
+    idea.text || '',
+    '',
+    idea.suggestedAction ? `## Suggested action\n\n${idea.suggestedAction}` : '',
+  ].filter(s => s !== null).join('\n');
+
+  return createDocument('idea', title, content.trim(), options);
+}
+
+export function convertIdeaToNote(idea, noteType) {
+  const text = idea.text || '';
+  const date = new Date().toISOString().slice(0, 10);
+  switch (noteType) {
+    case 'project':
+      return writeProjectUpdate(idea.project || 'idea', `From captured idea (${date}):\n\n${text}`);
+    case 'decision':
+      return writeDecisionLog(`Decision from idea ${date}`, `Context:\n\n${text}\n\nDecision:\n\nTBD`);
+    case 'research':
+      return writeResearchNote(`Research: ${text.slice(0, 50)}`, `Source idea:\n\n${text}`);
+    case 'meeting':
+      return writeMeetingNote(`Meeting note ${date}`, text);
+    case 'email':
+      return writeEmailDraftNote(`Draft from idea ${date}`, text);
+    case 'tasks':
+      return writeTaskList(idea.project || 'ideas', [text]);
+    case 'idea':
+    default:
+      return writeIdeaNote(idea);
+  }
 }
 
 export function writeTaskList(projectId, tasks, options) {

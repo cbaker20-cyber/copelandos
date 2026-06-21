@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "policy": "allowlist-first",
+  "description": "CopelandOS MCP server registry. Only explicitly listed servers may be installed. No random MCP servers are permitted.",
+  "approvalRequired": "Any new MCP server must be reviewed and added to this file before installation.",
+  "servers": [
+    {
+      "id": "filesystem-read",
+      "displayName": "Filesystem (read-only)",
+      "package": "@modelcontextprotocol/server-filesystem",
+      "status": "allowed",
+      "riskLevel": "safe",
+      "allowedOperations": ["read_file", "list_directory", "search_files"],
+      "blockedOperations": ["write_file", "delete_file", "create_directory"],
+      "requiredConfig": ["rootPath"],
+      "note": "Read-only filesystem access to approved directories only."
+    },
+    {
+      "id": "github-mcp",
+      "displayName": "GitHub MCP",
+      "package": "@modelcontextprotocol/server-github",
+      "status": "allowed-with-confirmation",
+      "riskLevel": "medium",
+      "allowedOperations": ["list_repos", "read_file", "list_prs", "create_issue"],
+      "blockedOperations": ["merge_pr", "delete_branch", "push_to_main", "close_repo"],
+      "requiredConfig": ["GITHUB_TOKEN"],
+      "note": "GitHub operations are read-first. Issue creation requires confirmation. Merges are always blocked."
+    },
+    {
+      "id": "obsidian-mcp",
+      "displayName": "Obsidian MCP",
+      "package": "obsidian-mcp-server",
+      "status": "scaffold-only",
+      "riskLevel": "safe",
+      "allowedOperations": ["create_note", "read_note", "search_notes", "append_to_note"],
+      "blockedOperations": ["delete_vault", "delete_note", "expose_private_data"],
+      "requiredConfig": ["OBSIDIAN_API_URL", "OBSIDIAN_API_KEY"],
+      "note": "Requires Obsidian Local REST API plugin. Not active in this PR."
+    },
+    {
+      "id": "web-search-mcp",
+      "displayName": "Web Search MCP",
+      "package": "@modelcontextprotocol/server-brave-search",
+      "status": "scaffold-only",
+      "riskLevel": "safe",
+      "allowedOperations": ["search"],
+      "blockedOperations": ["post_content", "submit_form"],
+      "requiredConfig": ["BRAVE_API_KEY"],
+      "note": "Alternative to Serper. Not active in this PR."
+    },
+    {
+      "id": "local-agent-mcp",
+      "displayName": "CopelandOS Local Agent MCP",
+      "package": "copelandos-local-agent",
+      "status": "scaffold-only",
+      "riskLevel": "medium",
+      "allowedOperations": ["launch_approved_app", "run_approved_test", "write_vault_note"],
+      "blockedOperations": ["arbitrary_shell", "install_packages", "control_screen", "delete_files"],
+      "requiredConfig": ["LOCAL_AGENT_URL", "LOCAL_AGENT_TOKEN"],
+      "note": "Local agent as an MCP server. Architecture defined; implementation is future work."
+    }
+  ],
+  "blockedPatterns": [
+    "Any MCP server not in this registry",
+    "Any server allowing arbitrary shell execution",
+    "Any server allowing file deletion",
+    "Any server allowing screen/mouse/keyboard control",
+    "Any server requiring root/admin privileges",
+    "Any server that sends email without human review"
+  ]
+}
