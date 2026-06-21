@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "school-writing",
+      "displayName": "School Writing",
+      "description": "Essays, papers, English class work, college applications, scholarship essays.",
+      "keywords": ["essay", "paper", "write", "draft", "english", "humanities", "scholarship", "application", "letter", "report"],
+      "defaultRisk": "safe",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false
+    },
+    {
+      "id": "lab-analysis",
+      "displayName": "Lab Analysis",
+      "description": "Biology, chemistry, physics lab reports, data analysis, experimental write-ups.",
+      "keywords": ["lab", "experiment", "catalase", "biology", "chemistry", "physics", "data", "analysis", "hypothesis", "results", "gel", "enzyme"],
+      "defaultRisk": "safe",
+      "defaultAction": "write_vault_note",
+      "confirmationRequired": false
+    },
+    {
+      "id": "math-stats",
+      "displayName": "Math / Statistics",
+      "description": "Math problems, statistics, calculus, linear algebra, data science computations.",
+      "keywords": ["math", "statistics", "calculus", "algebra", "equation", "formula", "compute", "calculate", "regression", "probability"],
+      "defaultRisk": "safe",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false
+    },
+    {
+      "id": "coding",
+      "displayName": "Coding",
+      "description": "Write, fix, refactor, or test code across any language or framework.",
+      "keywords": ["code", "bug", "fix", "test", "function", "class", "api", "endpoint", "refactor", "implement", "javascript", "python", "node", "typescript", "rust", "go"],
+      "defaultRisk": "medium",
+      "defaultAction": "generate_cursor_prompt",
+      "confirmationRequired": false
+    },
+    {
+      "id": "repo-review",
+      "displayName": "Repo Review",
+      "description": "Inspect a repository, summarize PRs, check test health, review architecture.",
+      "keywords": ["review", "repo", "repository", "pr", "pull request", "inspect", "audit", "check", "status", "health"],
+      "defaultRisk": "safe",
+      "defaultAction": "summarize",
+      "confirmationRequired": false
+    },
+    {
+      "id": "github-issue-planning",
+      "displayName": "GitHub Issue / PR Planning",
+      "description": "Draft GitHub issues, plan PRs, create task breakdowns for open-source work.",
+      "keywords": ["issue", "github", "pr", "plan", "roadmap", "milestone", "ticket", "backlog", "sprint", "feature request"],
+      "defaultRisk": "medium",
+      "defaultAction": "create_github_issue",
+      "confirmationRequired": false
+    },
+    {
+      "id": "music-theory",
+      "displayName": "Music Theory",
+      "description": "Harmony, voice leading, analysis of chord progressions, counterpoint, orchestration.",
+      "keywords": ["harmony", "chord", "scale", "voice leading", "counterpoint", "music theory", "key", "interval", "modulation", "cadence"],
+      "defaultRisk": "safe",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false
+    },
+    {
+      "id": "score-scanning",
+      "displayName": "Score Scanning",
+      "description": "MusicXML processing, score reordering, Score Scanner project tasks.",
+      "keywords": ["score", "musicxml", "sheet music", "scan", "omr", "reorder", "ensemble", "notation", "xml"],
+      "defaultRisk": "safe",
+      "defaultAction": "generate_cursor_prompt",
+      "confirmationRequired": false
+    },
+    {
+      "id": "jazz-generation",
+      "displayName": "Jazz Generation",
+      "description": "Generate jazz sight-reading exercises, MusicXML output, JazzBackend project tasks.",
+      "keywords": ["jazz", "jazzbackend", "sight-reading", "generate", "rhythm", "lead sheet", "improvisation", "lick", "backing track"],
+      "defaultRisk": "safe",
+      "defaultAction": "generate_cursor_prompt",
+      "confirmationRequired": false
+    },
+    {
+      "id": "band-council",
+      "displayName": "Band Council Drafting",
+      "description": "Agenda creation, delegation, communication drafts for Band Council. Privacy-sensitive.",
+      "keywords": ["band council", "agenda", "meeting", "delegation", "announcement", "nyssma", "ensemble", "band", "orchestra"],
+      "defaultRisk": "medium",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false,
+      "privacyNote": "Band Council work may involve student data. No private student data in vault."
+    },
+    {
+      "id": "research-notes",
+      "displayName": "Research Notes",
+      "description": "Collect, summarize, and structure research for academic or personal projects.",
+      "keywords": ["research", "paper", "study", "source", "citation", "literature", "review", "connectome", "neuroscience", "science"],
+      "defaultRisk": "safe",
+      "defaultAction": "write_vault_note",
+      "confirmationRequired": false
+    },
+    {
+      "id": "design-polish",
+      "displayName": "Design Polish",
+      "description": "UI/UX improvements, CSS, visual hierarchy, typography, responsive design.",
+      "keywords": ["design", "ui", "ux", "css", "style", "layout", "typography", "color", "responsive", "dashboard", "polish"],
+      "defaultRisk": "safe",
+      "defaultAction": "generate_cursor_prompt",
+      "confirmationRequired": false
+    },
+    {
+      "id": "obsidian-memory",
+      "displayName": "Obsidian Memory",
+      "description": "Save notes, decisions, ideas, and summaries to the CopelandVault.",
+      "keywords": ["remember", "save", "note", "vault", "obsidian", "memory", "log", "archive", "document"],
+      "defaultRisk": "safe",
+      "defaultAction": "write_vault_note",
+      "confirmationRequired": false
+    },
+    {
+      "id": "email-drafting",
+      "displayName": "Email Drafting",
+      "description": "Draft emails for teachers, professors, scholarship committees, internship contacts.",
+      "keywords": ["email", "draft", "letter", "message", "contact", "write to", "send to", "reach out", "professor", "teacher", "welgoss", "nhs"],
+      "defaultRisk": "medium",
+      "defaultAction": "create_gmail_draft",
+      "confirmationRequired": false,
+      "safetyNote": "Gmail is always draft-only. No email is ever sent automatically."
+    },
+    {
+      "id": "schedule-planning",
+      "displayName": "Schedule Planning",
+      "description": "Plan daily tasks, weekly schedules, deadlines, study sessions.",
+      "keywords": ["schedule", "calendar", "plan", "today", "week", "deadline", "study", "time", "block", "reminder"],
+      "defaultRisk": "safe",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false
+    },
+    {
+      "id": "personal-planning",
+      "displayName": "Personal Planning",
+      "description": "Life goals, internship strategy, scholarship strategy, personal mission planning.",
+      "keywords": ["goal", "internship", "scholarship", "career", "personal", "mission", "strategy", "plan", "future", "college"],
+      "defaultRisk": "safe",
+      "defaultAction": "draft_text",
+      "confirmationRequired": false
+    },
+    {
+      "id": "local-computer-action",
+      "displayName": "Local Computer Action Request",
+      "description": "Request an action on the local Windows machine via the local agent.",
+      "keywords": ["open", "run", "launch", "cursor", "vscode", "windows", "local", "computer", "file", "folder", "app", "deploy", "install", "delete", "shell"],
+      "defaultRisk": "high",
+      "defaultAction": "confirmation_required",
+      "confirmationRequired": true,
+      "safetyNote": "All local computer actions require explicit confirmation and are subject to the allowlist."
+    }
+  ]
+}

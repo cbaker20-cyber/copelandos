@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "policy": "allowlist-first",
+  "note": "No MCP server is installed by default. Each entry must be explicitly reviewed and approved before use. See docs/mcp-policy.md.",
+  "allowlistedServers": [
+    {
+      "id": "filesystem-read-only",
+      "displayName": "Filesystem (read-only)",
+      "description": "Read local files and directories. Write operations are blocked.",
+      "status": "approved",
+      "allowedCapabilities": ["read_file", "list_directory", "stat_file"],
+      "blockedCapabilities": ["write_file", "delete_file", "move_file", "create_directory"],
+      "requiresReview": false,
+      "notes": "Read-only filesystem access only. Used for inspecting project files."
+    },
+    {
+      "id": "cursor-task-generation",
+      "displayName": "Cursor / Codex task generation",
+      "description": "Generate Cursor and Codex prompts from idea or task descriptions.",
+      "status": "approved",
+      "allowedCapabilities": ["generate_cursor_prompt", "generate_codex_prompt"],
+      "blockedCapabilities": [],
+      "requiresReview": false,
+      "notes": "Pure text generation. No side effects."
+    }
+  ],
+  "pendingReview": [
+    {
+      "id": "github-supervisor",
+      "displayName": "GitHub Supervisor",
+      "description": "Read PR, issue, and CI status from configured repositories.",
+      "status": "pending-review",
+      "proposedCapabilities": ["list_prs", "read_pr", "list_issues", "get_run_status"],
+      "blockedCapabilities": ["create_pr", "merge_pr", "push", "delete"],
+      "requiresReview": true,
+      "notes": "Requires scoped GITHUB_TOKEN. Must be reviewed before enabling."
+    }
+  ],
+  "blocked": [
+    {
+      "id": "arbitrary-shell",
+      "reason": "Arbitrary shell access is permanently blocked in CopelandOS."
+    },
+    {
+      "id": "screen-control",
+      "reason": "Screen, mouse, and keyboard control are permanently blocked."
+    },
+    {
+      "id": "email-send",
+      "reason": "Email sending is permanently blocked. Draft-only mode is enforced."
+    },
+    {
+      "id": "package-install",
+      "reason": "Package installation requires explicit human confirmation and PR review."
+    },
+    {
+      "id": "deploy-control",
+      "reason": "Deployment controls require explicit human confirmation."
+    }
+  ]
+}

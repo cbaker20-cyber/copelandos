@@ -15,6 +15,7 @@ import {
   writeResearchNote,
   writeTaskList,
 } from './vault.js';
+import { handleIdeaCaptureRequest } from './ideaCaptureApi.js';
 
 function methodNotAllowed(json, allowed) {
   return json({ ok: false, error: `Method not allowed. Use ${allowed}.` }, 405);
@@ -63,6 +64,10 @@ export async function handleFoundationRequest({
   modelConfig,
   createEmailDraft,
 }) {
+  // Brain / capture / skill / tool routes
+  const captureResponse = await handleIdeaCaptureRequest({ path, request, body, env, json });
+  if (captureResponse) return captureResponse;
+
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);

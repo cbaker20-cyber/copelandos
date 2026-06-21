@@ -6,6 +6,7 @@ const NOTE_TYPES = Object.freeze({
   meeting: 'BandCouncil',
   email: 'Inbox',
   tasks: 'Projects',
+  idea: 'Inbox',
 });
 
 const SECRET_PATTERNS = [
@@ -89,6 +90,39 @@ export function writeMeetingNote(title, content, options) {
 
 export function writeEmailDraftNote(subject, content, options) {
   return createDocument('email', subject, content, options);
+}
+
+/**
+ * Write a captured idea as an Inbox note.
+ */
+export function writeIdeaNote(idea, options) {
+  const title = `idea-${idea.id || new Date().toISOString().slice(0, 10)}`;
+  const lines = [
+    `Source: ${idea.source || 'unknown'}`,
+    `Status: ${idea.status || 'new'}`,
+    `Category: ${idea.category || 'other'}`,
+    `Skill: ${idea.skillDisplayName || idea.skill || 'unknown'}`,
+    `Risk level: ${idea.riskLevel || 'safe'}`,
+    `Urgency: ${idea.urgency || 'medium'}`,
+    `Suggested action: ${idea.suggestedAction || 'Review and plan'}`,
+    idea.project ? `Project: ${idea.project}` : null,
+    idea.tags?.length ? `Tags: ${idea.tags.join(', ')}` : null,
+    `Captured: ${idea.createdAt || new Date().toISOString()}`,
+    ``,
+    `## Idea`,
+    ``,
+    idea.text,
+  ].filter((l) => l !== null).join('\n');
+
+  return createDocument('idea', title, lines, options);
+}
+
+/**
+ * Append a captured idea as a line to the daily note content.
+ */
+export function buildDailyIdeaAppend(idea) {
+  const time = new Date(idea.createdAt || Date.now()).toTimeString().slice(0, 5);
+  return `- [${time}] **Idea (${idea.source || 'manual'}):** ${idea.text.slice(0, 120)}${idea.text.length > 120 ? '...' : ''} — _${idea.skillDisplayName || idea.skill || 'unclassified'}_`;
 }
 
 export function writeTaskList(projectId, tasks, options) {
