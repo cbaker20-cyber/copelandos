@@ -155,6 +155,12 @@
     .provider-grid { padding: 16px 18px 4px; display: flex; flex-wrap: wrap; gap: 7px; }
     .provider { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--dim); font: 9px ui-monospace, monospace; }
     .provider.on { color: var(--green); border-color: rgba(110,240,173,.26); background: rgba(110,240,173,.05); }
+    .flow-strip { padding: 15px 18px 2px; display: flex; flex-wrap: wrap; gap: 7px; }
+    .flow-step { border: 1px solid rgba(111,223,255,.13); border-radius: 999px; padding: 7px 10px; color: var(--muted); font: 9px ui-monospace, monospace; background: rgba(3,9,16,.24); }
+    .integration-list { padding: 12px 18px 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .integration-card { border: 1px solid rgba(111,223,255,.10); border-radius: 10px; padding: 10px 12px; background: rgba(3,9,16,.25); }
+    .integration-card strong { display: block; font-size: 10px; }
+    .integration-card small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
     .automation { margin: 13px 18px 0; display: grid; gap: 9px; }
     .auto-row { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--muted); }
     .auto-row span:last-child { color: var(--dim); font-family: ui-monospace, monospace; }
@@ -251,6 +257,7 @@
       .command-dock { left: 12px; right: 12px; bottom: 10px; }
       .command-shell { grid-template-columns: 1fr auto auto; }
       .prompt-mark { display: none; }
+      .integration-list { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
   </style>
@@ -270,6 +277,7 @@
           <a href="#communications"><span class="nav-icon">△</span>Drafts</a>
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
+          <a href="#integrations"><span class="nav-icon">⇄</span>Integrations</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
         </div>
       </nav>
@@ -452,6 +460,29 @@
         </article>
       </section>
 
+      <!-- ── Integration Control Loop ── -->
+      <section class="section" id="integrations">
+        <div class="section-head"><div><h2>Integration control loop</h2><p>Phone capture to draft PR, with every risky edge reviewed</p></div><button class="mini-btn" id="refresh-integrations" type="button">Refresh integrations ↻</button></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Roadmap flow</div><div class="panel-sub">Registry-backed scaffold; not a live connection claim</div></div><span class="badge mock" id="integration-badge">scaffold</span></div>
+          <div class="flow-strip" id="integration-flow">
+            <span class="flow-step">phone/Siri/Shortcut/share sheet</span>
+            <span class="flow-step">CopelandOS inbox</span>
+            <span class="flow-step">classifier</span>
+            <span class="flow-step">planner</span>
+            <span class="flow-step">provider router</span>
+            <span class="flow-step">safe tools</span>
+            <span class="flow-step">Obsidian memory</span>
+            <span class="flow-step">Cursor/Codex task</span>
+            <span class="flow-step">draft PR</span>
+            <span class="flow-step">review status</span>
+          </div>
+          <div class="integration-list" id="integration-list">
+            <div class="empty-state">Load the Worker registry to see integration readiness.</div>
+          </div>
+        </article>
+      </section>
+
       <!-- ── Tool / MCP Registry ── -->
       <section class="section" id="tools">
         <div class="section-head"><div><h2>Tool + MCP registry</h2><p>Allowlist-first — no random servers installed</p></div></div>
@@ -548,6 +579,9 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationList: document.getElementById('integration-list'),
+      integrationFlow: document.getElementById('integration-flow'),
+      integrationBadge: document.getElementById('integration-badge'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -727,6 +761,31 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function renderIntegrations(result) {
+      const integrations = result.integrations || [];
+      const flow = result.summary?.flow || [];
+      if (flow.length > 0) {
+        els.integrationFlow.innerHTML = flow.map(step => `<span class="flow-step">${escapeHtml(step)}</span>`).join('');
+      }
+      els.integrationBadge.textContent = `${result.summary?.configured || 0}/${result.summary?.total || integrations.length} configured`;
+      els.integrationBadge.className = integrations.some(item => item.configured) ? 'badge warn' : 'badge mock';
+      els.integrationList.innerHTML = integrations.map(item => `
+        <div class="integration-card">
+          <strong>${escapeHtml(item.displayName)}</strong>
+          <small>${escapeHtml(item.category)} · ${escapeHtml(item.mode)} · ${item.configured ? 'configured' : item.status}</small>
+          <small>${escapeHtml(item.connected ? 'connected' : 'not connected')}</small>
+        </div>`).join('');
+    }
+
+    async function loadIntegrations() {
+      try {
+        const result = await api('/api/integrations');
+        renderIntegrations(result);
+      } catch (error) {
+        els.integrationList.innerHTML = `<div class="empty-state">Integration registry unavailable: ${escapeHtml(error.message)}</div>`;
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -739,6 +798,7 @@
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
+      await loadIntegrations();
     }
 
     async function runCommand(command) {
@@ -788,6 +848,7 @@
     els.form.addEventListener('submit', event => { event.preventDefault(); runCommand(els.input.value); });
     els.ideaForm.addEventListener('submit', captureIdea);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
+    document.getElementById('refresh-integrations').addEventListener('click', loadIntegrations);
     document.getElementById('refresh-ideas').addEventListener('click', loadIdeas);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
     document.getElementById('speech-toggle').addEventListener('click', event => {

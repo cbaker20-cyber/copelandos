@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "principles": [
+    "Mobile capture is allowed to enqueue ideas, never execute actions directly.",
+    "Provider routing must only mark providers configured when credentials or local endpoints exist.",
+    "Tool and MCP access is allowlist-first with blocked destructive actions.",
+    "Obsidian memory writes stay private and must reject obvious secrets or private student data.",
+    "Cursor and Codex task handoff produces scoped prompts and draft PR work, not automatic merges."
+  ],
+  "flow": [
+    "phone/Siri/Shortcut/share sheet",
+    "CopelandOS inbox",
+    "classifier",
+    "planner",
+    "provider router or AI council",
+    "safe tool registry",
+    "Obsidian memory",
+    "Cursor/Codex task",
+    "draft PR",
+    "review status back into CopelandOS"
+  ],
+  "integrations": [
+    {
+      "id": "ios-shortcuts",
+      "displayName": "iPhone Shortcuts and Share Sheet",
+      "category": "mobile-capture",
+      "status": "scaffold-only",
+      "mode": "inbox-only",
+      "requiredEnvVars": ["ALLOWED_ORIGIN"],
+      "entrypoints": ["POST /api/capture/idea"],
+      "allowedActions": ["capture_text", "capture_url", "capture_clipboard_summary"],
+      "blockedActions": ["execute_command", "send_email", "deploy", "merge_pr"],
+      "safetyNotes": "Shortcuts may submit ideas to the inbox but must not trigger side effects without later human review."
+    },
+    {
+      "id": "home-widget",
+      "displayName": "Home Screen Widget",
+      "category": "mobile-command-center",
+      "status": "scaffold-only",
+      "mode": "readonly-status",
+      "requiredEnvVars": ["ALLOWED_ORIGIN"],
+      "entrypoints": ["GET /api/status", "GET /api/projects"],
+      "allowedActions": ["view_status", "open_capture_shortcut"],
+      "blockedActions": ["write_vault_note", "execute_local_action"],
+      "safetyNotes": "Widget content should summarize status and open reviewed flows instead of executing work."
+    },
+    {
+      "id": "obsidian-git-vault",
+      "displayName": "Obsidian Git Vault",
+      "category": "memory",
+      "status": "configurable",
+      "mode": "safe-write",
+      "requiredEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO"],
+      "entrypoints": ["POST /api/vault/write", "POST /api/obsidian/open"],
+      "allowedActions": ["write_daily_note", "write_project_update", "write_research_note", "open_obsidian_uri"],
+      "blockedActions": ["make_public", "delete_vault", "store_private_student_data"],
+      "safetyNotes": "Vault persistence only becomes configured when both GitHub token and private repo settings exist."
+    },
+    {
+      "id": "cursor-codex-queue",
+      "displayName": "Cursor/Codex Task Queue",
+      "category": "task-handoff",
+      "status": "scaffold-only",
+      "mode": "prompt-generation",
+      "requiredEnvVars": [],
+      "entrypoints": ["POST /api/agents/cursor-prompt", "POST /api/agents/codex-prompt"],
+      "allowedActions": ["generate_cursor_prompt", "generate_codex_prompt", "open_draft_pr"],
+      "blockedActions": ["push_to_main", "auto_merge", "auto_deploy"],
+      "safetyNotes": "Generated briefs include safe and forbidden actions; implementation still happens on reviewed branches."
+    },
+    {
+      "id": "provider-router",
+      "displayName": "Provider Router and AI Council",
+      "category": "ai-routing",
+      "status": "configurable",
+      "mode": "credential-gated",
+      "requiredEnvVars": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "OLLAMA_BASE_URL"],
+      "entrypoints": ["GET /api/providers", "POST /api/providers/route", "POST /api/council"],
+      "allowedActions": ["route_task", "explain_decision", "create_mock_council_plan"],
+      "blockedActions": ["claim_unconfigured_provider_connected", "bypass_budget_guard"],
+      "safetyNotes": "The router reports configured status only from env vars and keeps Ollama as an explicit local fallback."
+    },
+    {
+      "id": "safe-tool-mcp-registry",
+      "displayName": "Safe Tool and MCP Registry",
+      "category": "safety",
+      "status": "active",
+      "mode": "allowlist-first",
+      "requiredEnvVars": [],
+      "entrypoints": ["GET /api/tools", "GET /api/mcp/registry", "POST /api/tools/check", "POST /api/mcp/check"],
+      "allowedActions": ["inspect_allowed_tools", "check_tool_permission", "check_mcp_permission"],
+      "blockedActions": ["install_random_mcp_server", "arbitrary_shell", "delete_files"],
+      "safetyNotes": "Any new tool or server must be added to reviewed config before it can appear in the registry."
+    },
+    {
+      "id": "morning-report",
+      "displayName": "Morning Report and Project Status",
+      "category": "reporting",
+      "status": "scaffold-only",
+      "mode": "draft-report",
+      "requiredEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO"],
+      "entrypoints": ["GET /api/status", "GET /api/projects", "GET /api/github/summary"],
+      "allowedActions": ["summarize_status", "draft_project_update", "write_reviewed_vault_note"],
+      "blockedActions": ["post_public_update", "send_email", "close_issue"],
+      "safetyNotes": "Reports should be draftable from status endpoints and reviewed before vault persistence or sharing."
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
+import { getIntegrationStatus, getIntegrationSummary, listIntegrationStatuses } from './integrationRegistry.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -68,6 +69,7 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const integrationSummary = getIntegrationSummary(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -81,8 +83,21 @@ export async function handleFoundationRequest({
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
         localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
+        integrations: { connected: false, configured: integrationSummary.configured, total: integrationSummary.total, summary: integrationSummary },
       },
     });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, integrations: listIntegrationStatuses(env), summary: getIntegrationSummary(env) });
+  }
+
+  if (path.startsWith('/api/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/integrations/'.length));
+    const integration = getIntegrationStatus(id, env);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Integration not found.' }, 404);
   }
 
   if (path === '/api/projects') {
