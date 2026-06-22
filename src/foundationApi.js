@@ -2,6 +2,7 @@ import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
+import { getControlLoop, getIntegration, getIntegrationSummary, listIntegrations } from './integrationRegistry.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -88,6 +89,27 @@ export async function handleFoundationRequest({
   if (path === '/api/projects') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     return json({ ok: true, projects: listProjects(projectRegistry).map(publicProjectSummary) });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      summary: getIntegrationSummary(env),
+      integrations: listIntegrations(env),
+    });
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, controlLoop: getControlLoop(env) });
+  }
+
+  if (path.startsWith('/api/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/integrations/'.length));
+    const integration = getIntegration(id, env);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Integration not found.' }, 404);
   }
 
   if (path.startsWith('/api/projects/')) {

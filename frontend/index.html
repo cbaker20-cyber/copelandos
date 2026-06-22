@@ -158,6 +158,11 @@
     .automation { margin: 13px 18px 0; display: grid; gap: 9px; }
     .auto-row { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--muted); }
     .auto-row span:last-child { color: var(--dim); font-family: ui-monospace, monospace; }
+    .flow-list { margin: 13px 18px 0; display: grid; gap: 7px; }
+    .flow-step { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; font-size: 10px; color: var(--muted); }
+    .flow-num { width: 20px; height: 20px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--cyan); font: 8px ui-monospace, monospace; }
+    .flow-state { color: var(--dim); font: 8px ui-monospace, monospace; text-transform: uppercase; }
+    .flow-state.on { color: var(--green); }
     .transcript { max-height: 145px; overflow: auto; margin: 14px 18px 0; display: grid; gap: 8px; scrollbar-width: thin; }
     .log { border-left: 2px solid var(--line-hot); padding: 6px 9px; background: rgba(111,223,255,.035); font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
     .log.user { border-color: var(--violet); }
@@ -271,6 +276,7 @@
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
+          <a href="#control-loop"><span class="nav-icon">↻</span>Control loop</a>
         </div>
       </nav>
       <div class="rail-foot"><div class="system-state"><span class="dot" id="rail-dot"></span><span id="rail-state">Worker not connected</span></div></div>
@@ -450,6 +456,16 @@
             <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
           </div>
         </article>
+        <article class="panel small-panel" id="control-loop">
+          <div class="panel-head"><div><div class="panel-title">Overnight control loop</div><div class="panel-sub">Phone capture -> draft PR -> report</div></div><span class="badge mock" id="integration-badge">scaffold</span></div>
+          <div class="flow-list" id="integration-flow">
+            <div class="flow-step"><span class="flow-num">1</span><span>Phone / Siri / Shortcut</span><span class="flow-state">scaffold</span></div>
+            <div class="flow-step"><span class="flow-num">2</span><span>Inbox -> classifier -> planner</span><span class="flow-state on">worker</span></div>
+            <div class="flow-step"><span class="flow-num">3</span><span>Router -> safe tools -> vault</span><span class="flow-state">mixed</span></div>
+            <div class="flow-step"><span class="flow-num">4</span><span>Cursor/Codex task -> draft PR</span><span class="flow-state">scaffold</span></div>
+            <div class="flow-step"><span class="flow-num">5</span><span>Morning report and blockers</span><span class="flow-state">scaffold</span></div>
+          </div>
+        </article>
       </section>
 
       <!-- ── Tool / MCP Registry ── -->
@@ -548,6 +564,7 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationFlow: document.getElementById('integration-flow'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -727,15 +744,25 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function renderIntegrationLoop(controlLoop) {
+      if (!Array.isArray(controlLoop) || controlLoop.length === 0) return;
+      els.integrationFlow.innerHTML = controlLoop.map(step =>
+        `<div class="flow-step"><span class="flow-num">${escapeHtml(step.order)}</span><span>${escapeHtml(step.displayName)}</span><span class="flow-state ${step.connected ? 'on' : ''}">${escapeHtml(step.runtimeStatus)}</span></div>`
+      ).join('');
+      document.getElementById('integration-badge').textContent = 'registry';
+      document.getElementById('integration-badge').className = 'badge ok';
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
         `<span class="provider">${name} · not connected</span>`
       ).join('');
       try {
-        const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
+        const [status, projects, loop] = await Promise.all([api('/api/status'), api('/api/projects'), api('/api/integrations/control-loop')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        renderIntegrationLoop(loop.controlLoop);
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
