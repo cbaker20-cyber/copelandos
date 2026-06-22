@@ -3,6 +3,14 @@ import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import {
+  checkIntegration,
+  getControlLoop,
+  getIntegrationSummary,
+  getMorningReportPlan,
+  listIntegrations,
+  validateIntegrationRegistry,
+} from './integrationRegistry.js';
+import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
   buildObsidianOpenUri,
@@ -77,6 +85,7 @@ export async function handleFoundationRequest({
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
+        integrations: { connected: false, summary: getIntegrationSummary(env) },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
         localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
@@ -105,6 +114,32 @@ export async function handleFoundationRequest({
   if (path === '/api/ai/route') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
     return json(routeModel(body.taskType, env, modelConfig));
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      integrations: listIntegrations({ env }),
+      summary: getIntegrationSummary(env),
+      validation: validateIntegrationRegistry(),
+    });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    return json(checkIntegration(body.integrationId, env));
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      architecture: 'phone/Siri/Shortcut/share sheet -> CopelandOS inbox -> classifier -> planner -> provider router / AI council -> safe tool registry -> Obsidian memory -> Cursor/Codex task -> draft PR -> review status back into CopelandOS',
+      loop: getControlLoop(env),
+      morningReport: getMorningReportPlan(),
+    });
   }
 
   if (path === '/api/vault/write') {
