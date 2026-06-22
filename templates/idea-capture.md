@@ -7,6 +7,8 @@
 **Source:** {{source}}
 **Captured:** {{createdAt}}
 **Tags:** {{tags}}
+**Project:** {{project}}
+**Urgency:** {{urgency}}
 **Risk level:** {{riskLevel}}
 **Status:** {{status}}
 

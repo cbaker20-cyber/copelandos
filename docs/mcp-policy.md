@@ -50,6 +50,8 @@ These patterns are never permitted regardless of server status:
 
 Individual tools within servers also have an explicit allowlist. See the tool registry for per-tool allowed and blocked actions.
 
+Blocked high-risk tools and actions remain blocked, but the permission response also sets `confirmation_required: true` so clients can display the human-review boundary clearly. Confirmation does not override permanent blocks such as email sending, file deletion, deploys, merges, arbitrary shell, or screen control.
+
 ## Adding a new MCP server
 
 1. Research the server's capabilities and risks

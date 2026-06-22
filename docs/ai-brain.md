@@ -34,6 +34,8 @@ Output
   ├─ Cursor prompt (/api/ideas/:id/cursor-prompt)
   ├─ Codex prompt (/api/ideas/:id/codex-prompt)
   ├─ Vault note (/api/ideas/:id/convert)
+  ├─ Project queue (/api/project-queue)
+  ├─ Brain status (/api/brain/status)
   └─ AI council result (/api/council)
 ```
 
@@ -65,6 +67,8 @@ Implements the planning layer:
 - `createTaskBrief(task)` — returns a concise summary
 - `createCursorPrompt({ idea, project, task })` — generates a Cursor implementation prompt
 - `createCodexPrompt({ idea, project, task })` — generates a Codex architecture prompt
+
+Generated Cursor/Codex prompts include stable sections for repo, issue or idea id, goal, files to inspect, constraints, safety rules, tests to run, draft PR title, and forbidden actions. Project-specific rules come from `config/projects.json`.
 
 ### `src/council.js`
 
@@ -106,3 +110,5 @@ See `config/skills.json` for the full skill list. Key skills:
 - Email is draft-only; sending is permanently blocked
 - Private student data is blocked from vault writes
 - Deploys, merges, deletes, and shell execution are blocked
+- Captured ideas are written only to the inbox and optional vault memory; they never execute tool actions automatically
+- Provider, MCP, and local-agent state must say `not connected`, `configured`, `local fallback`, `mock mode`, or `ready for setup` honestly

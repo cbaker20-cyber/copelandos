@@ -73,7 +73,13 @@ export default {
       if (foundationResponse) return foundationResponse;
 
       // ── Brain pipeline: idea capture ──────────────────────
-      if (path.startsWith('/api/capture/') || path.startsWith('/api/ideas')) {
+      if (
+        path.startsWith('/api/capture/') ||
+        path.startsWith('/api/ideas') ||
+        path === '/api/project-queue' ||
+        path === '/api/brain/status' ||
+        path === '/api/orchestration/status'
+      ) {
         const ideaResponse = await handleIdeaRequest({ path, request, body, env, json });
         if (ideaResponse) return ideaResponse;
       }

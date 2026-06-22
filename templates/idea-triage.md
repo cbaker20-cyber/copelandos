@@ -6,6 +6,7 @@
 
 **Idea ID:** {{id}}
 **Original text:** {{text}}
+**Project:** {{project}}
 **Triaged at:** {{updatedAt}}
 **Status:** {{status}}
 

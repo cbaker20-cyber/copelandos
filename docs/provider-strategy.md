@@ -40,6 +40,17 @@ Each task type has an ordered fallback chain. The router picks the first configu
 - **council**: OpenRouter Fusion → Anthropic → OpenAI → Gemini → Ollama
 - **local_fallback**: Ollama
 
+The router also filters routes by task constraints before choosing a configured provider:
+
+- `requiresToolCalling`
+- `requiresStructuredOutput`
+- `maxCostTier`
+- `privacyTier`
+- `rateLimitedProviders`
+- `avoidProviders`
+
+If no configured provider matches those constraints, the response stays honest: `ok: false`, `provider: null`, the constrained route considered, and a local fallback object.
+
 ## No-subscription routes
 
 The following providers have free tiers that work without a paid subscription (account registration required):

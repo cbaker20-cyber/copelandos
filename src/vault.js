@@ -1,5 +1,6 @@
 const NOTE_TYPES = Object.freeze({
   daily: 'Daily',
+  'daily-append': 'Daily',
   project: 'Projects',
   decision: 'Decisions',
   research: 'Research',
@@ -16,6 +17,15 @@ const SECRET_PATTERNS = [
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
 ];
 
+const PRIVATE_STUDENT_PATTERNS = [
+  /\bstudent\s*(?:id|number)\b/i,
+  /\b(?:iep|504\s*plan)\b/i,
+  /\bdisciplin(?:e|ary)\s+record\b/i,
+  /\bprivate\s+student\s+data\b/i,
+  /\bmedical\s+record\b/i,
+  /\bgradebook\b/i,
+];
+
 export const VAULT_STRUCTURE = Object.freeze([
   'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates',
 ]);
@@ -28,6 +38,8 @@ export const VAULT_TEMPLATES = Object.freeze({
   meeting: '# Meeting: {{title}}\n\n## Agenda\n\n## Decisions\n\n## Actions\n',
   email: '# Email draft: {{subject}}\n\n> DRAFT — NOT SENT\n\n## Draft\n',
   tasks: '# {{project}} tasks\n\n- [ ] \n',
+  idea: '# Captured idea\n\n## Idea\n\n{{text}}\n',
+  triage: '# Idea triage\n\n## Classification\n\n## Next action\n',
 });
 
 export function sanitizePathSegment(value, fallback = 'note') {
@@ -50,6 +62,7 @@ export function validateVaultContent(content, { containsPrivateStudentData = fal
   const text = String(content || '');
   if (containsPrivateStudentData) throw new Error('Private student data is not allowed in the vault integration.');
   if (SECRET_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential secret detected; vault write blocked.');
+  if (PRIVATE_STUDENT_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential private student data detected; vault write blocked.');
   return text;
 }
 
@@ -59,12 +72,14 @@ function createDocument(type, title, content, options = {}) {
   const safeTitle = sanitizePathSegment(title);
   const safeContent = validateVaultContent(content, options);
   const prefix = type === 'email' ? '> DRAFT — NOT SENT\n\n' : '';
+  const append = type === 'daily-append';
   return {
     type,
     folder,
     title: String(title || safeTitle),
     path: `${folder}/${safeTitle}.md`,
-    content: `# ${String(title || safeTitle).trim()}\n\n${prefix}${safeContent}`,
+    content: append ? safeContent : `# ${String(title || safeTitle).trim()}\n\n${prefix}${safeContent}`,
+    append,
   };
 }
 
@@ -94,7 +109,8 @@ export function writeEmailDraftNote(subject, content, options) {
 
 export function writeIdeaNote(idea, options) {
   const date = new Date().toISOString().slice(0, 10);
-  const title = `idea-${date}-${String(idea.id || '').slice(0, 8)}`;
+  const idFragment = sanitizePathSegment(String(idea.id || 'captured').slice(0, 24), 'captured');
+  const title = `idea-${date}-${idFragment}`;
   const content = [
     `**Source:** ${idea.source || 'manual'}`,
     `**Tags:** ${(idea.tags || []).join(', ') || 'none'}`,
@@ -112,10 +128,30 @@ export function writeIdeaNote(idea, options) {
   return createDocument('idea', title, content.trim(), options);
 }
 
+export function appendIdeaToDailyNote(idea, date = new Date().toISOString().slice(0, 10), options) {
+  const safeDate = sanitizePathSegment(date, new Date().toISOString().slice(0, 10));
+  const content = [
+    '',
+    `## Captured idea - ${idea.createdAt || new Date().toISOString()}`,
+    '',
+    `- Source: ${idea.source || 'manual'}`,
+    `- Status: ${idea.status || 'new'}`,
+    `- Skill: ${idea.skill || 'unassigned'}`,
+    `- Risk: ${idea.riskLevel || 'unknown'}`,
+    idea.project ? `- Project: ${idea.project}` : '',
+    idea.tags?.length ? `- Tags: ${idea.tags.join(', ')}` : '',
+    '',
+    `> ${String(idea.text || '').replace(/\n+/g, ' ')}`,
+  ].filter(Boolean).join('\n');
+
+  return createDocument('daily-append', safeDate, content.trim(), options);
+}
+
 export function convertIdeaToNote(idea, noteType) {
   const text = idea.text || '';
   const date = new Date().toISOString().slice(0, 10);
-  switch (noteType) {
+  const normalizedType = normalizeIdeaNoteType(noteType);
+  switch (normalizedType) {
     case 'project':
       return writeProjectUpdate(idea.project || 'idea', `From captured idea (${date}):\n\n${text}`);
     case 'decision':
@@ -132,6 +168,20 @@ export function convertIdeaToNote(idea, noteType) {
     default:
       return writeIdeaNote(idea);
   }
+}
+
+export function normalizeIdeaNoteType(noteType = 'idea') {
+  const normalized = String(noteType || 'idea').toLowerCase().trim();
+  const aliases = {
+    'project-update': 'project',
+    'decision-log': 'decision',
+    'research-note': 'research',
+    'meeting-note': 'meeting',
+    'task-list': 'tasks',
+    'email-draft-note': 'email',
+    'idea-note': 'idea',
+  };
+  return aliases[normalized] || normalized;
 }
 
 export function writeTaskList(projectId, tasks, options) {
@@ -163,6 +213,12 @@ function encodeBase64(text) {
   return btoa(binary);
 }
 
+function decodeBase64(data) {
+  const binary = atob(String(data || '').replace(/\s+/g, ''));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const root = sanitizePathSegment(env.VAULT_ROOT || 'CopelandVault', 'CopelandVault');
   const fullPath = `${root}/${document.path}`;
@@ -175,12 +231,23 @@ export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const headers = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, 'User-Agent': 'CopelandOS' };
   const existing = await fetchImpl(apiUrl, { headers });
   let sha;
-  if (existing.ok) sha = (await existing.json()).sha;
-  else if (existing.status !== 404) throw new Error(`Vault lookup failed (${existing.status}).`);
+  let content = document.content;
+  if (existing.ok) {
+    const existingData = await existing.json();
+    sha = existingData.sha;
+    if (document.append) {
+      const existingContent = existingData.content ? decodeBase64(existingData.content) : '';
+      content = `${existingContent.replace(/\s*$/, '')}\n\n${document.content}\n`;
+    }
+  } else if (existing.status === 404 && document.append) {
+    content = `# ${document.title}\n\n${document.content}\n`;
+  } else if (existing.status !== 404) {
+    throw new Error(`Vault lookup failed (${existing.status}).`);
+  }
 
   const payload = {
     message: `CopelandOS vault: ${document.path}`,
-    content: encodeBase64(document.content),
+    content: encodeBase64(content),
     branch: env.VAULT_BRANCH || 'main',
   };
   if (sha) payload.sha = sha;

@@ -72,6 +72,7 @@ Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the Cop
 2. Open the dashboard on your phone
 3. Use the mobile idea capture panel to submit a test idea
 4. Check the idea inbox panel to confirm it was captured
+5. Open the project queue panel to confirm project-tagged ideas were grouped correctly
 
 ## Fallback: Mobile web capture
 
@@ -92,6 +93,7 @@ The form submits to `POST /api/capture/idea` with `source: "mobile-web"`.
 - No files are modified
 - No PRs are merged
 - The idea enters the inbox with status `new`
+- The vault write is either `mock` or GitHub-backed, depending only on configured vault env vars
 - A human must triage the idea before any action is taken
 
 The captured idea is classified automatically by the AI brain pipeline, but classification is advisory only.
