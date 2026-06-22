@@ -155,6 +155,11 @@
     .provider-grid { padding: 16px 18px 4px; display: flex; flex-wrap: wrap; gap: 7px; }
     .provider { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--dim); font: 9px ui-monospace, monospace; }
     .provider.on { color: var(--green); border-color: rgba(110,240,173,.26); background: rgba(110,240,173,.05); }
+    .integration-flow { padding: 14px 18px; display: grid; gap: 8px; }
+    .flow-step { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid rgba(111,223,255,.10); border-radius: 10px; background: rgba(3,9,16,.28); }
+    .flow-index { color: var(--cyan); font: 9px ui-monospace, monospace; }
+    .flow-step strong { display: block; font-size: 11px; }
+    .flow-step small { color: var(--muted); font-size: 9px; }
     .automation { margin: 13px 18px 0; display: grid; gap: 9px; }
     .auto-row { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: var(--muted); }
     .auto-row span:last-child { color: var(--dim); font-family: ui-monospace, monospace; }
@@ -271,6 +276,7 @@
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
+          <a href="#integrations"><span class="nav-icon">⟲</span>Loop</a>
         </div>
       </nav>
       <div class="rail-foot"><div class="system-state"><span class="dot" id="rail-dot"></span><span id="rail-state">Worker not connected</span></div></div>
@@ -452,6 +458,17 @@
         </article>
       </section>
 
+      <!-- ── Integration Control Loop ── -->
+      <section class="section" id="integrations">
+        <div class="section-head"><div><h2>Overnight control loop</h2><p>Phone capture to draft PR status, backed by the integration registry</p></div><button class="mini-btn" id="refresh-integrations" type="button">Refresh loop ↻</button></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Integration flow</div><div class="panel-sub">Configured does not mean connected until probed</div></div><span class="badge mock" id="integration-badge">scaffold</span></div>
+          <div class="integration-flow" id="integration-flow">
+            <div class="empty-state">Loading registry-backed command-center loop…</div>
+          </div>
+        </article>
+      </section>
+
       <!-- ── Tool / MCP Registry ── -->
       <section class="section" id="tools">
         <div class="section-head"><div><h2>Tool + MCP registry</h2><p>Allowlist-first — no random servers installed</p></div></div>
@@ -548,6 +565,8 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationFlow: document.getElementById('integration-flow'),
+      integrationBadge: document.getElementById('integration-badge'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -727,6 +746,34 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function renderIntegrations(data) {
+      const integrationsById = new Map((data.integrations || []).map(item => [item.id, item]));
+      els.integrationFlow.innerHTML = (data.controlLoop || []).map(step => {
+        const integration = integrationsById.get(step.id);
+        const state = integration?.ready ? 'ready' : integration?.stage || step.stage;
+        return `
+          <div class="flow-step">
+            <span class="flow-index">${String(step.order).padStart(2, '0')}</span>
+            <div><strong>${escapeHtml(step.displayName)}</strong><small>${escapeHtml(integration?.notes || step.id)}</small></div>
+            <span class="badge ${integration?.ready ? 'ok' : 'mock'}">${escapeHtml(state)}</span>
+          </div>`;
+      }).join('');
+      const readyCount = (data.integrations || []).filter(item => item.ready).length;
+      els.integrationBadge.textContent = `${readyCount}/${(data.integrations || []).length} ready`;
+      els.integrationBadge.className = readyCount ? 'badge ok' : 'badge mock';
+    }
+
+    async function loadIntegrations() {
+      try {
+        const result = await api('/api/integrations');
+        renderIntegrations(result);
+      } catch (error) {
+        els.integrationFlow.innerHTML = `<div class="empty-state">Could not load integration registry: ${escapeHtml(error.message)}</div>`;
+        els.integrationBadge.textContent = 'not loaded';
+        els.integrationBadge.className = 'badge';
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -736,6 +783,7 @@
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        await loadIntegrations();
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
@@ -789,6 +837,7 @@
     els.ideaForm.addEventListener('submit', captureIdea);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
     document.getElementById('refresh-ideas').addEventListener('click', loadIdeas);
+    document.getElementById('refresh-integrations').addEventListener('click', loadIntegrations);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
     document.getElementById('speech-toggle').addEventListener('click', event => {
       speechReplies = !speechReplies;

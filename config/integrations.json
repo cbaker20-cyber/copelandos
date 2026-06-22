@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "architecture": "phone-shortcut-inbox-classifier-planner-provider-router-tool-registry-obsidian-cursor-pr-status",
+  "policy": {
+    "connectionTruth": "Never report external services as connected unless their required environment variables are present and a dedicated connector verifies them.",
+    "executionBoundary": "This registry describes allowed integration stages. It does not send email, deploy, merge pull requests, install MCP servers, or execute arbitrary shell commands.",
+    "privacyBoundary": "Do not store private student data. Band Council communication remains draft-only and human-reviewed."
+  },
+  "controlLoop": [
+    "mobile-intake",
+    "copelandos-inbox",
+    "idea-classifier",
+    "planner",
+    "provider-router",
+    "tool-allowlist",
+    "obsidian-memory",
+    "cursor-codex-task",
+    "draft-pr-review",
+    "morning-report"
+  ],
+  "integrations": [
+    {
+      "id": "mobile-intake",
+      "displayName": "Phone, Siri, Shortcut, Share Sheet",
+      "kind": "ingress",
+      "stage": "scaffolded",
+      "surface": ["iphone-shortcuts", "share-sheet", "widget", "mobile-web"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/capture/idea"],
+      "safeActions": ["capture_text", "capture_url", "capture_clipboard"],
+      "blockedActions": ["execute_shortcut_side_effects", "store_private_student_data"],
+      "notes": "Shortcuts can POST into the idea inbox, but setup is manual and local to the user's phone."
+    },
+    {
+      "id": "copelandos-inbox",
+      "displayName": "CopelandOS Inbox",
+      "kind": "internal-module",
+      "stage": "implemented",
+      "surface": ["worker-api", "dashboard"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/capture/idea", "/api/ideas"],
+      "safeActions": ["store_sanitized_idea", "list_ideas", "triage_idea"],
+      "blockedActions": ["auto_execute_idea", "store_private_student_data"],
+      "notes": "In-memory foundation inbox for mobile and dashboard capture."
+    },
+    {
+      "id": "idea-classifier",
+      "displayName": "Deterministic Idea Classifier",
+      "kind": "internal-module",
+      "stage": "implemented",
+      "surface": ["worker-api"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/capture/idea"],
+      "safeActions": ["classify_category", "classify_risk", "suggest_skill"],
+      "blockedActions": ["override_high_risk_without_review"],
+      "notes": "Rules-first classifier. AI can be layered later behind provider routing."
+    },
+    {
+      "id": "planner",
+      "displayName": "Planner and AI Council",
+      "kind": "internal-module",
+      "stage": "implemented",
+      "surface": ["worker-api", "dashboard"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/plan", "/api/plan/brief", "/api/council"],
+      "safeActions": ["draft_plan", "select_roles", "produce_mock_council_review"],
+      "blockedActions": ["claim_live_council_without_provider", "auto_execute_plan"],
+      "notes": "Council route is mock/planning mode until live provider credentials and tests are added."
+    },
+    {
+      "id": "provider-router",
+      "displayName": "Provider Router",
+      "kind": "routing",
+      "stage": "implemented",
+      "surface": ["worker-api", "dashboard"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/providers", "/api/providers/route", "/api/ai/route"],
+      "safeActions": ["choose_configured_provider", "explain_fallback_chain", "show_local_fallback"],
+      "blockedActions": ["fake_connected_state", "spend_without_budget_guard"],
+      "notes": "Routes across configured providers only; Ollama is represented as local fallback, not assumed running."
+    },
+    {
+      "id": "tool-allowlist",
+      "displayName": "Tool and MCP Allowlist Registry",
+      "kind": "safety",
+      "stage": "implemented",
+      "surface": ["worker-api", "dashboard"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/tools", "/api/tools/check", "/api/mcp/registry", "/api/mcp/check"],
+      "safeActions": ["list_tools", "check_tool_permission", "check_mcp_permission"],
+      "blockedActions": ["install_unreviewed_mcp", "arbitrary_shell", "delete_files", "send_email"],
+      "notes": "Allowlist-first registry with blocked tools and confirmation-required categories."
+    },
+    {
+      "id": "obsidian-memory",
+      "displayName": "Obsidian Git Vault",
+      "kind": "memory",
+      "stage": "scaffolded",
+      "surface": ["worker-api", "obsidian-uri", "github-vault"],
+      "requiredEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO"],
+      "implementedEndpoints": ["/api/vault/write", "/api/obsidian/open"],
+      "safeActions": ["write_safe_note", "open_obsidian_uri", "preview_mock_note"],
+      "blockedActions": ["make_vault_public", "expose_private_student_data", "delete_vault"],
+      "notes": "Writes are mock previews unless a private GitHub vault is configured."
+    },
+    {
+      "id": "cursor-codex-task",
+      "displayName": "Cursor and Codex Task Queue",
+      "kind": "agent-queue",
+      "stage": "scaffolded",
+      "surface": ["worker-api", "dashboard"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": ["/api/agents/cursor-prompt", "/api/agents/codex-prompt", "/api/ideas/:id/cursor-prompt", "/api/ideas/:id/codex-prompt"],
+      "safeActions": ["generate_scoped_prompt", "include_forbidden_actions", "require_draft_pr"],
+      "blockedActions": ["auto_merge", "auto_deploy", "execute_in_cursor_without_review"],
+      "notes": "Generates task prompts only. It does not execute local IDE actions."
+    },
+    {
+      "id": "draft-pr-review",
+      "displayName": "Draft PR Review Status",
+      "kind": "supervision",
+      "stage": "planned",
+      "surface": ["github-readonly"],
+      "requiredEnvVars": ["GITHUB_TOKEN"],
+      "implementedEndpoints": ["/api/github/summary"],
+      "safeActions": ["read_pr_status", "read_check_status", "summarize_review_state"],
+      "blockedActions": ["merge_pr", "delete_branch", "mark_ready", "deploy"],
+      "notes": "The foundation endpoint intentionally does not query GitHub yet."
+    },
+    {
+      "id": "morning-report",
+      "displayName": "Morning Report and Project Status",
+      "kind": "reporting",
+      "stage": "planned",
+      "surface": ["dashboard", "obsidian-vault"],
+      "requiredEnvVars": [],
+      "implementedEndpoints": [],
+      "safeActions": ["summarize_inbox", "summarize_project_registry", "draft_daily_note"],
+      "blockedActions": ["email_report_without_review", "claim_completed_work_without_pr"],
+      "notes": "Next step: generate a draft status note from inbox, projects, PR states, and failed checks."
+    }
+  ]
+}

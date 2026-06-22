@@ -1,5 +1,6 @@
 import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
+import { getControlLoop, getIntegration, getIntegrationSummary, listIntegrations } from './integrationRegistry.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import {
@@ -74,6 +75,7 @@ export async function handleFoundationRequest({
       foundation: true,
       complete: false,
       canonicalBackend: 'worker.js',
+        integrationRegistry: getIntegrationSummary(env),
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
@@ -83,6 +85,28 @@ export async function handleFoundationRequest({
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
     });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      integrations: listIntegrations(env),
+      controlLoop: getControlLoop(),
+      summary: getIntegrationSummary(env),
+    });
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, controlLoop: getControlLoop(), architecture: getIntegrationSummary(env).architecture });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    const integration = getIntegration(body.integrationId, env);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Integration not found.' }, 404);
   }
 
   if (path === '/api/projects') {
