@@ -36,6 +36,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Voice interface:** browser Web Speech API, push-to-talk only.
 - **Model router:** chooses the first configured provider for a task category without revealing credentials.
 - **Permission engine:** classifies every named action as SAFE, MEDIUM, or HIGH.
+- **Integration registry:** describes command-center surfaces and env gates without claiming live connectivity.
 
 ## Backend decision
 
@@ -55,6 +56,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 |---|---|
 | `GET /api/status` | Honest module/provider connection status |
 | `GET /api/projects` / `GET /api/projects/:id` | Project registry |
+| `GET /api/integrations` / `GET /api/integrations/:id` | Command-center integration registry with honest connection states |
 | `POST /api/command` | Deterministic command routing |
 | `POST /api/vault/write` | Bounded GitHub/mock vault note |
 | `POST /api/obsidian/open` | Return a safe Obsidian URI without opening it |
