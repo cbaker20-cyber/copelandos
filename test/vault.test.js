@@ -9,6 +9,7 @@ import {
   validateVaultContent,
   writeDailyIdeaAppend,
   writeEmailDraftNote,
+  writeGenericVaultNote,
   convertIdeaToNote,
 } from '../src/vault.js';
 
@@ -28,6 +29,22 @@ test('email notes remain visibly draft-only', () => {
   const note = writeEmailDraftNote('Hello there', 'Draft body');
   assert.match(note.content, /DRAFT — NOT SENT/);
   assert.match(note.path, /^Inbox\//);
+});
+
+test('generic vault notes honor caller folder but still sanitize path and content', () => {
+  const note = writeGenericVaultNote({
+    folder: 'Inbox',
+    title: 'Mobile capture note',
+    content: 'Safe body',
+    agent: 'dashboard',
+    tags: ['mobile', 'capture'],
+  });
+  assert.equal(note.type, 'generic');
+  assert.equal(note.folder, 'Inbox');
+  assert.equal(note.path, 'Inbox/Mobile-capture-note.md');
+  assert.match(note.content, /agent: dashboard/);
+  assert.match(note.content, /Safe body/);
+  assert.throws(() => writeGenericVaultNote({ folder: '../Secrets', title: 'bad', content: 'x' }), /Unsafe vault path/);
 });
 
 test('Obsidian URI builders encode vault, file, and content', () => {
