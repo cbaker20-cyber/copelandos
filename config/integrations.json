@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "architecture": [
+    "phone/Siri/Shortcut/share sheet",
+    "CopelandOS inbox",
+    "classifier",
+    "planner",
+    "provider router / AI council",
+    "safe tool registry",
+    "Obsidian memory",
+    "Cursor/Codex task",
+    "draft PR",
+    "review status back into CopelandOS"
+  ],
+  "controlLoop": {
+    "status": "scaffold",
+    "cadence": "manual-first, then morning-report automation after authentication and GitHub supervision are hardened",
+    "morningReportInputs": ["ideas", "projects", "provider_status", "tool_registry", "vault_updates", "draft_pr_status"],
+    "blockedUntil": [
+      "real authentication protects write/provider routes",
+      "GitHub supervisor uses scoped read-only credentials",
+      "vault persistence is configured for a private repository",
+      "human review gates are enforced for draft creation and task dispatch"
+    ]
+  },
+  "integrations": [
+    {
+      "id": "mobile-shortcuts",
+      "displayName": "iPhone Shortcuts / Widgets",
+      "stage": "ready-for-setup",
+      "entrypoints": ["Siri phrase", "Shortcuts widget", "share sheet", "mobile web dashboard"],
+      "targetEndpoint": "/api/capture/idea",
+      "allowedActions": ["capture_text_idea", "capture_shared_url", "show_capture_receipt"],
+      "blockedActions": ["execute_code", "send_email", "merge_pr", "deploy"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "Phone capture writes only to the inbox. Captured text is classified but never executed automatically."
+    },
+    {
+      "id": "copelandos-inbox",
+      "displayName": "CopelandOS Inbox",
+      "stage": "implemented",
+      "entrypoints": ["/api/capture/idea", "/api/ideas"],
+      "allowedActions": ["store_idea", "classify_idea", "generate_review_prompt"],
+      "blockedActions": ["auto_dispatch_task", "auto_open_pr", "auto_send_message"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "The inbox is the safe buffer between capture and action."
+    },
+    {
+      "id": "ai-brain-planner",
+      "displayName": "AI Brain / Planner",
+      "stage": "implemented-scaffold",
+      "entrypoints": ["/api/plan", "/api/plan/brief", "/api/council"],
+      "allowedActions": ["draft_plan", "select_roles", "produce_mock_council_review"],
+      "blockedActions": ["call_unconfigured_provider", "execute_tool_without_registry_check"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "Planner and council routes produce reviewable plans and mock council output unless providers are explicitly configured."
+    },
+    {
+      "id": "provider-router",
+      "displayName": "Provider Router",
+      "stage": "implemented",
+      "entrypoints": ["/api/providers", "/api/providers/route", "/api/ai/route"],
+      "allowedActions": ["choose_configured_provider", "explain_fallback_chain", "report_local_fallback"],
+      "blockedActions": ["fake_connected_state", "spend_without_budget_guard", "expose_provider_error_body"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": false,
+      "notes": "Only providers backed by configured env vars are reported as configured. Ollama is represented as local fallback, not as a guaranteed live server."
+    },
+    {
+      "id": "tool-mcp-registry",
+      "displayName": "Tool / MCP Allowlist Registry",
+      "stage": "implemented",
+      "entrypoints": ["/api/tools", "/api/tools/check", "/api/mcp/registry", "/api/mcp/check"],
+      "allowedActions": ["list_allowlisted_tools", "check_tool_action", "check_mcp_operation"],
+      "blockedActions": ["arbitrary_shell", "delete_files", "screen_control", "send_email", "deploy"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "Unknown tools and MCP servers are denied by default."
+    },
+    {
+      "id": "obsidian-memory",
+      "displayName": "Obsidian Git Vault",
+      "stage": "mock-or-configured",
+      "entrypoints": ["/api/vault/write", "/api/obsidian/open"],
+      "allowedActions": ["write_safe_note", "return_obsidian_uri", "preview_mock_write"],
+      "blockedActions": ["delete_note", "make_public", "store_private_student_data", "commit_secret"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": false,
+      "notes": "Vault writes block obvious secrets and explicit private student data. Missing GitHub vault config returns a mock preview."
+    },
+    {
+      "id": "cursor-codex-task-queue",
+      "displayName": "Cursor / Codex Task Queue",
+      "stage": "prompt-generation",
+      "entrypoints": ["/api/agents/cursor-prompt", "/api/agents/codex-prompt", "/api/ideas/:id/cursor-prompt"],
+      "allowedActions": ["generate_scoped_prompt", "include_safe_actions", "include_forbidden_actions"],
+      "blockedActions": ["auto_execute_prompt", "auto_merge", "auto_deploy"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "Generated prompts are draft tasks for a human or automation review loop, not automatic execution."
+    },
+    {
+      "id": "github-review-status",
+      "displayName": "GitHub PR Review Status",
+      "stage": "planned",
+      "entrypoints": ["/api/github/summary"],
+      "allowedActions": ["read_pr_status", "read_check_status", "summarize_review_threads"],
+      "blockedActions": ["merge_pr", "delete_branch", "close_issue", "push_to_main"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": false,
+      "notes": "Current route is intentionally not live. Future connector must be read-only and scoped."
+    },
+    {
+      "id": "morning-report",
+      "displayName": "Morning Report / Project Status",
+      "stage": "planned",
+      "entrypoints": ["dashboard panel", "Obsidian daily note", "read-only GitHub summary"],
+      "allowedActions": ["summarize_open_work", "list_blockers", "draft_next_steps"],
+      "blockedActions": ["schedule_without_review", "email_without_draft_gate", "claim_completed_work_without_pr"],
+      "storesPrivateStudentData": false,
+      "requiresHumanReview": true,
+      "notes": "Morning reports should summarize honest system state and draft next actions only."
+    }
+  ]
+}

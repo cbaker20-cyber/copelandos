@@ -1,4 +1,11 @@
 import { routeCommand } from './commandRouter.js';
+import {
+  checkIntegrationAction,
+  describeControlLoop,
+  getIntegration,
+  getIntegrationSummary,
+  listIntegrations,
+} from './integrationRegistry.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
@@ -76,6 +83,7 @@ export async function handleFoundationRequest({
       canonicalBackend: 'worker.js',
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
+        integrations: { connected: true, ...getIntegrationSummary() },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
@@ -83,6 +91,30 @@ export async function handleFoundationRequest({
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
     });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, integrations: listIntegrations(), summary: getIntegrationSummary() });
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, ...describeControlLoop() });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    if (!body.action) return json({ ok: false, error: 'action is required.' }, 400);
+    return json(checkIntegrationAction(body.integrationId, body.action));
+  }
+
+  if (path.startsWith('/api/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/integrations/'.length));
+    const integration = getIntegration(id);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Integration not found.' }, 404);
   }
 
   if (path === '/api/projects') {

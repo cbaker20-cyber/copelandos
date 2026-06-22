@@ -221,6 +221,9 @@
     .chip.medium { color: var(--amber); border-color: rgba(255,201,111,.25); }
     .chip.high { color: var(--red); border-color: rgba(255,120,133,.25); }
     .chip.blocked { color: var(--dim); border-color: var(--line); background: rgba(0,0,0,.3); }
+    .flow-line { padding: 14px 18px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .flow-step { border: 1px solid rgba(111,223,255,.12); border-radius: 999px; padding: 5px 8px; color: var(--muted); font: 9px ui-monospace, monospace; background: rgba(3,9,16,.28); }
+    .flow-arrow { color: var(--dim); font: 10px ui-monospace, monospace; }
 
     /* Prompt output */
     .prompt-box { margin: 12px 18px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; font: 10px/1.6 ui-monospace, monospace; color: var(--muted); max-height: 180px; overflow-y: auto; white-space: pre-wrap; scrollbar-width: thin; }
@@ -271,6 +274,7 @@
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
+          <a href="#integrations"><span class="nav-icon">⇄</span>Integrations</a>
         </div>
       </nav>
       <div class="rail-foot"><div class="system-state"><span class="dot" id="rail-dot"></span><span id="rail-state">Worker not connected</span></div></div>
@@ -489,6 +493,24 @@
         </div>
       </section>
 
+      <!-- ── Integration Control Loop ── -->
+      <section class="section" id="integrations">
+        <div class="section-head"><div><h2>Overnight control loop</h2><p>Phone capture to draft PR status, review-first at every boundary</p></div><button class="mini-btn" id="refresh-integrations" type="button">Refresh loop ↻</button></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Command-center flow</div><div class="panel-sub">Status-only integration map</div></div><span class="badge mock" id="integration-badge">scaffold</span></div>
+          <div class="flow-line" id="integration-flow">
+            <span class="flow-step">phone / Siri</span><span class="flow-arrow">→</span><span class="flow-step">inbox</span><span class="flow-arrow">→</span><span class="flow-step">classifier</span><span class="flow-arrow">→</span><span class="flow-step">planner</span><span class="flow-arrow">→</span><span class="flow-step">draft PR</span>
+          </div>
+          <div class="chip-grid" id="integration-chips">
+            <span class="chip safe">inbox · implemented</span>
+            <span class="chip medium">Shortcuts · setup</span>
+            <span class="chip safe">provider router · honest status</span>
+            <span class="chip blocked">auto-merge · blocked</span>
+          </div>
+          <div class="empty-state" style="margin-top: 8px;">The loop drafts plans, vault notes, prompts, and PR-ready tasks only. It does not send email, deploy, merge, delete files, run arbitrary shell, or store private student data.</div>
+        </article>
+      </section>
+
       <!-- ── Command transcript ── -->
       <section class="section">
         <article class="panel small-panel">
@@ -548,6 +570,8 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationFlow: document.getElementById('integration-flow'),
+      integrationChips: document.getElementById('integration-chips'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -727,6 +751,20 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function renderIntegrations(summary) {
+      if (!summary) return;
+      const architecture = summary.architecture || [];
+      els.integrationFlow.innerHTML = architecture.map((step, index) =>
+        `<span class="flow-step">${escapeHtml(step)}</span>${index < architecture.length - 1 ? '<span class="flow-arrow">→</span>' : ''}`
+      ).join('');
+      const byStage = summary.byStage || {};
+      els.integrationChips.innerHTML = Object.entries(byStage).map(([stage, count]) =>
+        `<span class="chip ${stage.includes('planned') ? 'medium' : 'safe'}">${escapeHtml(stage)} · ${count}</span>`
+      ).join('') + '<span class="chip blocked">unsafe actions · blocked</span>';
+      document.getElementById('integration-badge').textContent = `${summary.totalIntegrations || 0} mapped`;
+      document.getElementById('integration-badge').className = 'badge mock';
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -735,6 +773,7 @@
       try {
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
+        renderIntegrations(status.modules.integrations);
         renderProjects(projects.projects);
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
@@ -788,6 +827,7 @@
     els.form.addEventListener('submit', event => { event.preventDefault(); runCommand(els.input.value); });
     els.ideaForm.addEventListener('submit', captureIdea);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
+    document.getElementById('refresh-integrations').addEventListener('click', loadFoundation);
     document.getElementById('refresh-ideas').addEventListener('click', loadIdeas);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
     document.getElementById('speech-toggle').addEventListener('click', event => {
