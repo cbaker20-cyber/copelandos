@@ -90,3 +90,46 @@ test('Gmail draft creation requires an explicit medium-risk confirmation', async
   assert.equal(result.confirmation_required, true);
   assert.equal(result.risk, 'MEDIUM');
 });
+
+test('legacy obsidian save blocks path traversal through safe vault writer', async () => {
+  const request = new Request('https://worker.example/api/obsidian/save', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://app.example',
+    },
+    body: JSON.stringify({
+      title: '../secret',
+      folder: 'Inbox',
+      content: 'safe content',
+    }),
+  });
+  const response = await worker.fetch(request, { ALLOWED_ORIGIN: 'https://app.example' }, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(result.success, false);
+  assert.match(result.error, /unsafe vault path/i);
+});
+
+test('legacy obsidian save returns mock mode without faking vault connection', async () => {
+  const request = new Request('https://worker.example/api/obsidian/save', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'https://app.example',
+    },
+    body: JSON.stringify({
+      title: 'Safe note',
+      folder: 'Inbox',
+      content: 'safe content',
+    }),
+  });
+  const response = await worker.fetch(request, { ALLOWED_ORIGIN: 'https://app.example' }, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.success, true);
+  assert.equal(result.connected, false);
+  assert.equal(result.mode, 'mock');
+});

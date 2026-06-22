@@ -1,8 +1,25 @@
 import toolsConfig from '../config/tools.json' with { type: 'json' };
 import mcpConfig from '../config/mcp-servers.json' with { type: 'json' };
+import { normalizeAction } from './permissions.js';
 
 const TOOLS = toolsConfig.tools;
 const MCP_SERVERS = mcpConfig.servers;
+const ACTION_TOOL_MAP = new Map([
+  ['create_gmail_draft', ['gmail-draft', 'create_draft']],
+  ['send_email', ['gmail-send', 'send_message']],
+  ['write_vault_note', ['obsidian-vault', 'write_note']],
+  ['write_local_vault_note', ['files-write', 'write_to_vault_path']],
+  ['delete_file', ['files-delete', 'delete_file']],
+  ['deploy', ['deploy', 'deploy']],
+  ['merge_pr', ['github-read', 'merge_pr']],
+  ['run_approved_test', ['local-agent', 'run_approved_test']],
+  ['open_url', ['local-agent', 'open_url']],
+  ['arbitrary_shell', ['local-agent', 'arbitrary_shell']],
+  ['control_screen', ['screen-control', 'control_screen']],
+  ['control_mouse', ['screen-control', 'move_mouse']],
+  ['control_keyboard', ['screen-control', 'type_keys']],
+  ['take_screenshot', ['screen-control', 'take_screenshot']],
+]);
 
 export function getTool(id) {
   return TOOLS.find(t => t.id === id) || null;
@@ -41,7 +58,8 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Tool '${toolId}' is permanently blocked.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high',
+      riskLevel: tool.riskLevel,
       blocked: true,
     };
   }
@@ -51,7 +69,8 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Action '${action}' is blocked for tool '${toolId}'.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high' || tool.confirmationRequired,
+      riskLevel: tool.riskLevel,
       blocked: true,
     };
   }
@@ -91,6 +110,28 @@ export function checkToolPermission(toolId, action) {
     confirmation_required: false,
     riskLevel: tool.riskLevel,
     reason: `Tool '${toolId}' action '${action || 'any allowed action'}' is permitted.`,
+  };
+}
+
+export function checkActionAgainstRegistry(action) {
+  const normalized = normalizeAction(action);
+  const mapping = ACTION_TOOL_MAP.get(normalized);
+  if (!mapping) {
+    return {
+      ok: true,
+      allowed: true,
+      registryMatched: false,
+      action: normalized,
+      reason: 'No specific tool registry mapping; permission engine remains authoritative.',
+    };
+  }
+  const [toolId, toolAction] = mapping;
+  return {
+    ...checkToolPermission(toolId, toolAction),
+    registryMatched: true,
+    action: normalized,
+    toolId,
+    toolAction,
   };
 }
 

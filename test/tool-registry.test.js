@@ -9,6 +9,7 @@ import {
   checkToolPermission,
   checkMcpPermission,
   getRegistrySummary,
+  checkActionAgainstRegistry,
 } from '../src/toolRegistry.js';
 
 test('tool registry lists all tools', () => {
@@ -29,12 +30,14 @@ test('tool registry blocks high-risk tools', () => {
   assert.equal(result.ok, false);
   assert.equal(result.allowed, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('tool registry blocks deploy actions', () => {
   const result = checkToolPermission('deploy', 'deploy');
   assert.equal(result.ok, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('tool registry blocks screen control', () => {
@@ -122,6 +125,7 @@ test('tool registry blocks file deletion', () => {
   const result = checkToolPermission('files-delete', 'delete_file');
   assert.equal(result.ok, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('vault path note is allowed via obsidian vault tool', () => {
@@ -129,4 +133,12 @@ test('vault path note is allowed via obsidian vault tool', () => {
   assert.ok(vault);
   assert.ok(vault.allowedActions.includes('write_note'));
   assert.ok(!vault.blockedActions.includes('write_note'));
+});
+
+test('action registry maps deploy to blocked deploy tool', () => {
+  const result = checkActionAgainstRegistry('deploy');
+  assert.equal(result.registryMatched, true);
+  assert.equal(result.toolId, 'deploy');
+  assert.equal(result.allowed, false);
+  assert.equal(result.blocked, true);
 });

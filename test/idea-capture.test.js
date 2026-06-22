@@ -20,6 +20,21 @@ async function postIdea(body, env = {}) {
   return { response, data: await response.json() };
 }
 
+function makeKv() {
+  const store = new Map();
+  return {
+    async get(key, type) {
+      const value = store.get(key);
+      if (value === undefined) return null;
+      return type === 'json' ? JSON.parse(value) : value;
+    },
+    async put(key, value) {
+      store.set(key, value);
+    },
+    store,
+  };
+}
+
 test('capture valid idea returns 201 with classified idea', async () => {
   const { response, data } = await postIdea({
     text: 'fix the JazzBackend rhythm triplet test',
@@ -35,6 +50,8 @@ test('capture valid idea returns 201 with classified idea', async () => {
   assert.ok(data.idea.createdAt);
   assert.ok(data.idea.updatedAt);
   assert.ok(data.classification);
+  assert.equal(data.vault.ideaNote.mode, 'mock');
+  assert.equal(data.vault.dailyAppend.mode, 'mock');
 });
 
 test('reject empty idea text returns 400', async () => {
@@ -80,6 +97,36 @@ test('valid sources are accepted', async () => {
   }
 });
 
+test('capture supports single tag and KV-backed inbox storage', async () => {
+  const kv = makeKv();
+  const env = { IDEAS_KV: kv };
+  const { data: created } = await postIdea({
+    text: 'remember catalase lab analysis',
+    source: 'shortcuts',
+    tag: 'Lab Notes',
+  }, env);
+  assert.equal(created.storage.inbox, 'kv');
+  assert.equal(created.storage.durable, true);
+  assert.ok(created.idea.tags.includes('lab-notes'));
+
+  const response = await worker.fetch(makeRequest('/api/ideas'), env, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.ideas.some(idea => idea.id === created.idea.id), true);
+});
+
+test('idea stats reports storage mode honestly', async () => {
+  const kv = makeKv();
+  const env = { IDEA_INBOX: kv };
+  await postIdea({ text: 'queue this CopelandOS idea', source: 'manual', project: 'copelandos' }, env);
+  const response = await worker.fetch(makeRequest('/api/ideas/stats'), env, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.storage.mode, 'kv');
+  assert.equal(data.storage.durable, true);
+  assert.ok(data.byProject.copelandos >= 1);
+});
+
 test('GET /api/ideas returns idea list', async () => {
   // First capture an idea
   await postIdea({ text: 'list test idea', source: 'manual' });
@@ -121,6 +168,43 @@ test('POST /api/ideas/:id/triage updates idea status', async () => {
   assert.equal(response.status, 200);
   assert.equal(data.ok, true);
   assert.equal(data.idea.status, 'triaged');
+});
+
+test('POST /api/ideas/:id/plan marks idea planned without execution', async () => {
+  const { data: created } = await postIdea({ text: 'make a plan for CopelandOS dashboard polish', source: 'manual' });
+  const response = await worker.fetch(makeRequest(`/api/ideas/${created.idea.id}/plan`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.idea.status, 'planned');
+  assert.ok(Array.isArray(data.plan.steps));
+});
+
+test('POST /api/ideas/:id/dismiss dismisses without execution', async () => {
+  const { data: created } = await postIdea({ text: 'dismiss this idea later', source: 'manual' });
+  const response = await worker.fetch(makeRequest(`/api/ideas/${created.idea.id}/dismiss`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.idea.status, 'dismissed');
+  assert.equal(data.execute, false);
+});
+
+test('POST /api/ideas/:id/convert supports daily note append', async () => {
+  const { data: created } = await postIdea({ text: 'remember this on today daily note', source: 'manual' });
+  const response = await worker.fetch(makeRequest(`/api/ideas/${created.idea.id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'daily' }),
+  }), {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.idea.status, 'converted-to-note');
+  assert.equal(data.document.type, 'daily');
+  assert.equal(data.document.append, true);
 });
 
 test('POST /api/capture/idea classifies coding tasks correctly', async () => {

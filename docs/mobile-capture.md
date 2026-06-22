@@ -1,6 +1,6 @@
 # CopelandOS Mobile Idea Capture
 
-Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the CopelandOS inbox, classified automatically, and never executed without your review.
+Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the CopelandOS inbox, classified by deterministic rules, optionally mirrored to the vault, and never executed without your review.
 
 ## iOS Shortcut: "Capture Idea"
 
@@ -63,8 +63,15 @@ Capture ideas from your iPhone using Siri Shortcuts. Ideas are stored in the Cop
 | `text` | string | Your idea text (required) | — |
 | `source` | string | `siri`, `shortcuts`, `mobile-web`, `dashboard`, `manual` | `manual` |
 | `tags` | array | string tags | `[]` |
+| `tag` | string | single tag shortcut | none |
 | `project` | string | project id | null |
 | `urgency` | string | `low`, `medium`, `high` | `medium` |
+
+## Storage setup
+
+- Bind Cloudflare KV as `IDEAS_KV` (or `IDEA_INBOX` / `IDEAS`) for durable JSON-backed inbox storage.
+- Without KV, the Worker uses an honest in-memory mock inbox for local testing. It does not claim durable persistence.
+- If `GITHUB_TOKEN` and `GITHUB_REPO` are configured for a private vault, each capture also writes an inbox idea note and appends the idea to the daily note. Without those env vars, the API returns a mock vault preview.
 
 ## Test from phone
 
@@ -101,4 +108,4 @@ The captured idea is classified automatically by the AI brain pipeline, but clas
 - Keep dictations concise: one idea per capture
 - Say the project name to help the classifier: "JazzBackend", "Score Scanner", "CopelandOS"
 - Use urgency words: "urgent", "quick fix", "important"
-- Captured ideas persist in the inbox until triaged or dismissed
+- Captured ideas persist in the inbox when KV is configured; local/mock mode keeps them only for the current Worker isolate

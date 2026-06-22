@@ -9,6 +9,7 @@ import { createPlan, createTaskBrief } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
 import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
+import { writeGenericVaultNote, persistVaultDocument } from './src/vault.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -110,7 +111,16 @@ export default {
       // ── /api/providers/route ──────────────────────────────
       if (path === '/api/providers/route') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
-        const taskProfile = { taskType: body.taskType || 'reasoning' };
+        const taskProfile = {
+          taskType: body.taskType || 'reasoning',
+          requiresToolCalling: body.requiresToolCalling === true,
+          requiresStructuredOutput: body.requiresStructuredOutput === true,
+          privacy: body.privacy || undefined,
+          maxCostTier: body.maxCostTier || undefined,
+          noPaidProviders: body.noPaidProviders === true,
+          avoidProviders: Array.isArray(body.avoidProviders) ? body.avoidProviders : [],
+          rateLimitedProviders: Array.isArray(body.rateLimitedProviders) ? body.rateLimitedProviders : [],
+        };
         const decision = explainRoutingDecision(taskProfile, env);
         return json({ ok: true, decision });
       }
@@ -261,29 +271,14 @@ export default {
 
       // ── /api/obsidian/save ────────────────────────────────
       if (path === '/api/obsidian/save') {
-        if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) return json({ error: 'GITHUB_TOKEN and GITHUB_REPO not set' }, 503);
         const { title, folder = 'Inbox', content, agent = 'unknown', tags = [] } = body;
-        const now = new Date().toISOString().slice(0,10);
-        const safe = title.replace(/[<>:"/\\|?*]/g,'_').replace(/\s+/g,'-').slice(0,80);
-        const root = env.VAULT_ROOT || 'Vault';
-        const filePath = `${root}/${folder}/${safe}.md`;
-        const fm = `---\ntags: [copelandos, ${agent}${tags.length?', '+tags.join(', '):''}, ${folder.toLowerCase()}]\ndate: ${now}\nagent: ${agent}\n---\n\n`;
-        const fileContent = fm + `# ${title}\n\n` + content;
-        const encoded = btoa(unescape(encodeURIComponent(fileContent)));
-        let sha;
-        const check = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/${filePath}`, {
-          headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, 'User-Agent': 'CopelandOS' }
-        });
-        if (check.ok) sha = (await check.json()).sha;
-        const putBody = { message: `CopelandOS [${agent}]: ${folder}/${safe}`, content: encoded, branch: env.VAULT_BRANCH || 'main' };
-        if (sha) putBody.sha = sha;
-        const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/${filePath}`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, 'Content-Type': 'application/json', 'User-Agent': 'CopelandOS' },
-          body: JSON.stringify(putBody),
-        });
-        if (!r.ok) return json({ error: 'GitHub write failed: ' + r.status }, 500);
-        return json({ success: true, path: filePath });
+        try {
+          const document = writeGenericVaultNote({ title, folder, content, agent, tags });
+          const result = await persistVaultDocument(document, env);
+          return json({ success: result.ok, ...result });
+        } catch (error) {
+          return json({ success: false, error: error.message }, 400);
+        }
       }
 
       // ── /api/obsidian/list ────────────────────────────────

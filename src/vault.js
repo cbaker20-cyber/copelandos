@@ -16,6 +16,11 @@ const SECRET_PATTERNS = [
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
 ];
 
+const PRIVATE_STUDENT_PATTERNS = [
+  /\b(?:student\s*(?:id|number)|ssn|social security|date of birth|dob)\b\s*[:#-]?\s*[A-Za-z0-9-]{4,}/i,
+  /\b(?:iep|504 plan|disciplinary record|home address)\b/i,
+];
+
 export const VAULT_STRUCTURE = Object.freeze([
   'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates',
 ]);
@@ -28,6 +33,8 @@ export const VAULT_TEMPLATES = Object.freeze({
   meeting: '# Meeting: {{title}}\n\n## Agenda\n\n## Decisions\n\n## Actions\n',
   email: '# Email draft: {{subject}}\n\n> DRAFT — NOT SENT\n\n## Draft\n',
   tasks: '# {{project}} tasks\n\n- [ ] \n',
+  idea: '# Captured idea\n\n## Source\n\n{{source}}\n\n## Idea\n\n{{text}}\n',
+  ideaTriage: '# Idea triage\n\n## Classification\n\n## Plan\n\n## Prompt target\n',
 });
 
 export function sanitizePathSegment(value, fallback = 'note') {
@@ -50,26 +57,43 @@ export function validateVaultContent(content, { containsPrivateStudentData = fal
   const text = String(content || '');
   if (containsPrivateStudentData) throw new Error('Private student data is not allowed in the vault integration.');
   if (SECRET_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential secret detected; vault write blocked.');
+  if (PRIVATE_STUDENT_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential private student data detected; vault write blocked.');
   return text;
 }
 
 function createDocument(type, title, content, options = {}) {
-  const folder = NOTE_TYPES[type];
+  const folder = options.folder || NOTE_TYPES[type];
   if (!folder) throw new Error(`Unsupported vault note type: ${type}`);
+  const safeFolder = sanitizePathSegment(folder, 'Inbox');
   const safeTitle = sanitizePathSegment(title);
   const safeContent = validateVaultContent(content, options);
   const prefix = type === 'email' ? '> DRAFT — NOT SENT\n\n' : '';
   return {
     type,
-    folder,
+    folder: safeFolder,
     title: String(title || safeTitle),
-    path: `${folder}/${safeTitle}.md`,
+    path: `${safeFolder}/${safeTitle}.md`,
     content: `# ${String(title || safeTitle).trim()}\n\n${prefix}${safeContent}`,
+    append: Boolean(options.append),
   };
 }
 
 export function writeDailyNote(date, content, options) {
   return createDocument('daily', String(date), content, options);
+}
+
+export function writeDailyIdeaAppend(idea, date = new Date().toISOString().slice(0, 10), options = {}) {
+  const safeDate = String(date).slice(0, 10);
+  const line = [
+    `- ${new Date().toISOString()} ${idea.id ? `(${String(idea.id).slice(0, 8)}) ` : ''}${idea.text || ''}`,
+    `  - Source: ${idea.source || 'manual'}`,
+    `  - Status: ${idea.status || 'new'}`,
+    `  - Skill: ${idea.skill || 'unassigned'}`,
+    `  - Risk: ${idea.riskLevel || 'unknown'}`,
+  ].join('\n');
+  const document = createDocument('daily', safeDate, `## Captured ideas\n\n${line}`, { ...options, append: true });
+  document.content = `## Captured ideas\n\n${line}`;
+  return document;
 }
 
 export function writeProjectUpdate(projectId, content, options) {
@@ -128,10 +152,27 @@ export function convertIdeaToNote(idea, noteType) {
       return writeEmailDraftNote(`Draft from idea ${date}`, text);
     case 'tasks':
       return writeTaskList(idea.project || 'ideas', [text]);
+    case 'daily':
+      return writeDailyIdeaAppend(idea);
     case 'idea':
     default:
       return writeIdeaNote(idea);
   }
+}
+
+export function writeGenericVaultNote({ folder = 'Inbox', title = 'note', content = '', agent = 'copelandos', tags = [] }, options = {}) {
+  const cleanTags = Array.isArray(tags)
+    ? tags.map(tag => sanitizePathSegment(tag, 'tag').toLowerCase()).slice(0, 10)
+    : [];
+  const frontMatter = [
+    '---',
+    `agent: ${sanitizePathSegment(agent, 'copelandos')}`,
+    `tags: [${['copelandos', ...cleanTags].join(', ')}]`,
+    `created: ${new Date().toISOString()}`,
+    '---',
+    '',
+  ].join('\n');
+  return createDocument('generic', title, `${frontMatter}${content}`, { ...options, folder });
 }
 
 export function writeTaskList(projectId, tasks, options) {
@@ -163,6 +204,13 @@ function encodeBase64(text) {
   return btoa(binary);
 }
 
+function decodeBase64(data) {
+  const clean = String(data || '').replace(/\s+/g, '');
+  const binary = atob(clean);
+  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const root = sanitizePathSegment(env.VAULT_ROOT || 'CopelandVault', 'CopelandVault');
   const fullPath = `${root}/${document.path}`;
@@ -175,12 +223,23 @@ export async function persistVaultDocument(document, env, fetchImpl = fetch) {
   const headers = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, 'User-Agent': 'CopelandOS' };
   const existing = await fetchImpl(apiUrl, { headers });
   let sha;
+  let existingContent = '';
   if (existing.ok) sha = (await existing.json()).sha;
   else if (existing.status !== 404) throw new Error(`Vault lookup failed (${existing.status}).`);
 
+  if (document.append && existing.ok) {
+    const existingJson = await fetchImpl(apiUrl, { headers }).then(response => response.json());
+    sha = existingJson.sha;
+    existingContent = decodeBase64(existingJson.content || '');
+  }
+
+  const content = document.append
+    ? `${existingContent || `# ${document.title}\n`}\n${document.content.trim()}\n`
+    : document.content;
+
   const payload = {
     message: `CopelandOS vault: ${document.path}`,
-    content: encodeBase64(document.content),
+    content: encodeBase64(content),
     branch: env.VAULT_BRANCH || 'main',
   };
   if (sha) payload.sha = sha;

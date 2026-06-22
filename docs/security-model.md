@@ -15,6 +15,7 @@
 - Exact-origin CORS reduces browser exposure but is not authentication.
 - The local agent requires a shared token and exact allowlist and binds to localhost by default.
 - GitHub-backed vault paths are constructed from fixed folders and sanitized segments.
+- Mobile idea capture stores text only; captured ideas enter review status and never trigger tools automatically.
 
 ## Action rules
 
@@ -22,6 +23,7 @@
 - MEDIUM actions require explicit confirmation and are logged in the response: issues, Gmail drafts, tasks, status updates, exact tests, and configured app launches.
 - HIGH actions always return `confirmation_required` and never execute automatically: sending mail, merging, deleting, deploying, installing, arbitrary shell, secret changes, publishing, private-student access, and general screen/input control.
 - Unknown actions default to HIGH.
+- Tool/MCP registry checks are allowlist-first; random MCP servers and blocked high-risk tools remain blocked even when confirmation is requested.
 
 ## Known limitations
 

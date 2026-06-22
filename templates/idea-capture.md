@@ -9,6 +9,8 @@
 **Tags:** {{tags}}
 **Risk level:** {{riskLevel}}
 **Status:** {{status}}
+**Project:** {{project}}
+**Storage:** {{storageMode}}
 
 ## Idea text
 
@@ -27,6 +29,7 @@
 - [ ] Assign to a project if relevant
 - [ ] Generate a plan or Cursor prompt when ready
 - [ ] Convert to a permanent vault note when actioned
+- [ ] Append to daily note if this should become part of today's memory
 
 ---
 

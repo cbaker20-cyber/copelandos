@@ -47,6 +47,11 @@ test('security-sensitive task selects council mode', () => {
   assert.equal(result.useCouncil, true);
 });
 
+test('explicit council request selects council mode', () => {
+  const result = chooseCouncilMode('use council mode to review this dashboard architecture');
+  assert.equal(result.useCouncil, true);
+});
+
 test('createPlan returns structured plan with steps', () => {
   const plan = createPlan('implement a new API endpoint for idea capture');
   assert.ok(plan.task);
@@ -98,6 +103,9 @@ test('createCursorPrompt includes repo and constraints', () => {
   assert.ok(prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(prompt.toLowerCase().includes('forbidden') || prompt.toLowerCase().includes('constraint'));
   assert.ok(prompt.toLowerCase().includes('tests') || prompt.toLowerCase().includes('test'));
+  assert.ok(prompt.includes('ISSUE OR IDEA ID'));
+  assert.ok(prompt.includes('FILES TO INSPECT'));
+  assert.ok(prompt.includes('DRAFT PR TITLE'));
 });
 
 test('createCodexPrompt includes security review focus', () => {
@@ -109,4 +117,12 @@ test('createCodexPrompt includes security review focus', () => {
 test('createCursorPrompt has forbidden actions from project config', () => {
   const prompt = createCursorPrompt({ idea: { id: 'test-3', text: 'do music stuff' }, project: 'score-scanner', task: 'scan a PDF score' });
   assert.ok(prompt.toLowerCase().includes('forbidden'));
+  assert.ok(prompt.includes('MusicXML-only'));
+});
+
+test('CopelandOS prompt includes security-first no fake connection rules', () => {
+  const prompt = createCursorPrompt({ idea: { id: 'test-4', text: 'add provider status UI' }, project: 'copelandos' });
+  assert.ok(prompt.includes('worker.js'));
+  assert.ok(prompt.includes('no fake connected claims'));
+  assert.ok(prompt.includes('Gmail remains draft-only'));
 });

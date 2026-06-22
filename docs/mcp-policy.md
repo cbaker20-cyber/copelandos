@@ -50,6 +50,8 @@ These patterns are never permitted regardless of server status:
 
 Individual tools within servers also have an explicit allowlist. See the tool registry for per-tool allowed and blocked actions.
 
+High-risk blocked tools and actions return `confirmation_required` with `blocked: true`; confirmation is a stop signal, not permission to execute. Action routes that can touch the local agent consult this registry in addition to the permission engine.
+
 ## Adding a new MCP server
 
 1. Research the server's capabilities and risks

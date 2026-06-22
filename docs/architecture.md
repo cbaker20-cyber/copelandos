@@ -27,6 +27,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Command router:** interprets a small deterministic command set before any model request.
 - **Project command center:** reads `config/projects.json` and creates scoped Cursor/Codex prompts.
 - **Obsidian memory:** builds safe notes and URIs; writes to a configured private GitHub vault or returns a mock preview.
+- **Phone-first idea pipeline:** captures ideas from Siri/mobile/dashboard, stores them in KV when configured or memory mock locally, classifies risk/skill, writes vault previews, and generates Cursor/Codex prompts.
 - **GitHub supervisor:** route and UI placeholder only; currently reports not connected.
 - **Cursor/Codex orchestrator:** generates bounded prompts; it does not run agents or merge work itself.
 - **Gmail draft assistant:** reads Gmail when configured and creates drafts only after confirmation.
@@ -54,6 +55,15 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | Route | Purpose |
 |---|---|
 | `GET /api/status` | Honest module/provider connection status |
+| `POST /api/capture/idea` | Capture a mobile/dashboard idea without execution |
+| `GET /api/ideas` / `GET /api/ideas/:id` | Idea inbox |
+| `GET /api/ideas/stats` | Inbox status and storage mode |
+| `POST /api/ideas/:id/triage` | Human triage state update |
+| `POST /api/ideas/:id/plan` | Create a safe plan without execution |
+| `POST /api/ideas/:id/convert` | Convert idea to vault note/mock preview |
+| `POST /api/ideas/:id/cursor-prompt` | Generate Cursor task prompt |
+| `POST /api/ideas/:id/codex-prompt` | Generate Codex task prompt |
+| `GET /api/project-queue` | Project-filtered idea task queue |
 | `GET /api/projects` / `GET /api/projects/:id` | Project registry |
 | `POST /api/command` | Deterministic command routing |
 | `POST /api/vault/write` | Bounded GitHub/mock vault note |

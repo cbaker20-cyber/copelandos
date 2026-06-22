@@ -20,6 +20,10 @@ export function chooseCouncilMode(task) {
   const classification = classifyTask(task);
   const text = String(task || '').toLowerCase();
 
+  if (/\bcouncil\b/i.test(text)) {
+    return { useCouncil: true, reason: 'Council mode was explicitly requested.' };
+  }
+
   // Security tasks always use council
   if (/(security|auth|permission|cors|token|secret|deploy|vulnerability)/i.test(text)) {
     return { useCouncil: true, reason: 'Security-sensitive task; council with Security Reviewer required.' };
@@ -157,65 +161,137 @@ export function createTaskBrief(task) {
   };
 }
 
-export function createCursorPrompt({ idea, project, task }) {
-  const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
-  const lines = [
-    `You are the Cursor implementation agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    proj ? `Current phase: ${proj.currentPhase}` : '',
-    `Idea: ${idea?.id ? `[${idea.id}]` : ''} ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    `Risk level: ${classification.riskLevel}`,
+function projectById(project) {
+  return projectRegistry.projects.find(p => p.id === project) || null;
+}
+
+function projectSpecificRules(project) {
+  switch (project?.id) {
+    case 'score-scanner':
+      return ['Score Scanner: no fake PDF/photo OMR; MusicXML-only unless explicitly implemented and tested.'];
+    case 'jazz-backend':
+      return ['JazzBackend: preserve musical constraints and MusicXML validity; do not remove failing tests to pass.'];
+    case 'band-council-agent':
+      return ['Band Council: privacy-safe, draft-only, no private student data, no autonomous communication.'];
+    case 'connectome-perturbation':
+      return ['Connectome: evidence-first, no invented research, provenance before scientific interpretation.'];
+    case 'copelandos':
+      return [
+        'CopelandOS: security-first; worker.js is the canonical Cloudflare Worker entry point.',
+        'CopelandOS: no fake connected claims; Gmail remains draft-only; CORS must stay exact-origin.',
+      ];
+    default:
+      return [];
+  }
+}
+
+function filesToInspect(project) {
+  if (!project) return ['README.md', 'package.json', 'docs/security-model.md', 'relevant source and tests'];
+  if (project.id === 'copelandos') {
+    return [
+      'README.md',
+      'worker.js',
+      'src/foundationApi.js',
+      'src/ideaApi.js',
+      'src/vault.js',
+      'config/projects.json',
+      'docs/security-model.md',
+      'test/**/*.test.js',
+    ];
+  }
+  return ['README.md', project.taskSource, 'relevant source files', 'relevant tests'];
+}
+
+function testsToRun(project) {
+  if (!project || project.id === 'copelandos') {
+    return [
+      'npm test',
+      'node --check worker.js',
+      'node --check src/foundationApi.js',
+      'node --check src/vault.js',
+      'git diff --check',
+    ];
+  }
+  return ['repository test suite', 'targeted tests for changed files', 'git diff --check'];
+}
+
+function draftTitle(kind, project, idea, task) {
+  const prefix = kind === 'cursor' ? 'Implement' : 'Review';
+  const target = project?.displayName || 'Captured Idea';
+  const goal = String(task || idea?.text || 'task').replace(/\s+/g, ' ').slice(0, 70);
+  return `${prefix} ${target}: ${goal}`;
+}
+
+function buildAgentPrompt(kind, { idea, project, task }) {
+  const proj = projectById(project);
+  const goal = task || idea?.text || '';
+  const classification = classifyTask(goal);
+  const agent = kind === 'cursor' ? 'Cursor implementation agent' : 'Codex architecture and security agent';
+  const focus = kind === 'cursor'
+    ? ['Implement the smallest safe change.', 'Add or update tests.', 'Open a draft PR and stop on blockers.']
+    : ['Review architecture and security trade-offs.', 'Identify minimal safe implementation boundaries.', 'Call out missing tests and unsafe assumptions.'];
+
+  return [
+    `You are the ${agent}${proj ? ` for ${proj.displayName}` : ''}.`,
+    '',
+    'REPO:',
+    proj ? `- ${proj.repo}` : '- Unknown repo; inspect the current workspace before acting.',
+    proj ? `- Task source: ${proj.taskSource}` : '',
+    proj ? `- Current phase: ${proj.currentPhase}` : '',
+    proj ? `- Next recommended task: ${proj.nextRecommendedTask}` : '',
+    '',
+    'ISSUE OR IDEA ID:',
+    `- ${idea?.id || 'captured-idea'}`,
+    '',
+    'GOAL:',
+    `- ${goal || 'See captured idea.'}`,
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect(proj).map(file => `- ${file}`),
     '',
     'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
-    '- Do not commit secrets, tokens, or private data.',
-    '- Use a branch and draft PR. Do not push to main directly.',
-    '- Stop and report blockers instead of guessing.',
-    '- Run tests before proposing a merge.',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
+    ...(proj ? [`- Safe actions: ${proj.safeActions.join(', ')}`] : []),
+    ...projectSpecificRules(proj).map(rule => `- ${rule}`),
+    '- Keep edits scoped and follow existing repository patterns.',
+    '- Do not weaken tests or expose upstream error bodies that may contain sensitive information.',
     '',
-    'REQUIRED STEPS:',
-    '1. Read the repository and understand the existing code.',
-    '2. Identify the files that need to change.',
-    '3. Implement the minimal change that satisfies the goal.',
-    '4. Add or update tests.',
-    '5. Open a draft PR with a clear description.',
+    'SAFETY RULES:',
+    '- Do not commit secrets, tokens, OAuth codes, refresh tokens, private email content, .env, or .dev.vars.',
+    '- Do not send email; Gmail work must remain draft-only.',
+    '- Do not deploy, merge PRs, delete files, install packages unnecessarily, or run arbitrary shell actions.',
+    '- Do not claim providers, tools, or integrations are connected without env/config evidence.',
+    '- High-risk actions require explicit human confirmation and must not execute automatically.',
     '',
-    proj ? `SAFE ACTIONS: ${proj.safeActions.join(', ')}` : '',
-    `TASK BRIEF: ${task || idea?.text || 'See idea above'}`,
-  ].filter(Boolean);
+    'TESTS TO RUN:',
+    ...testsToRun(proj).map(command => `- ${command}`),
+    '',
+    'DRAFT PR TITLE:',
+    `- ${draftTitle(kind, proj, idea, goal)}`,
+    '',
+    'FORBIDDEN ACTIONS:',
+    ...(proj ? proj.forbiddenActions.map(action => `- ${action}`) : []),
+    '- automatic email sending',
+    '- deploy controls',
+    '- merge controls',
+    '- arbitrary shell execution',
+    '- screen/mouse/keyboard automation',
+    '',
+    'FORBIDDEN CLAIMS:',
+    ...(proj ? proj.forbiddenClaims.map(claim => `- ${claim}`) : []),
+    '- integration_is_connected_without_evidence',
+    '',
+    'WORK MODE:',
+    ...focus.map(item => `- ${item}`),
+  ].filter(line => line !== '').join('\n');
+}
 
-  return lines.join('\n');
+export function createCursorPrompt({ idea, project, task }) {
+  return buildAgentPrompt('cursor', { idea, project, task });
 }
 
 export function createCodexPrompt({ idea, project, task }) {
-  const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
-  const lines = [
-    `You are the Codex architecture and security agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    `Goal: ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    '',
-    'REVIEW FOCUS:',
-    '- Architecture decisions and trade-offs',
-    '- Security: auth, CORS, input validation, secret handling',
-    '- Test coverage and testability',
-    '- Dependency choices and risk',
-    '',
-    'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    '- Do not claim integration is connected without evidence.',
-    '- Do not weaken existing tests.',
-    '- Never add secrets or tokens to the codebase.',
-    '',
-    proj ? `FORBIDDEN CLAIMS: ${proj.forbiddenClaims.join('; ')}` : '',
-    `TASK: ${task || idea?.text || 'See idea above'}`,
-  ].filter(Boolean);
-
-  return lines.join('\n');
+  return buildAgentPrompt('codex', { idea, project, task });
 }

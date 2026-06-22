@@ -101,3 +101,25 @@ test('provider router explains decision when provider is configured', () => {
   assert.ok(result.selected);
   assert.ok(result.reason);
 });
+
+test('provider router honors tool-calling constraints', () => {
+  const env = { CEREBRAS_API_KEY: 'key', GEMINI_API_KEY: 'key2' };
+  const result = chooseProvider({ taskType: 'fast', requiresToolCalling: true }, env);
+  assert.equal(result.ok, true);
+  assert.notEqual(result.provider, 'cerebras');
+  assert.equal(result.supportsToolCalling, true);
+});
+
+test('provider router can avoid rate-limited providers', () => {
+  const env = { GROQ_API_KEY: 'key', CEREBRAS_API_KEY: 'key2' };
+  const result = chooseProvider({ taskType: 'fast', rateLimitedProviders: ['groq'] }, env);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'cerebras');
+});
+
+test('provider router supports no-paid provider constraint', () => {
+  const env = { ANTHROPIC_API_KEY: 'paid', GEMINI_API_KEY: 'free' };
+  const result = chooseProvider({ taskType: 'reasoning', noPaidProviders: true }, env);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'gemini-flash');
+});

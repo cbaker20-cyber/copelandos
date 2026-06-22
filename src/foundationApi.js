@@ -1,5 +1,6 @@
 import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
+import { checkActionAgainstRegistry } from './toolRegistry.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import {
@@ -176,11 +177,14 @@ export async function handleFoundationRequest({
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
     const permission = evaluatePermission(body.action, { confirmed: body.confirmed === true });
     if (!permission.allowed) return permissionBlocked(json, permission);
+    const registry = checkActionAgainstRegistry(body.action);
+    if (!registry.allowed) return json({ ...registry, permission }, registry.confirmation_required ? 409 : 403);
     return json({
       ok: false,
       connected: false,
       queued: false,
       permission,
+      registry,
       message: 'Action was authorized but not executed because no local agent is connected.',
     }, 503);
   }

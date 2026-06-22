@@ -4,12 +4,12 @@ CopelandOS is designed to avoid single-subscription lock-in. The multi-provider 
 
 ## Design principles
 
-1. **Free-tier first** — Prefer providers with free tiers (Groq, Cerebras, Gemini, OpenRouter) before paid providers.
+1. **No single subscription dependency** — Keep multiple paid, free-tier, and local routes available instead of depending on one subscription.
 2. **No fake connections** — A provider is only shown as "configured" when the required environment variable is present. Never fake a connection.
 3. **Local fallback always available** — Ollama is always represented as a fallback option even if not running.
-4. **Rate-limit aware** — The router fails over to the next provider on 429 responses.
-5. **Budget aware** — Never escalate to a paid provider unless free-tier options are exhausted.
-6. **Tool-support aware** — Routes that require tool calling prefer providers that support it.
+4. **Rate-limit aware** — Route decisions can avoid providers marked as rate-limited and return retry/fallback metadata for callers.
+5. **Budget aware** — Request profiles can require free/no-paid routes or a maximum cost tier.
+6. **Tool-support aware** — Routes that require tool calling or structured output filter providers that lack those capabilities.
 
 ## Provider inventory (`config/providers.json`)
 
@@ -27,7 +27,7 @@ CopelandOS is designed to avoid single-subscription lock-in. The multi-provider 
 
 ## Routing strategy
 
-Each task type has an ordered fallback chain. The router picks the first configured provider:
+Each task type has an ordered fallback chain. The router picks the first configured provider that also satisfies the task constraints:
 
 - **fast**: Groq → Cerebras → Gemini → OpenAI → Ollama
 - **reasoning**: Anthropic → OpenAI → Gemini → OpenRouter → Ollama
@@ -48,6 +48,16 @@ The following providers have free tiers that work without a paid subscription (a
 - Gemini Flash (`GEMINI_API_KEY`)
 - OpenRouter free models (`OPENROUTER_API_KEY`)
 - Ollama (local, no key required)
+
+`POST /api/providers/route` accepts optional constraints:
+
+- `requiresToolCalling`
+- `requiresStructuredOutput`
+- `privacy: "local-only"`
+- `maxCostTier`
+- `noPaidProviders`
+- `avoidProviders`
+- `rateLimitedProviders`
 
 ## Failover policy
 

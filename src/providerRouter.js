@@ -32,17 +32,45 @@ function providerStatus(provider, env) {
   };
 }
 
+function costRank(costTier) {
+  const ranks = {
+    free: 0,
+    'free-tier': 1,
+    'pay-per-token': 2,
+    'depends-on-model': 2,
+  };
+  return ranks[costTier] ?? 3;
+}
+
+function providerMatchesTask(provider, taskProfile = {}) {
+  const avoided = new Set([...(taskProfile.avoidProviders || []), ...(taskProfile.rateLimitedProviders || [])]);
+  if (avoided.has(provider.id) || avoided.has(provider.type)) return false;
+  if (taskProfile.requiresToolCalling && !provider.supportsToolCalling) return false;
+  if (taskProfile.requiresStructuredOutput && !provider.supportsStructuredOutput) return false;
+  if (taskProfile.privacy === 'local-only' && !provider.offline) return false;
+  if (taskProfile.offlineOnly && !provider.offline) return false;
+  if (taskProfile.maxCostTier && costRank(provider.costTier) > costRank(taskProfile.maxCostTier)) return false;
+  if (taskProfile.noPaidProviders && !['free', 'free-tier'].includes(provider.costTier)) return false;
+  return true;
+}
+
+function candidateProviders(taskProfile = {}) {
+  const taskType = taskProfile.taskType || 'reasoning';
+  const route = ROUTING_STRATEGY[taskType] || ROUTING_STRATEGY.reasoning;
+  return route
+    .map(providerId => PROVIDERS.find(p => p.id === providerId))
+    .filter(Boolean)
+    .filter(provider => providerMatchesTask(provider, taskProfile));
+}
+
 export function listProviderStatuses(env) {
   return PROVIDERS.map(p => providerStatus(p, env));
 }
 
 export function chooseProvider(taskProfile, env) {
   const taskType = taskProfile.taskType || 'reasoning';
-  const route = ROUTING_STRATEGY[taskType] || ROUTING_STRATEGY.reasoning;
 
-  for (const providerId of route) {
-    const provider = PROVIDERS.find(p => p.id === providerId);
-    if (!provider) continue;
+  for (const provider of candidateProviders(taskProfile)) {
     if (isProviderConfigured(provider, env)) {
       return {
         ok: true,
@@ -52,7 +80,9 @@ export function chooseProvider(taskProfile, env) {
         modelAlias: provider.modelAlias,
         taskType,
         costTier: provider.costTier,
-        reason: `Selected ${provider.displayName} as first configured provider for ${taskType}.`,
+        supportsToolCalling: provider.supportsToolCalling,
+        supportsStructuredOutput: provider.supportsStructuredOutput,
+        reason: `Selected ${provider.displayName} as first configured provider matching ${taskType} constraints.`,
       };
     }
   }
@@ -62,7 +92,7 @@ export function chooseProvider(taskProfile, env) {
     ok: false,
     provider: null,
     taskType,
-    error: 'No provider configured for this task type.',
+    error: 'No provider configured for this task type and constraints.',
     localFallback: getLocalFallback(taskProfile, env),
     noSubscriptionRoute: getNoSubscriptionRoute(taskProfile, env),
     message: 'Configure at least one provider key to enable AI routing.',
@@ -71,13 +101,10 @@ export function chooseProvider(taskProfile, env) {
 
 export function chooseFallbacks(taskProfile, env) {
   const taskType = taskProfile.taskType || 'reasoning';
-  const route = ROUTING_STRATEGY[taskType] || ROUTING_STRATEGY.reasoning;
   const configured = [];
   const unconfigured = [];
 
-  for (const providerId of route) {
-    const provider = PROVIDERS.find(p => p.id === providerId);
-    if (!provider) continue;
+  for (const provider of candidateProviders(taskProfile)) {
     const status = providerStatus(provider, env);
     if (status.configured) {
       configured.push({ id: provider.id, displayName: provider.displayName, costTier: provider.costTier });
@@ -92,6 +119,7 @@ export function chooseFallbacks(taskProfile, env) {
     fallbacks: configured.slice(1),
     unconfigured,
     maxRetries: FAILOVER_POLICY.maxRetries,
+    retryOn: FAILOVER_POLICY.retryOn,
   };
 }
 
@@ -100,6 +128,7 @@ export function chooseCouncilProviders(taskProfile, env) {
   const providers = councilRoute
     .map(id => PROVIDERS.find(p => p.id === id))
     .filter(Boolean)
+    .filter(p => providerMatchesTask(p, taskProfile))
     .map(p => ({ ...providerStatus(p, env), id: p.id }));
 
   const configured = providers.filter(p => p.configured);
@@ -133,6 +162,14 @@ export function explainRoutingDecision(taskProfile, env) {
     selected: primary.ok ? { id: primary.provider, displayName: primary.displayName } : null,
     reason: primary.reason || primary.message || 'No provider selected.',
     fallbackChain: fallbacks.fallbacks.map(f => f.id),
+    retryOn: fallbacks.retryOn,
+    constraints: {
+      requiresToolCalling: Boolean(taskProfile.requiresToolCalling),
+      requiresStructuredOutput: Boolean(taskProfile.requiresStructuredOutput),
+      privacy: taskProfile.privacy || 'default',
+      maxCostTier: taskProfile.maxCostTier || 'default',
+      noPaidProviders: Boolean(taskProfile.noPaidProviders),
+    },
     configuredProviders: statuses.filter(s => s.configured).map(s => s.id),
     unconfiguredProviders: statuses.filter(s => !s.configured).map(s => s.id),
     localFallback: getLocalFallback(taskProfile, env),

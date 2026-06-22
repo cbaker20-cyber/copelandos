@@ -129,15 +129,16 @@ export function classify(text) {
 // "deploy this to Cloudflare" → high risk, confirmation_required
 // "delete files" → high risk, confirmation_required
 
-export function classifyWithContext(text, { project, tags } = {}) {
+export function classifyWithContext(text, { project, tags = [] } = {}) {
   const base = classify(text);
+  const safeTags = Array.isArray(tags) ? tags : [];
   // Project-specific overrides
   if (project === 'band-council-agent' && base.riskLevel === 'safe') {
     base.riskLevel = 'medium';
     base.confirmationRequired = true;
     base.suggestedAction = 'Band Council task: privacy caution. Human review required.';
   }
-  if (project === 'copelandos' || tags.includes('security')) {
+  if (project === 'copelandos' || safeTags.includes('security')) {
     if (base.riskLevel === 'safe' && base.category === 'coding') {
       base.suggestedAction += ' Apply CopelandOS security-first rules.';
     }

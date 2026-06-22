@@ -13,7 +13,9 @@ Phone / Siri / Shortcuts / Mobile web
        │    ├─ Skill selection
        │    ├─ Risk level assessment
        │    └─ Suggested action generation
-       ├─ Idea stored in inbox (Map / KV in production)
+       ├─ Idea stored in inbox (KV when configured; memory mock locally)
+       ├─ Vault idea note preview/write
+       ├─ Daily note append preview/write
        └─ Returns classified idea with confirmationRequired flag
 
 Idea inbox (/api/ideas)
@@ -26,8 +28,9 @@ Idea inbox (/api/ideas)
 
 Provider router (src/providerRouter.js)
   └─ Chooses best configured provider for task type
-       ├─ Free-tier first: Groq, Cerebras, Gemini, OpenRouter
-       ├─ Paid fallback: Anthropic, OpenAI
+       ├─ Honors task constraints: tool calling, structured output, budget, privacy
+       ├─ Free/student/no-subscription routes available when configured
+       ├─ Paid providers only when configured
        └─ Always-available local: Ollama
 
 Output
@@ -86,7 +89,8 @@ AI council scaffold:
 | High risk | Yes |
 | Security-sensitive | Yes (includes Security Reviewer) |
 | UI/design | Optional (includes Designer) |
-| Coding | No (Coder + Critic + Security Reviewer) |
+| Explicit "council" request | Yes |
+| Coding | No by default (Coder + Critic + Security Reviewer) |
 | Research | No (Planner + Researcher + Summarizer) |
 
 ## Skill registry
