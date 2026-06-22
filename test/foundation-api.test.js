@@ -32,4 +32,26 @@ test('system status never fakes disconnected integrations', async () => {
   assert.equal(result.modules.gmail.connected, false);
   assert.equal(result.modules.localAgent.connected, false);
   assert.equal(result.modules.githubSupervisor.connected, false);
+  assert.equal(result.modules.integrations.connected, false);
+});
+
+test('foundation exposes integration registry without live connection claims', async () => {
+  const response = await worker.fetch(new Request('https://worker.example/api/integrations'), {}, {});
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.ok(result.flow.includes('phone/Siri/Shortcut/share-sheet'));
+  assert.ok(result.integrations.some((integration) => integration.id === 'provider-router'));
+  assert.equal(result.summary.connected.length, 0);
+});
+
+test('foundation exposes individual integration status', async () => {
+  const response = await worker.fetch(
+    new Request('https://worker.example/api/integrations/obsidian-git-vault'),
+    { GITHUB_TOKEN: 'token', GITHUB_REPO: 'owner/vault' },
+  );
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.integration.id, 'obsidian-git-vault');
+  assert.equal(result.status.configured, true);
+  assert.equal(result.status.connected, false);
 });

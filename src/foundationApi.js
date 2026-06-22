@@ -3,6 +3,13 @@ import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import {
+  getIntegration,
+  getIntegrationFlow,
+  getIntegrationStatus,
+  getIntegrationSummary,
+  listIntegrationStatuses,
+} from './integrationRegistry.js';
+import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
   buildObsidianOpenUri,
@@ -68,6 +75,7 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const integrationSummary = getIntegrationSummary(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -81,8 +89,38 @@ export async function handleFoundationRequest({
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
         localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
+        integrations: {
+          connected: false,
+          policy: integrationSummary.policy,
+          count: integrationSummary.totalIntegrations,
+          implemented: integrationSummary.implemented.length,
+          scaffoldOnly: integrationSummary.scaffoldOnly.length,
+          message: integrationSummary.honestStatus,
+        },
       },
     });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const url = new URL(request.url);
+    const layer = url.searchParams.get('layer') || null;
+    const implementationStatus = url.searchParams.get('implementationStatus') || null;
+    return json({
+      ok: true,
+      policy: getIntegrationSummary(env).policy,
+      flow: getIntegrationFlow(),
+      integrations: listIntegrationStatuses(env, { layer, implementationStatus }),
+      summary: getIntegrationSummary(env),
+    });
+  }
+
+  if (path.startsWith('/api/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/integrations/'.length));
+    const integration = getIntegration(id);
+    if (!integration) return json({ ok: false, error: 'Integration not found.' }, 404);
+    return json({ ok: true, integration, status: getIntegrationStatus(id, env) });
   }
 
   if (path === '/api/projects') {

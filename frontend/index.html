@@ -221,6 +221,8 @@
     .chip.medium { color: var(--amber); border-color: rgba(255,201,111,.25); }
     .chip.high { color: var(--red); border-color: rgba(255,120,133,.25); }
     .chip.blocked { color: var(--dim); border-color: var(--line); background: rgba(0,0,0,.3); }
+    .flow-strip { padding: 14px 18px 0; display: flex; gap: 7px; overflow-x: auto; scrollbar-width: thin; }
+    .flow-step { flex: 0 0 auto; max-width: 180px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font: 9px/1.35 ui-monospace, monospace; background: rgba(3,9,16,.28); }
 
     /* Prompt output */
     .prompt-box { margin: 12px 18px; background: rgba(3,9,16,.5); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; font: 10px/1.6 ui-monospace, monospace; color: var(--muted); max-height: 180px; overflow-y: auto; white-space: pre-wrap; scrollbar-width: thin; }
@@ -271,6 +273,7 @@
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
+          <a href="#integrations"><span class="nav-icon">⇄</span>Integrations</a>
         </div>
       </nav>
       <div class="rail-foot"><div class="system-state"><span class="dot" id="rail-dot"></span><span id="rail-state">Worker not connected</span></div></div>
@@ -489,6 +492,30 @@
         </div>
       </section>
 
+      <!-- ── Integration Flow ── -->
+      <section class="section" id="integrations">
+        <div class="section-head"><div><h2>Integration flow</h2><p>Phone capture to draft PR to morning report, with honest connection states</p></div><button class="mini-btn" id="refresh-integrations" type="button">Refresh integrations ↻</button></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Command-center registry</div><div class="panel-sub">Config-backed roadmap; external services are not assumed live</div></div><span class="badge" id="integration-badge">not loaded</span></div>
+          <div class="flow-strip" id="integration-flow">
+            <span class="flow-step">phone/Siri/Shortcut/share-sheet</span>
+            <span class="flow-step">CopelandOS inbox</span>
+            <span class="flow-step">classifier</span>
+            <span class="flow-step">planner</span>
+            <span class="flow-step">provider router</span>
+            <span class="flow-step">safe tools</span>
+            <span class="flow-step">Obsidian memory</span>
+            <span class="flow-step">Cursor/Codex task</span>
+            <span class="flow-step">draft PR</span>
+            <span class="flow-step">morning report</span>
+          </div>
+          <div class="chip-grid" id="integration-chips">
+            <span class="chip">registry not loaded</span>
+          </div>
+          <div class="empty-state" style="margin-top: 8px;">Implemented internal modules can be ready while external services remain disconnected. This panel should never be used as proof that a provider, vault, task runner, or PR supervisor is live.</div>
+        </article>
+      </section>
+
       <!-- ── Command transcript ── -->
       <section class="section">
         <article class="panel small-panel">
@@ -548,6 +575,9 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationBadge: document.getElementById('integration-badge'),
+      integrationFlow: document.getElementById('integration-flow'),
+      integrationChips: document.getElementById('integration-chips'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -727,6 +757,35 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function integrationClass(integration) {
+      if (integration.connected) return 'safe';
+      if (integration.implementationStatus === 'implemented') return 'safe';
+      if (integration.implementationStatus === 'scaffold-only') return 'medium';
+      return '';
+    }
+
+    function renderIntegrations(result) {
+      els.integrationFlow.innerHTML = (result.flow || []).map(step =>
+        `<span class="flow-step">${escapeHtml(step)}</span>`
+      ).join('');
+      els.integrationChips.innerHTML = (result.integrations || []).map(integration =>
+        `<span class="chip ${integrationClass(integration)}">${escapeHtml(integration.id)} · ${escapeHtml(integration.status)}</span>`
+      ).join('');
+      const connected = result.summary?.connected?.length || 0;
+      els.integrationBadge.textContent = connected ? `${connected} connected` : 'registry only';
+      els.integrationBadge.className = connected ? 'badge ok' : 'badge mock';
+    }
+
+    async function loadIntegrations() {
+      try {
+        renderIntegrations(await api('/api/integrations'));
+      } catch (e) {
+        els.integrationBadge.textContent = 'not connected';
+        els.integrationBadge.className = 'badge';
+        els.integrationChips.innerHTML = `<span class="chip">Could not load integrations: ${escapeHtml(e.message)}</span>`;
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -789,6 +848,7 @@
     els.ideaForm.addEventListener('submit', captureIdea);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
     document.getElementById('refresh-ideas').addEventListener('click', loadIdeas);
+    document.getElementById('refresh-integrations').addEventListener('click', loadIntegrations);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
     document.getElementById('speech-toggle').addEventListener('click', event => {
       speechReplies = !speechReplies;
@@ -832,6 +892,7 @@
 
     setupVoice();
     loadFoundation();
+    loadIntegrations();
     loadIdeas();
   </script>
 </body>
