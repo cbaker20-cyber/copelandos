@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "policy": "Every integration is allowlist-first, honest about connection state, and scoped to draft or review workflows unless a human explicitly confirms otherwise.",
+  "architecture": [
+    "phone-siri-shortcut-share-sheet",
+    "copelandos-inbox",
+    "classifier",
+    "planner",
+    "provider-router-or-ai-council",
+    "safe-tool-registry",
+    "obsidian-memory",
+    "cursor-codex-task",
+    "draft-pr",
+    "review-status"
+  ],
+  "integrations": [
+    {
+      "id": "mobile-shortcuts",
+      "displayName": "iPhone Shortcuts and Widgets",
+      "surface": "phone",
+      "category": "capture",
+      "status": "scaffolded",
+      "connectionMode": "user-configured",
+      "entrypoints": ["POST /api/capture/idea", "mobile dashboard", "share sheet shortcut"],
+      "allowedActions": ["capture_text", "capture_shared_url", "tag_project", "show_confirmation"],
+      "blockedActions": ["execute_task", "send_email", "merge_pr", "deploy"],
+      "requiredEnvVars": ["ALLOWED_ORIGIN"],
+      "privacyNotes": "Capture one idea at a time. Do not include secrets or private student data."
+    },
+    {
+      "id": "copelandos-inbox",
+      "displayName": "CopelandOS Idea Inbox",
+      "surface": "worker",
+      "category": "triage",
+      "status": "active",
+      "connectionMode": "internal",
+      "entrypoints": ["POST /api/capture/idea", "GET /api/ideas", "POST /api/ideas/:id/triage"],
+      "allowedActions": ["classify_idea", "store_inbox_item", "create_cursor_prompt", "create_vault_note_preview"],
+      "blockedActions": ["execute_generated_prompt", "autonomous_write_external_repo"],
+      "requiredEnvVars": [],
+      "privacyNotes": "Classifier output is advisory. Medium and high risk actions require review."
+    },
+    {
+      "id": "provider-router",
+      "displayName": "Provider Router",
+      "surface": "worker",
+      "category": "ai-routing",
+      "status": "active",
+      "connectionMode": "env-var-gated",
+      "entrypoints": ["GET /api/providers", "POST /api/providers/route", "GET /api/providers/no-subscription"],
+      "allowedActions": ["select_configured_provider", "explain_fallback_chain", "represent_local_fallback"],
+      "blockedActions": ["fake_connected_provider", "spend_without_budget_guard", "route_private_data_to_cloud_without_review"],
+      "requiredEnvVars": ["GROQ_API_KEY", "CEREBRAS_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OLLAMA_BASE_URL"],
+      "privacyNotes": "Only providers with configured environment variables are shown as configured. Ollama remains local-fallback, not proof of a running server."
+    },
+    {
+      "id": "tool-mcp-registry",
+      "displayName": "Tool and MCP Allowlist Registry",
+      "surface": "worker",
+      "category": "safety",
+      "status": "active",
+      "connectionMode": "internal-config",
+      "entrypoints": ["GET /api/tools", "POST /api/tools/check", "GET /api/mcp/registry", "POST /api/mcp/check"],
+      "allowedActions": ["list_allowlisted_tools", "check_permission", "block_unknown_tool"],
+      "blockedActions": ["arbitrary_shell", "file_delete", "screen_control", "send_email", "auto_deploy"],
+      "requiredEnvVars": [],
+      "privacyNotes": "Unknown tools are blocked. Scaffold-only MCP servers are documented but inactive."
+    },
+    {
+      "id": "obsidian-git-vault",
+      "displayName": "Obsidian Git Vault",
+      "surface": "vault",
+      "category": "memory",
+      "status": "scaffolded",
+      "connectionMode": "env-var-gated",
+      "entrypoints": ["POST /api/vault/write", "POST /api/obsidian/open"],
+      "allowedActions": ["write_safe_note", "open_obsidian_uri", "create_daily_note", "create_project_update"],
+      "blockedActions": ["write_private_student_data", "commit_secrets", "delete_vault", "make_public"],
+      "requiredEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO", "VAULT_ROOT", "VAULT_BRANCH"],
+      "privacyNotes": "When GitHub vault credentials are absent, vault writes return previews rather than pretending persistence happened."
+    },
+    {
+      "id": "cursor-codex-task-queue",
+      "displayName": "Cursor and Codex Task Queue",
+      "surface": "github",
+      "category": "implementation",
+      "status": "scaffolded",
+      "connectionMode": "draft-pr-only",
+      "entrypoints": ["POST /api/agents/cursor-prompt", "POST /api/agents/codex-prompt", "POST /api/ideas/:id/cursor-prompt"],
+      "allowedActions": ["generate_scoped_prompt", "summarize_project_status", "request_tests"],
+      "blockedActions": ["auto_merge", "auto_deploy", "force_push", "claim_ci_without_checks"],
+      "requiredEnvVars": [],
+      "privacyNotes": "Generated prompts are instructions for reviewed agent work; CopelandOS does not execute them automatically."
+    },
+    {
+      "id": "morning-report",
+      "displayName": "Morning Report and Project Status",
+      "surface": "dashboard",
+      "category": "reporting",
+      "status": "planned",
+      "connectionMode": "read-only-first",
+      "entrypoints": ["GET /api/status", "GET /api/projects", "GET /api/github/summary"],
+      "allowedActions": ["summarize_status", "list_blockers", "link_draft_prs", "prepare_review_queue"],
+      "blockedActions": ["close_issue", "merge_pr", "send_report_email", "publish_status_without_review"],
+      "requiredEnvVars": ["GITHUB_TOKEN"],
+      "privacyNotes": "Reports should summarize public project metadata and avoid private student data."
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
+import { checkIntegrationAction, getIntegrationSummary, listIntegrations } from './integrations.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -68,6 +69,7 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const integrationSummary = getIntegrationSummary(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -82,6 +84,7 @@ export async function handleFoundationRequest({
         localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
+      integrations: integrationSummary,
     });
   }
 
@@ -100,6 +103,26 @@ export async function handleFoundationRequest({
   if (path === '/api/command') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
     return json(routeCommand(body.command, { registry: projectRegistry, models: modelConfig, env }));
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const requestUrl = new URL(request.url);
+    return json({
+      ok: true,
+      integrations: listIntegrations(env, {
+        category: requestUrl.searchParams.get('category') || null,
+        surface: requestUrl.searchParams.get('surface') || null,
+      }),
+      summary: getIntegrationSummary(env),
+    });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    if (!body.action) return json({ ok: false, error: 'action is required.' }, 400);
+    return json(checkIntegrationAction(body.integrationId, body.action));
   }
 
   if (path === '/api/ai/route') {

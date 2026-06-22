@@ -32,4 +32,8 @@ test('system status never fakes disconnected integrations', async () => {
   assert.equal(result.modules.gmail.connected, false);
   assert.equal(result.modules.localAgent.connected, false);
   assert.equal(result.modules.githubSupervisor.connected, false);
+  assert.ok(result.integrations);
+  assert.ok(result.integrations.policy.includes('allowlist'));
+  assert.ok(Array.isArray(result.integrations.connected));
+  assert.ok(!result.integrations.connected.includes('mobile-shortcuts'));
 });
