@@ -270,6 +270,7 @@
           <a href="#communications"><span class="nav-icon">△</span>Drafts</a>
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
+          <a href="#integrations"><span class="nav-icon">⟳</span>Integrations</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
         </div>
       </nav>
@@ -450,6 +451,15 @@
             <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
           </div>
         </article>
+        <article class="panel small-panel" id="integrations">
+          <div class="panel-head"><div><div class="panel-title">Command loop</div><div class="panel-sub">Phone to draft PR, status back here</div></div><span class="badge" id="integration-badge">scaffold</span></div>
+          <div class="brain-pipeline" id="integration-loop">
+            <div class="pipeline-step"><span class="pipeline-node">1</span><div class="pipeline-content"><strong>phone</strong><small>Siri / Shortcut / Share Sheet</small></div></div>
+            <div class="pipeline-step"><span class="pipeline-node">2</span><div class="pipeline-content"><strong>inbox</strong><small>Capture, classify, triage</small></div></div>
+            <div class="pipeline-step"><span class="pipeline-node">3</span><div class="pipeline-content"><strong>route</strong><small>Provider + safe tool registry</small></div></div>
+            <div class="pipeline-step"><span class="pipeline-node">4</span><div class="pipeline-content"><strong>report</strong><small>Draft PR + morning status</small></div></div>
+          </div>
+        </article>
       </section>
 
       <!-- ── Tool / MCP Registry ── -->
@@ -548,6 +558,7 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationLoop: document.getElementById('integration-loop'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -725,6 +736,19 @@
         `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.provider)} · ${p.configured ? 'configured' : 'not connected'}</span>`
       ).join('');
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
+
+      const commandCenter = status.commandCenter || {};
+      const loop = commandCenter.controlLoop || [];
+      if (loop.length) {
+        els.integrationLoop.innerHTML = loop.map((step, index) => `
+          <div class="pipeline-step">
+            <span class="pipeline-node">${index + 1}</span>
+            <div class="pipeline-content"><strong>${escapeHtml(step.replaceAll('_', ' '))}</strong><small>${index === loop.length - 1 ? 'Review status returns here' : 'Draft-only, permissioned handoff'}</small></div>
+          </div>
+        `).join('');
+      }
+      const total = commandCenter.totalIntegrations || 0;
+      document.getElementById('integration-badge').textContent = total ? `${total} tracked` : 'scaffold';
     }
 
     async function loadFoundation() {

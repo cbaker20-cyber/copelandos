@@ -1,4 +1,11 @@
 import { routeCommand } from './commandRouter.js';
+import {
+  getCommandCenterSummary,
+  getControlLoop,
+  getIntegration,
+  getIntegrationSafetyPolicy,
+  listIntegrations,
+} from './integrationRegistry.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
@@ -68,12 +75,14 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const commandCenter = getCommandCenterSummary(env);
     return json({
       ok: true,
       system: 'CopelandOS',
       foundation: true,
       complete: false,
       canonicalBackend: 'worker.js',
+      commandCenter,
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
@@ -83,6 +92,27 @@ export async function handleFoundationRequest({
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
     });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const url = new URL(request.url);
+    return json({
+      ok: true,
+      integrations: listIntegrations({
+        stage: url.searchParams.get('stage') || null,
+        surface: url.searchParams.get('surface') || null,
+      }, env),
+      controlLoop: getControlLoop(),
+      safetyPolicy: getIntegrationSafetyPolicy(),
+    });
+  }
+
+  if (path.startsWith('/api/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/integrations/'.length));
+    const integration = getIntegration(id, env);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Integration not found.' }, 404);
   }
 
   if (path === '/api/projects') {

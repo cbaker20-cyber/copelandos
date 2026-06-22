@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "description": "CopelandOS command-center integration registry. Entries describe intended workflows and honest connection requirements; they do not imply live connectivity.",
+  "safetyPolicy": {
+    "defaultConnectionState": "not-connected",
+    "noFakeConnectedStates": true,
+    "draftOnlyCommunications": true,
+    "blockedActions": [
+      "send_email",
+      "merge_pr",
+      "deploy",
+      "delete_files",
+      "arbitrary_shell",
+      "store_private_student_data"
+    ]
+  },
+  "integrations": [
+    {
+      "id": "mobile-shortcuts",
+      "displayName": "iPhone Shortcuts and Widgets",
+      "stage": "scaffolded",
+      "surface": "phone",
+      "entrypoints": ["Siri phrase", "Home Screen widget", "Share Sheet", "Lock Screen widget"],
+      "targetEndpoint": "/api/capture/idea",
+      "requiredEnvVars": ["ALLOWED_ORIGIN"],
+      "allowedActions": ["capture_idea", "show_capture_confirmation"],
+      "blockedActions": ["execute_task", "send_message", "run_shortcut_without_review"],
+      "privacyNotes": "Captures short text only; avoid private student data and secrets.",
+      "nextStep": "Build importable Shortcut definitions once the public Worker URL and auth model are finalized."
+    },
+    {
+      "id": "copelandos-inbox",
+      "displayName": "CopelandOS Inbox",
+      "stage": "implemented",
+      "surface": "worker",
+      "entrypoints": ["/api/capture/idea", "/api/ideas"],
+      "requiredEnvVars": [],
+      "allowedActions": ["validate_idea", "classify_idea", "list_ideas", "triage_idea"],
+      "blockedActions": ["auto_execute_idea"],
+      "privacyNotes": "Idea text is user supplied and must be treated as untrusted.",
+      "nextStep": "Persist inbox to KV or D1 with retention controls."
+    },
+    {
+      "id": "classifier-planner",
+      "displayName": "Classifier and Planner",
+      "stage": "implemented",
+      "surface": "worker",
+      "entrypoints": ["/api/plan", "/api/plan/brief", "/api/ideas/:id/triage"],
+      "requiredEnvVars": [],
+      "allowedActions": ["classify_task", "select_skill", "create_plan", "generate_task_brief"],
+      "blockedActions": ["override_high_risk_confirmation"],
+      "privacyNotes": "Classification is advisory and must not be treated as authorization.",
+      "nextStep": "Attach provider-routed AI critique after deterministic classification."
+    },
+    {
+      "id": "provider-router",
+      "displayName": "Provider Router and AI Council",
+      "stage": "scaffolded",
+      "surface": "worker",
+      "entrypoints": ["/api/providers", "/api/providers/route", "/api/council"],
+      "requiredEnvVars": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "OLLAMA_BASE_URL"],
+      "allowedActions": ["route_model", "explain_route", "draft_council_plan"],
+      "blockedActions": ["fake_provider_connection", "exceed_budget_guard", "send_tool_call_without_registry_check"],
+      "privacyNotes": "Cloud providers may receive prompt text only after the task is classified as safe for cloud routing.",
+      "nextStep": "Add health-checked failover and budget-aware route telemetry."
+    },
+    {
+      "id": "safe-tool-registry",
+      "displayName": "Tool and MCP Allowlist Registry",
+      "stage": "implemented",
+      "surface": "worker",
+      "entrypoints": ["/api/tools", "/api/tools/check", "/api/mcp/registry", "/api/mcp/check"],
+      "requiredEnvVars": [],
+      "allowedActions": ["list_allowed_tools", "check_tool_permission", "check_mcp_permission"],
+      "blockedActions": ["install_unreviewed_mcp_server", "arbitrary_shell", "delete_files", "send_email"],
+      "privacyNotes": "Tool discovery must be filtered before planning and checked again before invocation.",
+      "nextStep": "Emit audit events for every allow/deny decision."
+    },
+    {
+      "id": "obsidian-vault",
+      "displayName": "Obsidian Git Vault",
+      "stage": "scaffolded",
+      "surface": "vault",
+      "entrypoints": ["/api/vault/write", "/api/ideas/:id/convert", "/api/obsidian/open"],
+      "requiredEnvVars": ["GITHUB_TOKEN", "GITHUB_REPO", "VAULT_BRANCH"],
+      "allowedActions": ["write_sanitized_note", "build_obsidian_uri", "preview_mock_write"],
+      "blockedActions": ["write_secret", "write_private_student_data", "delete_note", "make_public"],
+      "privacyNotes": "Vault repository must be private with narrow token scope.",
+      "nextStep": "Define mobile sync playbook with Working Copy or GitSync rather than relying on unstable mobile plugin behavior."
+    },
+    {
+      "id": "cursor-codex-queue",
+      "displayName": "Cursor and Codex Task Queue",
+      "stage": "scaffolded",
+      "surface": "github",
+      "entrypoints": ["/api/ideas/:id/cursor-prompt", "/api/ideas/:id/codex-prompt", "/api/agents/cursor-prompt", "/api/agents/codex-prompt"],
+      "requiredEnvVars": ["GITHUB_TOKEN"],
+      "allowedActions": ["generate_cursor_prompt", "generate_codex_prompt", "draft_pr_summary", "read_check_status"],
+      "blockedActions": ["auto_merge", "auto_deploy", "push_to_main", "close_issue_without_review"],
+      "privacyNotes": "Generated prompts must include repo constraints and safety rules.",
+      "nextStep": "Create durable queue records with branch, PR, check, and review status."
+    },
+    {
+      "id": "morning-report",
+      "displayName": "Morning Report and Project Status",
+      "stage": "planned",
+      "surface": "dashboard",
+      "entrypoints": ["/api/status", "/api/projects", "/api/github/summary"],
+      "requiredEnvVars": ["GITHUB_TOKEN"],
+      "allowedActions": ["summarize_project_status", "show_disconnected_state", "draft_next_steps"],
+      "blockedActions": ["claim_ci_passed_without_query", "claim_pr_opened_without_url"],
+      "privacyNotes": "Reports should summarize public repo state and omit private student details.",
+      "nextStep": "Add GitHub check/PR polling with explicit rate limits and read-only credentials."
+    }
+  ],
+  "controlLoop": [
+    "phone_or_siri_shortcut",
+    "copelandos_inbox",
+    "classifier",
+    "planner",
+    "provider_router_or_ai_council",
+    "safe_tool_registry",
+    "obsidian_memory",
+    "cursor_or_codex_task",
+    "draft_pr",
+    "review_status_back_to_dashboard"
+  ]
+}
