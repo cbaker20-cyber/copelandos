@@ -28,13 +28,13 @@ test('integration registry never fakes connected states', () => {
 });
 
 test('integration detail reports missing env vars without exposing values', () => {
-  const integration = getIntegration('obsidian-vault', { GITHUB_TOKEN: 'token' });
+  const integration = getIntegration('obsidian-vault', { GITHUB_TOKEN: 'super-secret-value' });
   assert.ok(integration);
   assert.equal(integration.connected, false);
   assert.equal(integration.configured, false);
   assert.ok(integration.configuredEnvVars.includes('GITHUB_TOKEN'));
   assert.ok(integration.missingEnvVars.includes('GITHUB_REPO'));
-  assert.ok(!JSON.stringify(integration).includes('token'));
+  assert.ok(!JSON.stringify(integration).includes('super-secret-value'));
 });
 
 test('command-center summary includes the overnight control loop', () => {
