@@ -8,6 +8,7 @@ import { listSkills, publicSkillSummary } from './src/skills.js';
 import { createPlan, createTaskBrief } from './src/planner.js';
 import { listProviderStatuses, chooseProvider, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
 import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, getRegistrySummary } from './src/toolRegistry.js';
+import { checkIntegrationPermission, getIntegrationArchitecture, getIntegrationRegistrySummary, listIntegrationStatuses } from './src/integrationRegistry.js';
 import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
 
 export default {
@@ -127,6 +128,27 @@ export default {
         return json({ ok: true, ...getNoSubscriptionRoute({}, env) });
       }
 
+      // ── /api/integrations ─────────────────────────────────
+      if (path === '/api/integrations') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        const category = url.searchParams.get('category') || '';
+        const status = url.searchParams.get('status') || '';
+        return json({ ok: true, integrations: listIntegrationStatuses(env, { category: category || null, status: status || null }) });
+      }
+
+      // ── /api/integrations/check ───────────────────────────
+      if (path === '/api/integrations/check') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+        return json(checkIntegrationPermission(body.integrationId, body.operation || null));
+      }
+
+      // ── /api/integrations/control-loop ────────────────────
+      if (path === '/api/integrations/control-loop') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
+        return json({ ok: true, architecture: getIntegrationArchitecture(), summary: getIntegrationRegistrySummary() });
+      }
+
       // ── /api/tools ────────────────────────────────────────
       if (path === '/api/tools') {
         if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
@@ -159,7 +181,7 @@ export default {
       // ── /api/registry/summary ────────────────────────────
       if (path === '/api/registry/summary') {
         if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
-        return json({ ok: true, ...getRegistrySummary() });
+        return json({ ok: true, ...getRegistrySummary(), integrations: getIntegrationRegistrySummary() });
       }
 
       // ── /api/council ─────────────────────────────────────

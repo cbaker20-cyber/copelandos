@@ -2,6 +2,7 @@ import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
+import { listIntegrationStatuses } from './integrationRegistry.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -68,6 +69,12 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const integrationStatuses = listIntegrationStatuses(env);
+    const integrationsById = Object.fromEntries(integrationStatuses.map(integration => [integration.id, integration]));
+    const gmail = integrationsById['gmail-draft'];
+    const vault = integrationsById['obsidian-vault'];
+    const localAgent = integrationsById['local-agent'];
+    const githubSupervisor = integrationsById['github-pr-supervisor'];
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -77,10 +84,36 @@ export async function handleFoundationRequest({
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
-        gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
-        vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
-        localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
-        githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
+        integrations: {
+          connected: false,
+          count: integrationStatuses.length,
+          configured: integrationStatuses.filter(integration => integration.configured).length,
+          scaffolded: integrationStatuses.filter(integration => integration.scaffold).map(integration => integration.id),
+        },
+        gmail: {
+          connected: false,
+          configured: gmail?.configured || false,
+          mode: gmail?.mode || 'draft-only',
+          message: 'Gmail remains draft-only and is not probed by status.',
+        },
+        vault: {
+          connected: false,
+          configured: vault?.configured || false,
+          mode: vault?.configured ? 'github' : 'mock',
+          message: 'Vault writes use validated GitHub or mock persistence; no live probe is performed.',
+        },
+        localAgent: {
+          connected: false,
+          configured: localAgent?.configured || false,
+          mode: localAgent?.mode || 'localhost-allowlist',
+          message: 'Local agent status requires an explicit local connection.',
+        },
+        githubSupervisor: {
+          connected: false,
+          configured: githubSupervisor?.configured || false,
+          mode: githubSupervisor?.mode || 'read-only',
+          message: 'Live GitHub summary is intentionally not queried by this foundation route.',
+        },
       },
     });
   }

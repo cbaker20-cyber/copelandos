@@ -270,6 +270,7 @@
           <a href="#communications"><span class="nav-icon">△</span>Drafts</a>
           <a href="#local"><span class="nav-icon">▣</span>Local agent</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
+          <a href="#integrations"><span class="nav-icon">⬡</span>Integrations</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools / MCP</a>
         </div>
       </nav>
@@ -452,6 +453,25 @@
         </article>
       </section>
 
+      <!-- ── Integration Registry ── -->
+      <section class="section" id="integrations">
+        <div class="section-head"><div><h2>Command-center integrations</h2><p>Phone capture -> planner -> safe tools -> Obsidian -> task queue -> draft PR</p></div><button class="mini-btn" id="load-integrations" type="button">Load integrations ↻</button></div>
+        <article class="panel">
+          <div class="panel-head"><div><div class="panel-title">Integration control loop</div><div class="panel-sub">Configured does not mean live-connected</div></div><span class="badge" id="integration-badge">registry</span></div>
+          <div class="chip-grid" id="integration-chips">
+            <span class="chip safe">copelandos-inbox · internal</span>
+            <span class="chip safe">idea-classifier · internal</span>
+            <span class="chip safe">planner · internal</span>
+            <span class="chip medium">provider-router · configured-env-only</span>
+            <span class="chip mock">iphone-shortcuts · scaffold</span>
+            <span class="chip medium">obsidian-vault · github-or-mock</span>
+            <span class="chip mock">cursor-codex-task-queue · scaffold</span>
+            <span class="chip mock">github-pr-supervisor · scaffold</span>
+          </div>
+          <div class="empty-state" id="integration-loop">Control loop: phone/Siri/Shortcut/share sheet -> CopelandOS inbox -> classifier -> planner -> provider router or AI council -> safe tool registry -> Obsidian memory -> Cursor/Codex task -> draft PR -> review status.</div>
+        </article>
+      </section>
+
       <!-- ── Tool / MCP Registry ── -->
       <section class="section" id="tools">
         <div class="section-head"><div><h2>Tool + MCP registry</h2><p>Allowlist-first — no random servers installed</p></div></div>
@@ -548,6 +568,9 @@
       promptOutput: document.getElementById('prompt-output'),
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
+      integrationChips: document.getElementById('integration-chips'),
+      integrationBadge: document.getElementById('integration-badge'),
+      integrationLoop: document.getElementById('integration-loop'),
     };
     let speechReplies = false;
     let recognition = null;
@@ -707,6 +730,7 @@
         ['Gmail', 'Draft-only', modules.gmail.connected],
         ['Obsidian vault', modules.vault.mode, modules.vault.connected],
         ['Local agent', 'Localhost + allowlist', modules.localAgent.connected],
+        ['Integration registry', `${modules.integrations.count} entries`, modules.integrations.connected],
       ];
       document.getElementById('signals').innerHTML = rows.map(([name, detail, connected]) =>
         `<div class="signal"><span class="dot ${connected ? 'ok' : ''}"></span><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></div><span class="signal-state">${connected ? 'connected' : 'not connected'}</span></div>`
@@ -727,6 +751,45 @@
       document.getElementById('model-badge').textContent = providers.some(p => p.configured) ? 'router ready' : 'none configured';
     }
 
+    function integrationChipClass(integration) {
+      if (integration.scaffold) return 'mock';
+      if (integration.riskLevel === 'high') return 'high';
+      if (integration.riskLevel === 'medium') return 'medium';
+      if (integration.available) return 'safe';
+      return '';
+    }
+
+    function renderIntegrations(integrations, architecture = []) {
+      if (!integrations || integrations.length === 0) {
+        els.integrationChips.innerHTML = '<span class="chip">integration registry unavailable</span>';
+        els.integrationBadge.textContent = 'offline';
+        els.integrationBadge.className = 'badge';
+        return;
+      }
+      els.integrationChips.innerHTML = integrations.map(integration => {
+        const state = integration.connected ? 'connected' : integration.scaffold ? 'scaffold' : integration.configured ? 'configured' : 'not configured';
+        return `<span class="chip ${integrationChipClass(integration)}">${escapeHtml(integration.id)} · ${escapeHtml(state)}</span>`;
+      }).join('');
+      const configured = integrations.filter(integration => integration.configured).length;
+      els.integrationBadge.textContent = `${configured}/${integrations.length} configured`;
+      els.integrationBadge.className = configured > 0 ? 'badge ok' : 'badge';
+      if (architecture.length > 0) {
+        els.integrationLoop.textContent = `Control loop: ${architecture.join(' -> ')}.`;
+      }
+    }
+
+    async function loadIntegrations() {
+      try {
+        const [registry, controlLoop] = await Promise.all([
+          api('/api/integrations'),
+          api('/api/integrations/control-loop'),
+        ]);
+        renderIntegrations(registry.integrations, controlLoop.architecture || []);
+      } catch (e) {
+        addLog('system', `Integrations: ${e.message}`);
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -736,6 +799,7 @@
         const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        await loadIntegrations();
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
@@ -789,6 +853,7 @@
     els.ideaForm.addEventListener('submit', captureIdea);
     document.getElementById('refresh-projects').addEventListener('click', loadFoundation);
     document.getElementById('refresh-ideas').addEventListener('click', loadIdeas);
+    document.getElementById('load-integrations').addEventListener('click', loadIntegrations);
     document.getElementById('clear-log').addEventListener('click', () => { els.transcript.innerHTML = ''; });
     document.getElementById('speech-toggle').addEventListener('click', event => {
       speechReplies = !speechReplies;
