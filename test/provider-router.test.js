@@ -101,3 +101,26 @@ test('provider router explains decision when provider is configured', () => {
   assert.ok(result.selected);
   assert.ok(result.reason);
 });
+
+test('provider router respects tool calling and structured output constraints', () => {
+  const env = { CEREBRAS_API_KEY: 'key', GROQ_API_KEY: 'key2' };
+  const result = chooseProvider({ taskType: 'fast', requiresToolCalling: true, requiresStructuredOutput: true }, env);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'groq');
+  assert.equal(result.supportsToolCalling, true);
+});
+
+test('provider router respects local privacy constraint', () => {
+  const env = { GROQ_API_KEY: 'key', OLLAMA_BASE_URL: 'http://127.0.0.1:11434' };
+  const result = chooseProvider({ taskType: 'reasoning', privacyTier: 'local' }, env);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'ollama');
+  assert.equal(result.privacyTier, 'local');
+});
+
+test('routing explanation includes task constraints and rate limited providers', () => {
+  const result = explainRoutingDecision({ taskType: 'fast', rateLimitedProviders: ['groq'], maxCostTier: 'free-tier' }, { GROQ_API_KEY: 'key', CEREBRAS_API_KEY: 'key2' });
+  assert.equal(result.decision, 'provider-selected');
+  assert.equal(result.selected.id, 'cerebras');
+  assert.deepEqual(result.taskConstraints.rateLimitedProviders, ['groq']);
+});

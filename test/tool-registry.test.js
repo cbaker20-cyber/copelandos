@@ -29,18 +29,21 @@ test('tool registry blocks high-risk tools', () => {
   assert.equal(result.ok, false);
   assert.equal(result.allowed, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('tool registry blocks deploy actions', () => {
   const result = checkToolPermission('deploy', 'deploy');
   assert.equal(result.ok, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('tool registry blocks screen control', () => {
   const result = checkToolPermission('screen-control', 'take_screenshot');
   assert.equal(result.ok, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('tool registry allows read-only github with permitted action', () => {
@@ -79,6 +82,7 @@ test('MCP registry is allowlist-first', () => {
   assert.equal(result.ok, false);
   assert.equal(result.allowed, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('MCP registry returns scaffold-only status for inactive servers', () => {
@@ -122,6 +126,7 @@ test('tool registry blocks file deletion', () => {
   const result = checkToolPermission('files-delete', 'delete_file');
   assert.equal(result.ok, false);
   assert.equal(result.blocked, true);
+  assert.equal(result.confirmation_required, true);
 });
 
 test('vault path note is allowed via obsidian vault tool', () => {

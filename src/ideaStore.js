@@ -17,6 +17,7 @@ const VALID_SOURCES = new Set([
 const MAX_TEXT_LENGTH = 5000;
 const MAX_TAG_LENGTH = 64;
 const MAX_TAGS = 10;
+const MAX_PROJECT_LENGTH = 80;
 
 function generateId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -27,12 +28,25 @@ function generateId() {
 }
 
 function sanitizeText(value, maxLength = MAX_TEXT_LENGTH) {
-  const str = String(value || '').trim();
+  const str = String(value || '')
+    .normalize('NFKC')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim();
   return str.slice(0, maxLength);
+}
+
+function sanitizeProject(value) {
+  const project = sanitizeText(value, MAX_PROJECT_LENGTH)
+    .replace(/[<>:"\\|?*\0]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!project || project.includes('..') || /[\\/]/.test(project)) return null;
+  return project;
 }
 
 function sanitizeTag(value) {
   return String(value || '')
+    .normalize('NFKC')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
@@ -42,23 +56,24 @@ function sanitizeTag(value) {
 }
 
 function sanitizeTags(raw) {
-  if (!Array.isArray(raw)) return [];
-  return raw
+  const values = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+  return values
     .map(sanitizeTag)
     .filter(Boolean)
     .slice(0, MAX_TAGS);
 }
 
 export function validateIdeaInput(body) {
-  const text = sanitizeText(body.text);
+  const rawText = String(body.text || '');
+  const text = sanitizeText(rawText);
   if (!text) return { ok: false, error: 'Idea text is required.' };
-  if ((body.text || '').length > MAX_TEXT_LENGTH) {
+  if (rawText.length > MAX_TEXT_LENGTH) {
     return { ok: false, error: `Idea text exceeds ${MAX_TEXT_LENGTH} character limit.` };
   }
 
   const source = VALID_SOURCES.has(body.source) ? body.source : 'manual';
-  const tags = sanitizeTags(body.tags);
-  const project = sanitizeText(body.project, 80) || null;
+  const tags = sanitizeTags(body.tags || body.tag);
+  const project = sanitizeProject(body.project);
   const urgency = ['low', 'medium', 'high'].includes(body.urgency) ? body.urgency : 'medium';
 
   return { ok: true, text, source, tags, project, urgency };
@@ -102,6 +117,36 @@ export function listIdeas({ status, limit = 50, offset = 0 } = {}) {
   };
 }
 
+export function getIdeaStats() {
+  const stats = {
+    total: inbox.size,
+    byStatus: {},
+    byRisk: {},
+    bySource: {},
+  };
+  for (const status of VALID_STATUSES) stats.byStatus[status] = 0;
+  for (const idea of inbox.values()) {
+    stats.byStatus[idea.status] = (stats.byStatus[idea.status] || 0) + 1;
+    const risk = idea.riskLevel || 'unknown';
+    stats.byRisk[risk] = (stats.byRisk[risk] || 0) + 1;
+    stats.bySource[idea.source] = (stats.bySource[idea.source] || 0) + 1;
+  }
+  return stats;
+}
+
+export function getProjectQueues() {
+  const queues = {};
+  for (const idea of inbox.values()) {
+    const project = idea.project || 'unassigned';
+    if (!queues[project]) queues[project] = [];
+    queues[project].push(idea);
+  }
+  for (const project of Object.keys(queues)) {
+    queues[project].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  return queues;
+}
+
 export function updateIdea(id, patch) {
   const idea = inbox.get(String(id));
   if (!idea) return null;
@@ -117,6 +162,18 @@ export function updateIdea(id, patch) {
   return idea;
 }
 
+export function planIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'planned' });
+}
+
+export function dismissIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) return null;
+  return updateIdea(id, { status: 'dismissed' });
+}
+
 export function triageIdea(id, triageData) {
   const idea = getIdea(id);
   if (!idea) return null;
@@ -124,6 +181,10 @@ export function triageIdea(id, triageData) {
     return { ok: false, error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` };
   }
   return { ok: true, idea: updateIdea(id, triageData) };
+}
+
+export function _clearInbox() {
+  inbox.clear();
 }
 
 export { VALID_STATUSES, VALID_SOURCES };

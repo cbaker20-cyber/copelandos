@@ -35,6 +35,8 @@ test('capture valid idea returns 201 with classified idea', async () => {
   assert.ok(data.idea.createdAt);
   assert.ok(data.idea.updatedAt);
   assert.ok(data.classification);
+  assert.equal(data.vault.ideaNote.mode, 'mock');
+  assert.equal(data.vault.dailyAppend.mode, 'mock');
 });
 
 test('reject empty idea text returns 400', async () => {
@@ -80,6 +82,17 @@ test('valid sources are accepted', async () => {
   }
 });
 
+test('single tag and project fields are sanitized on capture', async () => {
+  const { data } = await postIdea({
+    text: 'remember catalase lab analysis',
+    source: 'shortcuts',
+    tag: 'Mobile Idea!',
+    project: '../unsafe/project',
+  });
+  assert.deepEqual(data.idea.tags, ['mobile-idea']);
+  assert.equal(data.idea.project, null);
+});
+
 test('GET /api/ideas returns idea list', async () => {
   // First capture an idea
   await postIdea({ text: 'list test idea', source: 'manual' });
@@ -89,6 +102,19 @@ test('GET /api/ideas returns idea list', async () => {
   assert.equal(data.ok, true);
   assert.ok(Array.isArray(data.ideas));
   assert.ok(typeof data.total === 'number');
+});
+
+test('GET /api/ideas/stats and /api/project-queue summarize inbox', async () => {
+  await postIdea({ text: 'queue this CopelandOS idea', source: 'manual', project: 'copelandos' });
+  const statsResponse = await worker.fetch(makeRequest('/api/ideas/stats'), {}, {});
+  const stats = await statsResponse.json();
+  assert.equal(statsResponse.status, 200);
+  assert.ok(stats.stats.total >= 1);
+
+  const queueResponse = await worker.fetch(makeRequest('/api/project-queue'), {}, {});
+  const queue = await queueResponse.json();
+  assert.equal(queueResponse.status, 200);
+  assert.ok(Array.isArray(queue.queues.copelandos));
 });
 
 test('GET /api/ideas/:id returns a specific idea', async () => {
@@ -121,6 +147,41 @@ test('POST /api/ideas/:id/triage updates idea status', async () => {
   assert.equal(response.status, 200);
   assert.equal(data.ok, true);
   assert.equal(data.idea.status, 'triaged');
+});
+
+test('POST /api/ideas/:id/plan and dismiss update idea status without execution', async () => {
+  const { data: created } = await postIdea({ text: 'plan a safe docs update', source: 'manual' });
+  const id = created.idea.id;
+  const planResponse = await worker.fetch(makeRequest(`/api/ideas/${id}/plan`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  }), {}, {});
+  const planned = await planResponse.json();
+  assert.equal(planResponse.status, 200);
+  assert.equal(planned.idea.status, 'planned');
+  assert.ok(planned.plan.steps.length > 0);
+
+  const dismissResponse = await worker.fetch(makeRequest(`/api/ideas/${id}/dismiss`, {
+    method: 'POST',
+    body: '{}',
+  }), {}, {});
+  const dismissed = await dismissResponse.json();
+  assert.equal(dismissResponse.status, 200);
+  assert.equal(dismissed.idea.status, 'dismissed');
+});
+
+test('POST /api/ideas/:id/convert accepts requested note type aliases', async () => {
+  const { data: created } = await postIdea({ text: 'capture a research note about catalase', source: 'manual' });
+  const id = created.idea.id;
+  const convertReq = makeRequest(`/api/ideas/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'research-note' }),
+  });
+  const response = await worker.fetch(convertReq, {}, {});
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.idea.status, 'converted-to-note');
+  assert.match(data.document.path, /^Research\//);
 });
 
 test('POST /api/capture/idea classifies coding tasks correctly', async () => {
@@ -193,4 +254,18 @@ test('Cursor prompt includes repo, constraints, and forbidden actions', async ()
   const data = await response.json();
   assert.ok(data.prompt.includes('cbaker20-cyber/JazzBackend'));
   assert.ok(data.prompt.toLowerCase().includes('forbidden') || data.prompt.toLowerCase().includes('constraints'));
+});
+
+test('brain and orchestration status endpoints are honest scaffolds', async () => {
+  const brainResponse = await worker.fetch(makeRequest('/api/brain/status'), {}, {});
+  const brain = await brainResponse.json();
+  assert.equal(brainResponse.status, 200);
+  assert.equal(brain.execution, 'disabled');
+  assert.equal(brain.council, 'mock-mode');
+
+  const orchestrationResponse = await worker.fetch(makeRequest('/api/orchestration/status'), {}, {});
+  const orchestration = await orchestrationResponse.json();
+  assert.equal(orchestrationResponse.status, 200);
+  assert.equal(orchestration.automaticExecution, false);
+  assert.ok(orchestration.pipeline.includes('provider router'));
 });

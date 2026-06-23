@@ -157,25 +157,91 @@ export function createTaskBrief(task) {
   };
 }
 
+function projectPromptRules(project) {
+  const rules = {
+    'score-scanner': ['Score Scanner: no fake PDF/photo OMR; MusicXML-only unless explicitly implemented.'],
+    'jazz-backend': ['JazzBackend: preserve musical constraints and do not weaken MusicXML validity tests.'],
+    'band-council-agent': ['Band Council: privacy-safe and draft-only; never include private student data.'],
+    'connectome-perturbation': ['Connectome: evidence-first; do not invent research, provenance, or conclusions.'],
+    copelandos: ['CopelandOS: security-first; no fake connected provider/tool states.'],
+  };
+  return rules[project?.id] || [];
+}
+
+function filesToInspect(project, classification) {
+  const common = ['README.md', 'package.json'];
+  if (project?.id === 'copelandos') {
+    return [...common, 'worker.js', 'src/', 'config/', 'test/', 'docs/security-model.md'];
+  }
+  if (classification.category === 'design') return [...common, 'frontend/', 'src/'];
+  if (classification.category === 'research') return [...common, 'docs/', 'data/', 'notebooks/'];
+  return [...common, 'src/', 'test/', 'docs/'];
+}
+
+function testsToRun(project) {
+  if (project?.id === 'copelandos') {
+    return [
+      'npm test',
+      'node --check worker.js',
+      'node --check src/foundationApi.js',
+      'node --check src/vault.js',
+      'git diff --check',
+    ];
+  }
+  return ['Run the repo test suite relevant to the changed files.', 'Run syntax/type checks configured by the repo.'];
+}
+
+function draftPrTitle(agent, project, goal) {
+  const target = project?.displayName || 'Captured Idea';
+  return `${agent}: ${target} - ${String(goal || 'task').slice(0, 60)}`;
+}
+
 export function createCursorPrompt({ idea, project, task }) {
   const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
+  const goal = task || idea?.text || '';
+  const classification = classifyTask(goal);
+  const projectRules = projectPromptRules(proj);
   const lines = [
-    `You are the Cursor implementation agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    proj ? `Current phase: ${proj.currentPhase}` : '',
-    `Idea: ${idea?.id ? `[${idea.id}]` : ''} ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
-    `Risk level: ${classification.riskLevel}`,
+    'You are the Cursor implementation agent for a CopelandOS-generated task.',
+    '',
+    'REPO:',
+    proj ? proj.repo : 'Unknown repo; inspect user-provided context before editing.',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'captured-idea',
+    '',
+    'GOAL:',
+    goal,
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect(proj, classification).map(file => `- ${file}`),
     '',
     'CONSTRAINTS:',
+    proj ? `- Project: ${proj.displayName}` : '- Project: unspecified',
+    proj ? `- Current phase: ${proj.currentPhase}` : '',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
+    ...projectRules.map(rule => `- ${rule}`),
+    '',
+    'SAFETY RULES:',
+    '- Do not commit secrets, tokens, OAuth codes, refresh tokens, real email content, .env, or .dev.vars.',
+    '- Do not send email, deploy, merge PRs, delete files, run arbitrary shell, or control screen/mouse/keyboard.',
+    '- Captured ideas are planning inputs only; do not execute them automatically.',
+    '- Keep provider/tool status honest; configured requires an env var and connected requires live evidence.',
+    '- Preserve existing security tests and exact-origin CORS behavior.',
+    '',
+    'TESTS TO RUN:',
+    ...testsToRun(proj).map(test => `- ${test}`),
+    '',
+    'DRAFT PR TITLE:',
+    draftPrTitle('Cursor', proj, goal),
+    '',
+    'FORBIDDEN ACTIONS:',
     ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
     ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
-    '- Do not commit secrets, tokens, or private data.',
-    '- Use a branch and draft PR. Do not push to main directly.',
-    '- Stop and report blockers instead of guessing.',
-    '- Run tests before proposing a merge.',
+    '- FORBIDDEN: autonomous execution of captured ideas',
+    '- FORBIDDEN: fake connected badges or claims',
     '',
     'REQUIRED STEPS:',
     '1. Read the repository and understand the existing code.',
@@ -185,7 +251,7 @@ export function createCursorPrompt({ idea, project, task }) {
     '5. Open a draft PR with a clear description.',
     '',
     proj ? `SAFE ACTIONS: ${proj.safeActions.join(', ')}` : '',
-    `TASK BRIEF: ${task || idea?.text || 'See idea above'}`,
+    `TASK BRIEF: ${goal || 'See idea above'}`,
   ].filter(Boolean);
 
   return lines.join('\n');
@@ -193,13 +259,23 @@ export function createCursorPrompt({ idea, project, task }) {
 
 export function createCodexPrompt({ idea, project, task }) {
   const proj = projectRegistry.projects.find(p => p.id === project);
-  const classification = classifyTask(task || idea?.text || '');
+  const goal = task || idea?.text || '';
+  const classification = classifyTask(goal);
+  const projectRules = projectPromptRules(proj);
   const lines = [
-    `You are the Codex architecture and security agent${proj ? ` for ${proj.displayName}` : ''}.`,
-    proj ? `Repository: ${proj.repo}` : '',
-    `Goal: ${task || idea?.text || ''}`,
-    `Category: ${classification.category}`,
-    `Skill: ${classification.skill || 'general'}`,
+    'You are the Codex architecture and security agent for a CopelandOS-generated task.',
+    '',
+    'REPO:',
+    proj ? proj.repo : 'Unknown repo; inspect user-provided context before editing.',
+    '',
+    'ISSUE OR IDEA ID:',
+    idea?.id || 'captured-idea',
+    '',
+    'GOAL:',
+    goal,
+    '',
+    'FILES TO INSPECT:',
+    ...filesToInspect(proj, classification).map(file => `- ${file}`),
     '',
     'REVIEW FOCUS:',
     '- Architecture decisions and trade-offs',
@@ -208,13 +284,33 @@ export function createCodexPrompt({ idea, project, task }) {
     '- Dependency choices and risk',
     '',
     'CONSTRAINTS:',
-    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
-    '- Do not claim integration is connected without evidence.',
-    '- Do not weaken existing tests.',
-    '- Never add secrets or tokens to the codebase.',
+    proj ? `- Project: ${proj.displayName}` : '- Project: unspecified',
+    `- Category: ${classification.category}`,
+    `- Skill: ${classification.skill || 'general'}`,
+    `- Risk level: ${classification.riskLevel}`,
+    ...projectRules.map(rule => `- ${rule}`),
     '',
-    proj ? `FORBIDDEN CLAIMS: ${proj.forbiddenClaims.join('; ')}` : '',
-    `TASK: ${task || idea?.text || 'See idea above'}`,
+    'SAFETY RULES:',
+    '- Do not add secrets, tokens, OAuth codes, refresh tokens, real email content, .env, or .dev.vars.',
+    '- Do not send email, deploy, merge PRs, delete files, run arbitrary shell, or control screen/mouse/keyboard.',
+    '- Treat Gmail as draft-only and local/MCP tools as allowlist-first.',
+    '- Never claim a provider/tool/vault connector is connected without live evidence.',
+    '',
+    'TESTS TO RUN:',
+    ...testsToRun(proj).map(test => `- ${test}`),
+    '',
+    'DRAFT PR TITLE:',
+    draftPrTitle('Codex', proj, goal),
+    '',
+    'FORBIDDEN ACTIONS:',
+    ...(proj ? proj.forbiddenActions.map(a => `- FORBIDDEN: ${a}`) : []),
+    ...(proj ? proj.forbiddenClaims.map(c => `- FORBIDDEN CLAIM: ${c}`) : []),
+    '- FORBIDDEN: weaken existing tests',
+    '- FORBIDDEN: fake connected claims',
+    '- FORBIDDEN: automatic side-effectful actions',
+    '- Do not claim integration is connected without evidence.',
+    '',
+    `TASK: ${goal || 'See idea above'}`,
   ].filter(Boolean);
 
   return lines.join('\n');

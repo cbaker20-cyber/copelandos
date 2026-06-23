@@ -100,10 +100,27 @@ test('createCursorPrompt includes repo and constraints', () => {
   assert.ok(prompt.toLowerCase().includes('tests') || prompt.toLowerCase().includes('test'));
 });
 
+test('Cursor prompt includes required orchestration sections', () => {
+  const prompt = createCursorPrompt({ idea: { id: 'idea-123', text: 'secure capture' }, project: 'copelandos', task: 'secure the capture endpoint' });
+  for (const section of ['REPO:', 'ISSUE OR IDEA ID:', 'GOAL:', 'FILES TO INSPECT:', 'CONSTRAINTS:', 'SAFETY RULES:', 'TESTS TO RUN:', 'DRAFT PR TITLE:', 'FORBIDDEN ACTIONS:']) {
+    assert.ok(prompt.includes(section), `missing ${section}`);
+  }
+  assert.ok(prompt.includes('worker.js'));
+  assert.ok(prompt.includes('CopelandOS: security-first'));
+});
+
 test('createCodexPrompt includes security review focus', () => {
   const prompt = createCodexPrompt({ idea: { id: 'test-2', text: 'review auth module' }, project: 'copelandos', task: 'review the permission engine' });
   assert.ok(prompt.toLowerCase().includes('security'));
   assert.ok(prompt.toLowerCase().includes('forbidden') || prompt.toLowerCase().includes('test'));
+});
+
+test('Codex prompt includes required orchestration sections and project rules', () => {
+  const prompt = createCodexPrompt({ idea: { id: 'test-4', text: 'scan a score' }, project: 'score-scanner', task: 'inspect MusicXML score ordering' });
+  for (const section of ['REPO:', 'ISSUE OR IDEA ID:', 'GOAL:', 'FILES TO INSPECT:', 'SAFETY RULES:', 'TESTS TO RUN:', 'DRAFT PR TITLE:', 'FORBIDDEN ACTIONS:']) {
+    assert.ok(prompt.includes(section), `missing ${section}`);
+  }
+  assert.ok(prompt.includes('MusicXML-only'));
 });
 
 test('createCursorPrompt has forbidden actions from project config', () => {

@@ -41,8 +41,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Tool '${toolId}' is permanently blocked.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high',
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -51,8 +52,9 @@ export function checkToolPermission(toolId, action) {
       ok: false,
       allowed: false,
       reason: `Action '${action}' is blocked for tool '${toolId}'.`,
-      confirmation_required: false,
+      confirmation_required: tool.riskLevel === 'high' || tool.confirmationRequired,
       blocked: true,
+      riskLevel: tool.riskLevel,
     };
   }
 
@@ -102,6 +104,7 @@ export function checkMcpPermission(serverId, operation) {
       allowed: false,
       reason: `MCP server '${serverId}' is not in the allowlist registry.`,
       blocked: true,
+      confirmation_required: true,
       policyNote: mcpConfig.policy,
     };
   }
@@ -121,6 +124,7 @@ export function checkMcpPermission(serverId, operation) {
       allowed: false,
       reason: `Operation '${operation}' is blocked for MCP server '${serverId}'.`,
       blocked: true,
+      confirmation_required: server.riskLevel === 'high',
     };
   }
 
