@@ -28,6 +28,7 @@ jobs:
           node --check worker.js
           node --check src/foundationApi.js
           node --check src/vault.js
+          node --check src/hermesAgent.js
           node --check src/commandCenterHtml.js
           node --check local-agent/server.js
           node --check local-agent/actions.js
