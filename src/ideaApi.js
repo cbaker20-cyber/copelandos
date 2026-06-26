@@ -22,26 +22,45 @@ function methodGuard(request, allowed, json) {
   return null;
 }
 
+function captureBodyFromRequest(request, body) {
+  if (request.method !== 'GET') return body;
+  const url = new URL(request.url);
+  return {
+    text: url.searchParams.get('text') || url.searchParams.get('q') || '',
+    source: url.searchParams.get('source') || 'ios-shortcuts',
+    urgency: url.searchParams.get('urgency') || 'medium',
+    project: url.searchParams.get('project') || undefined,
+    tags: (url.searchParams.get('tags') || 'ios,shortcut')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+  };
+}
+
+async function captureIdea({ request, body, env, json }) {
+  const capture = captureBodyFromRequest(request, body);
+  const validation = validateIdeaInput(capture);
+  if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
+
+  const classification = classifyWithContext(validation.text, {
+    project: validation.project,
+    tags: validation.tags,
+  });
+
+  const idea = createIdea(validation, classification);
+  const vault = {
+    ideaNote: await persistVaultDocument(writeIdeaNote(idea), env),
+    dailyAppend: await persistVaultDocument(appendIdeaToDailyNote(idea), env),
+  };
+  return json({ ok: true, idea, classification, vault, shortcut: request.method === 'GET' }, 201);
+}
+
 export async function handleIdeaRequest({ path, request, body, env, json }) {
-  // POST /api/capture/idea
+  // POST or GET /api/capture/idea. GET exists so Apple Shortcuts can use a simple URL action.
   if (path === '/api/capture/idea') {
-    const guard = methodGuard(request, ['POST'], json);
+    const guard = methodGuard(request, ['POST', 'GET'], json);
     if (guard) return guard;
-
-    const validation = validateIdeaInput(body);
-    if (!validation.ok) return json({ ok: false, error: validation.error }, 400);
-
-    const classification = classifyWithContext(validation.text, {
-      project: validation.project,
-      tags: validation.tags,
-    });
-
-    const idea = createIdea(validation, classification);
-    const vault = {
-      ideaNote: await persistVaultDocument(writeIdeaNote(idea), env),
-      dailyAppend: await persistVaultDocument(appendIdeaToDailyNote(idea), env),
-    };
-    return json({ ok: true, idea, classification, vault }, 201);
+    return captureIdea({ request, body, env, json });
   }
 
   // GET /api/ideas/stats
@@ -123,7 +142,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
     const ideaId = subMatch[1];
     const subAction = subMatch[2];
 
-    // POST /api/ideas/:id/triage
     if (subAction === 'triage') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
@@ -145,7 +163,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       return json({ ok: true, idea: result.idea, plan });
     }
 
-    // POST /api/ideas/:id/plan
     if (subAction === 'plan') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
@@ -156,7 +173,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       return json({ ok: true, idea: updated, plan });
     }
 
-    // POST /api/ideas/:id/dismiss
     if (subAction === 'dismiss') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
@@ -165,7 +181,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       return json({ ok: true, idea: dismissIdea(ideaId) });
     }
 
-    // POST /api/ideas/:id/convert
     if (subAction === 'convert') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
@@ -189,7 +204,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       }
     }
 
-    // POST /api/ideas/:id/cursor-prompt
     if (subAction === 'cursor-prompt') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
@@ -202,7 +216,6 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
       return json({ ok: true, idea: updated, prompt, kind: 'cursor' });
     }
 
-    // POST /api/ideas/:id/codex-prompt
     if (subAction === 'codex-prompt') {
       const guard = methodGuard(request, ['POST'], json);
       if (guard) return guard;
