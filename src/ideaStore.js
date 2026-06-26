@@ -11,7 +11,7 @@ const VALID_STATUSES = new Set([
 ]);
 
 const VALID_SOURCES = new Set([
-  'siri', 'shortcuts', 'mobile-web', 'dashboard', 'manual',
+  'siri', 'shortcuts', 'ios-shortcuts', 'mobile-web', 'dashboard', 'manual',
 ]);
 
 const MAX_TEXT_LENGTH = 5000;
@@ -178,13 +178,19 @@ export function triageIdea(id, triageData) {
   const idea = getIdea(id);
   if (!idea) return null;
   if (!VALID_STATUSES.has(triageData.status || '')) {
-    return { ok: false, error: `Invalid status. Must be one of: ${[...VALID_STATUSES].join(', ')}` };
+    return { ok: false, error: `Invalid status. Use one of: ${[...VALID_STATUSES].join(', ')}` };
   }
-  return { ok: true, idea: updateIdea(id, triageData) };
+  const updates = {
+    status: triageData.status,
+    category: triageData.category,
+    skill: triageData.skill,
+    riskLevel: triageData.riskLevel,
+    suggestedAction: triageData.suggestedAction,
+    confirmationRequired: Boolean(triageData.confirmationRequired),
+    tags: sanitizeTags(triageData.tags || idea.tags),
+    project: sanitizeProject(triageData.project || idea.project),
+  };
+  return { ok: true, idea: updateIdea(id, updates) };
 }
 
-export function _clearInbox() {
-  inbox.clear();
-}
-
-export { VALID_STATUSES, VALID_SOURCES };
+export { VALID_STATUSES };

@@ -2,6 +2,7 @@ import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
+import { routeHermesTask } from './hermesAgent.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -76,6 +77,7 @@ export async function handleFoundationRequest({
       canonicalBackend: 'worker.js',
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
+        hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
@@ -83,6 +85,11 @@ export async function handleFoundationRequest({
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
     });
+  }
+
+  if (path === '/api/hermes/route') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    return json(routeHermesTask(body, env));
   }
 
   if (path === '/api/projects') {
