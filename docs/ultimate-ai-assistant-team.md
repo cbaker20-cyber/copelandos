@@ -1,70 +1,51 @@
 # Ultimate CopelandOS AI assistant team
 
-This stack is designed to maximize free/open-source/local usage while keeping dangerous actions approval-gated.
+CopelandOS is cloud/connectors/GitHub-first. No local agents, no PC bridge, and no real-desktop control are part of this plan.
 
-## Core local stack
+## Core idea
 
-1. Ollama: easiest local model runtime on Windows.
-2. Open WebUI: local browser dashboard for chatting with local/routed models.
-3. LiteLLM: OpenAI-compatible proxy that can route between Ollama, free cloud keys, and paid keys if added later.
-4. Qdrant or ChromaDB: private vector memory over notes, code, and project files.
+Hermes should build a large shared context pack for each project, then hand that same context to specialist agents. The context pack is the single source of truth for current project state, instructions, constraints, recent decisions, and next actions.
+
+## Shared context endpoints
+
+```text
+GET  /api/context/status
+POST /api/context/pack
+POST /api/hermes/route with { "withContext": true }
+```
+
+## Context sources
+
+- Project registry: repos, phases, safe actions, forbidden actions, next tasks.
+- GitHub connector: PRs, issues, branches, CI, changed files, review comments.
+- CopelandVault: daily notes, project updates, decisions, captured ideas.
+- Google Workspace: Gmail drafts, Calendar obligations, Drive/Docs/Sheets context.
+- Conversation context: current instructions and recent decisions.
+- Automation registry: Mimo, Ornith, GitHub Actions, Google Workspace, Slack, n8n/Make/Zapier previews.
 
 ## Agent team
 
-- Hermes: CopelandOS router and Chief of Staff.
-- Scout: research planner and source collector.
-- Engineer: code/test/PR planner.
-- Secretary: email/calendar/drive/slack draft manager.
-- Mimo: tutor/lesson/quiz surface.
-- Ornith 1.0: experimental frontier harness/eval builder, sandbox-required.
-- OpenHands: sandboxed coding agent.
-- Aider: local git-aware pair programmer.
-- browser-use: sandboxed browser automation.
-- LangGraph: durable workflow graphs.
-- AutoGen/CrewAI: multi-agent team experiments.
+- Hermes: Chief router and context compiler.
+- Architect: repo architecture and system design.
+- Engineer: code, tests, and PR prompts.
+- Secretary: Gmail, Calendar, Drive, Sheets, and Band Council operations.
+- Researcher: source-grounded evidence and citations.
+- Tutor: Mimo-style lessons and quizzes.
+- Ornith 1.0: experimental harness/eval designer, sandbox-required.
 
-## First local models
+## Big context model strategy
 
-Pull these first because they fit normal student hardware better than giant 70B models:
+Use the largest configured cloud context window for synthesis. Prefer model routing in this order when available:
 
-```powershell
-ollama pull qwen2.5-coder:14b
-ollama pull qwen3:8b
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-```
-
-Use `qwen2.5-coder:14b` for coding, `qwen3:8b` for planning/reasoning, `llama3.2:3b` for fast cheap routing, and `nomic-embed-text` for memory.
-
-## Run it
-
-From the repo root on Windows:
-
-```powershell
-.\local-agent\start-ai-team.ps1
-```
-
-Then open:
-
-```text
-http://127.0.0.1:3000
-```
-
-## Cloudflare secrets after local stack works
-
-Only add local URLs through Tailscale or another private network. Do not expose Ollama, LiteLLM, Qdrant, or Open WebUI to the public internet.
-
-```text
-OLLAMA_BASE_URL=http://YOUR_TAILSCALE_PC_IP:11434
-OPEN_WEBUI_URL=http://YOUR_TAILSCALE_PC_IP:3000
-LITELLM_BASE_URL=http://YOUR_TAILSCALE_PC_IP:4000
-QDRANT_URL=http://YOUR_TAILSCALE_PC_IP:6333
-```
+1. Gemini/OpenRouter large-context model for giant project context.
+2. Groq/Cerebras for fast smaller subtasks.
+3. GitHub/Cursor/Codex-style coding agents for repo-specific implementation prompts.
+4. Deterministic templates when no AI provider is configured.
 
 ## Hard rules
 
-- Local models can plan, summarize, draft, classify, and suggest.
-- Local agents can run sandboxed tests.
-- No tool fires webhooks, sends email, posts Slack, edits Calendar/Drive, deletes files, deploys, merges, or controls the real desktop without explicit approval.
-- Browser automation uses a separate browser profile/container, not your normal Google account session.
-- Secrets stay in Cloudflare or local `.env`, never GitHub.
+- No local agents.
+- No PC bridge.
+- No live desktop control.
+- No tool fires webhooks, sends email, posts Slack, edits Calendar/Drive, deletes files, deploys, or merges without explicit approval.
+- Secrets stay in Cloudflare Worker secrets or connector settings, never GitHub.
