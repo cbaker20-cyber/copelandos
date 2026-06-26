@@ -13,6 +13,7 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.match(html, /Create Gmail draft/);
   assert.match(html, /Save \/ preview note/);
   assert.match(html, /api\/capture\/idea/);
+  assert.match(html, /Google Workspace setup/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {
@@ -48,6 +49,18 @@ test('Hermes blocks high-risk automation and produces a review prompt', async ()
   assert.equal(result.risk.level, 'high');
   assert.equal(result.requiresHumanApproval, true);
   assert.match(result.cursorPrompt, /Do not send email, merge PRs, deploy/);
+});
+
+test('Apple Shortcuts can capture with an easy GET URL', async () => {
+  const response = await worker.fetch(new Request('https://worker.example/api/capture/idea?text=Shortcut%20GET%20works&source=ios-shortcuts&urgency=medium&tags=ios,shortcut'), {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 201);
+  assert.equal(result.ok, true);
+  assert.equal(result.shortcut, true);
+  assert.equal(result.idea.text, 'Shortcut GET works');
+  assert.equal(result.idea.source, 'ios-shortcuts');
+  assert.ok(result.idea.tags.includes('ios'));
 });
 
 test('Obsidian compatibility save uses safe mock vault path without credentials', async () => {
