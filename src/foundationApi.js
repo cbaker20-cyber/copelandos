@@ -3,6 +3,7 @@ import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
+import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -69,6 +70,7 @@ export async function handleFoundationRequest({
   if (path === '/api/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
+    const integrations = listAutomationIntegrations(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -78,6 +80,7 @@ export async function handleFoundationRequest({
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
+        automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
@@ -90,6 +93,23 @@ export async function handleFoundationRequest({
   if (path === '/api/hermes/route') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
     return json(routeHermesTask(body, env));
+  }
+
+  if (path === '/api/automation/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({ ok: true, integrations: listAutomationIntegrations(env) });
+  }
+
+  if (path === '/api/automation/route') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    return json(routeAutomationTask(body.task || body.text || '', env));
+  }
+
+  if (path.startsWith('/api/automation/integrations/')) {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const id = decodeURIComponent(path.slice('/api/automation/integrations/'.length));
+    const integration = getAutomationIntegration(id, env);
+    return integration ? json({ ok: true, integration }) : json({ ok: false, error: 'Automation integration not found.' }, 404);
   }
 
   if (path === '/api/projects') {
