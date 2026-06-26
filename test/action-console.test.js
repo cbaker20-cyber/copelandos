@@ -15,6 +15,41 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.match(html, /api\/capture\/idea/);
 });
 
+test('Hermes routes Mimo-style learning without tool execution', async () => {
+  const request = new Request('https://worker.example/api/hermes/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'Use Mimo to teach me the Worker routing code', source: 'console' }),
+  });
+  const response = await worker.fetch(request, {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.ok, true);
+  assert.equal(result.agent, 'hermes');
+  assert.equal(result.mode, 'router-only');
+  assert.equal(result.route, 'mimo_learning_plan');
+  assert.equal(result.providerRecommendation.primary, 'mimo-scaffold');
+  assert.equal(result.providerRecommendation.connected, false);
+  assert.ok(result.blockedActions.includes('send_email'));
+  assert.ok(result.blockedActions.includes('merge_pr'));
+});
+
+test('Hermes blocks high-risk automation and produces a review prompt', async () => {
+  const request = new Request('https://worker.example/api/hermes/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'deploy and merge the PR then send email', source: 'console' }),
+  });
+  const response = await worker.fetch(request, {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.risk.level, 'high');
+  assert.equal(result.requiresHumanApproval, true);
+  assert.match(result.cursorPrompt, /Do not send email, merge PRs, deploy/);
+});
+
 test('Obsidian compatibility save uses safe mock vault path without credentials', async () => {
   const request = new Request('https://worker.example/api/obsidian/save', {
     method: 'POST',
