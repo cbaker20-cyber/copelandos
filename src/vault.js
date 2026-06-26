@@ -14,10 +14,17 @@ const SECRET_PATTERNS = [
   /\b(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}\b/,
   /\bsk-[A-Za-z0-9_-]{20,}\b/,
   /\bAIza[0-9A-Za-z_-]{20,}\b/,
+  /\b(?:GITHUB_TOKEN|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY|GROQ_KEY|CEREBRAS_KEY|GEMINI_KEY)\s*[:=]/i,
+];
+
+const PRIVATE_STUDENT_DATA_PATTERNS = [
+  /\b(?:student\s*id|student\s*number|date\s*of\s*birth|dob|home\s*address|parent\s*(?:phone|email)|guardian\s*(?:phone|email))\b/i,
+  /\b(?:iep|504\s*plan|discipline\s*record|attendance\s*record|grade\s*report|transcript)\b/i,
+  /\b\d{3}-\d{2}-\d{4}\b/,
 ];
 
 export const VAULT_STRUCTURE = Object.freeze([
-  'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates',
+  'Daily', 'Projects', 'School', 'BandCouncil', 'Music', 'Research', 'Decisions', 'Inbox', 'Templates', 'Ideas', 'Internships', 'Scholarships',
 ]);
 
 export const VAULT_TEMPLATES = Object.freeze({
@@ -46,10 +53,22 @@ export function sanitizePathSegment(value, fallback = 'note') {
   return safe;
 }
 
+function sanitizeFrontmatterValue(value, fallback = 'copelandos') {
+  return sanitizePathSegment(value, fallback).toLowerCase();
+}
+
+function sanitizeTags(tags) {
+  return (Array.isArray(tags) ? tags : [])
+    .map((tag) => sanitizeFrontmatterValue(tag, 'tag'))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
 export function validateVaultContent(content, { containsPrivateStudentData = false } = {}) {
   const text = String(content || '');
   if (containsPrivateStudentData) throw new Error('Private student data is not allowed in the vault integration.');
   if (SECRET_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential secret detected; vault write blocked.');
+  if (PRIVATE_STUDENT_DATA_PATTERNS.some((pattern) => pattern.test(text))) throw new Error('Potential private student data detected; vault write blocked.');
   return text;
 }
 
@@ -65,6 +84,35 @@ function createDocument(type, title, content, options = {}) {
     title: String(title || safeTitle),
     path: `${folder}/${safeTitle}.md`,
     content: `# ${String(title || safeTitle).trim()}\n\n${prefix}${safeContent}`,
+  };
+}
+
+export function writeGenericVaultNote({ title = 'Untitled Note', folder = 'Inbox', content = '', agent = 'copelandos', tags = [] } = {}, options = {}) {
+  const safeFolder = sanitizePathSegment(folder, 'Inbox');
+  const safeTitle = sanitizePathSegment(title, 'Untitled-Note');
+  const safeAgent = sanitizeFrontmatterValue(agent, 'copelandos');
+  const safeTags = ['copelandos', safeAgent, ...sanitizeTags(tags), safeFolder.toLowerCase()]
+    .filter((tag, index, all) => tag && all.indexOf(tag) === index)
+    .slice(0, 16);
+  const safeContent = validateVaultContent(content, options);
+  const today = new Date().toISOString().slice(0, 10);
+  const displayTitle = String(title || safeTitle).trim();
+  const frontmatter = [
+    '---',
+    `tags: [${safeTags.join(', ')}]`,
+    `date: ${today}`,
+    `agent: ${safeAgent}`,
+    'source: copelandos',
+    '---',
+    '',
+  ].join('\n');
+
+  return {
+    type: 'generic',
+    folder: safeFolder,
+    title: displayTitle,
+    path: `${safeFolder}/${safeTitle}.md`,
+    content: `${frontmatter}# ${displayTitle}\n\n${safeContent}`,
   };
 }
 
