@@ -36,6 +36,37 @@ test('Hermes routes Mimo-style learning without tool execution', async () => {
   assert.ok(result.blockedActions.includes('merge_pr'));
 });
 
+test('Automation registry includes Mimo, Ornith, and review-first automators', async () => {
+  const response = await worker.fetch(new Request('https://worker.example/api/automation/integrations'), {}, {});
+  const result = await response.json();
+  const ids = result.integrations.map((item) => item.id);
+
+  assert.equal(response.status, 200);
+  assert.equal(result.ok, true);
+  assert.ok(ids.includes('mimo'));
+  assert.ok(ids.includes('ornith'));
+  assert.ok(ids.includes('n8n'));
+  assert.ok(ids.includes('zapier'));
+  assert.ok(ids.includes('make'));
+  assert.ok(result.integrations.every((item) => Array.isArray(item.blockedActions)));
+});
+
+test('Hermes routes Ornith and webhook automation as approval-first plans', async () => {
+  const request = new Request('https://worker.example/api/hermes/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'Use Ornith or n8n to automate Drive cleanup with a webhook', source: 'console' }),
+  });
+  const response = await worker.fetch(request, {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.route, 'automation_plan');
+  assert.equal(result.requiresHumanApproval, true);
+  assert.equal(result.automation.execute, false);
+  assert.ok(result.blockedActions.includes('fire_webhook_without_approval'));
+});
+
 test('Hermes blocks high-risk automation and produces a review prompt', async () => {
   const request = new Request('https://worker.example/api/hermes/route', {
     method: 'POST',
