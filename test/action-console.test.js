@@ -16,6 +16,40 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.match(html, /Google Workspace setup/);
 });
 
+test('Shared context pack builds a cloud-only Hermes handoff', async () => {
+  const request = new Request('https://worker.example/api/context/pack', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'Work on CopelandOS shared context for projects', projectId: 'copelandos', urgency: 'high' }),
+  });
+  const response = await worker.fetch(request, {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, 'cloud-and-connector-only');
+  assert.equal(result.localAgents, false);
+  assert.ok(result.contextItems.length >= 2);
+  assert.match(result.handoffPrompt, /CopelandOS shared-context handoff/);
+  assert.ok(result.recommendedTeam.some((agent) => agent.id === 'hermes'));
+});
+
+test('Hermes can include shared context when requested', async () => {
+  const request = new Request('https://worker.example/api/hermes/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'Plan JazzBackend work with a big shared context window', source: 'console', withContext: true }),
+  });
+  const response = await worker.fetch(request, {}, {});
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.ok, true);
+  assert.equal(result.contextPack.mode, 'cloud-and-connector-only');
+  assert.equal(result.contextPack.localAgents, false);
+  assert.match(result.contextPack.handoffPrompt, /single source of truth/);
+});
+
 test('Hermes routes Mimo-style learning without tool execution', async () => {
   const request = new Request('https://worker.example/api/hermes/route', {
     method: 'POST',
