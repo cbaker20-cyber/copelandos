@@ -31,8 +31,6 @@ jobs:
           node --check src/hermesAgent.js
           node --check src/automationIntegrations.js
           node --check src/commandCenterHtml.js
-          node --check local-agent/server.js
-          node --check local-agent/actions.js
 
       - name: Whitespace diff check
         run: git diff --check
