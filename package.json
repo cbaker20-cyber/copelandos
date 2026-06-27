@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --test-reporter spec test/vault.test.js test/planner.test.js test/permissions.test.js test/model-router.test.js test/idea-capture.test.js test/tool-registry.test.js"
+    "test": "node --test --test-reporter spec test/command-router.test.js test/foundation-api.test.js test/worker-security.test.js test/provider-router.test.js test/idea-classifier.test.js test/project-registry.test.js"
   }
 }
