@@ -215,7 +215,9 @@ export async function handleFoundationRequest({
 
   if (path === '/api/remote/request-action') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    const permission = evaluatePermission(body.action, { confirmed: false });
     return json({
+      ...permission,
       ok: false,
       connected: false,
       queued: false,
