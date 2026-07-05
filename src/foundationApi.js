@@ -4,6 +4,7 @@ import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
+import { buildSharedContextPack, getSharedContextStatus } from './sharedContext.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -71,6 +72,7 @@ export async function handleFoundationRequest({
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
     const integrations = listAutomationIntegrations(env);
+    const sharedContext = getSharedContextStatus(env, projectRegistry);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -80,19 +82,31 @@ export async function handleFoundationRequest({
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
+        sharedContext: { connected: true, mode: sharedContext.mode, endpoint: '/api/context/pack', targetTokens: sharedContext.targetContextWindowTokens },
         automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
-        localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
+        localAgent: { connected: false, configured: false, message: 'Local agents are disabled by user preference.' },
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
     });
   }
 
+  if (path === '/api/context/status') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json(getSharedContextStatus(env, projectRegistry));
+  }
+
+  if (path === '/api/context/pack') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    return json(buildSharedContextPack(body, projectRegistry, env));
+  }
+
   if (path === '/api/hermes/route') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
-    return json(routeHermesTask(body, env));
+    const contextPack = body.withContext === true ? buildSharedContextPack(body, projectRegistry, env) : null;
+    return json({ ...routeHermesTask(body, env), contextPack });
   }
 
   if (path === '/api/automation/integrations') {
@@ -193,23 +207,22 @@ export async function handleFoundationRequest({
     return json({
       ok: true,
       connected: false,
-      configured: Boolean(env.LOCAL_AGENT_URL),
-      transport: 'localhost-or-tailscale',
-      message: 'No live local-agent probe is performed by default.',
+      configured: false,
+      transport: 'disabled',
+      message: 'Local agents and real-PC control are disabled by user preference.',
     });
   }
 
   if (path === '/api/remote/request-action') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
-    const permission = evaluatePermission(body.action, { confirmed: body.confirmed === true });
-    if (!permission.allowed) return permissionBlocked(json, permission);
+    const permission = evaluatePermission(body.action, { confirmed: false });
     return json({
+      ...permission,
       ok: false,
       connected: false,
       queued: false,
-      permission,
-      message: 'Action was authorized but not executed because no local agent is connected.',
-    }, 503);
+      message: 'Local agents are disabled; use cloud/GitHub/Google draft workflows instead.',
+    }, 409);
   }
 
   if (path === '/api/permissions') {
