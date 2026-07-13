@@ -79,6 +79,8 @@
             <div class="signal"><span class="dot"></span><div><strong>Gmail</strong><small>Draft-only</small></div><span class="signal-state">not connected</span></div>
             <div class="signal"><span class="dot"></span><div><strong>Memory vault</strong><small>GitHub or preview mode</small></div><span class="signal-state">not connected</span></div>
             <div class="signal"><span class="dot"></span><div><strong>Local bridge</strong><small>Localhost + allowlist</small></div><span class="signal-state">not connected</span></div>
+            <div class="signal"><span class="dot"></span><div><strong>OpenClaw worker</strong><small>Optional scoped execution</small></div><span class="signal-state" id="signal-openclaw">not configured</span></div>
+            <div class="signal"><span class="dot"></span><div><strong>Free provider pool</strong><small>Policy-driven routing</small></div><span class="signal-state" id="signal-free-pool">not configured</span></div>
           </div>
         </article>
       </section>
@@ -209,7 +211,7 @@
         <article class="panel small-panel" id="providers">
           <div class="panel-head"><div><div class="panel-title">Provider router</div><div class="panel-sub">No single-subscription lock-in</div></div><span class="badge" id="model-badge">none configured</span></div>
           <div class="provider-grid" id="providers-grid"></div>
-          <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. No provider shown as connected without an API key.</div>
+          <div class="empty-state" id="providers-empty" style="margin-top:8px;">Free-tier providers: Groq, Cerebras, Gemini, OpenRouter. Local fallback: Ollama. FreeBuff is a placeholder only. No provider shown as configured without an API key.</div>
         </article>
         <article class="panel small-panel" id="project-queue">
           <div class="panel-head"><div><div class="panel-title">Project queue</div><div class="panel-sub">Ideas grouped by project</div></div><span class="badge mock">inbox-backed</span></div>
@@ -550,27 +552,73 @@
       els.grid.querySelectorAll('[data-project]').forEach(button => button.addEventListener('click', () => runCommand(`project ${button.dataset.project}`)));
     }
 
+    function integrationBadgeClass(status) {
+      if (status === 'ready' || status === 'configured') return 'ok';
+      if (status === 'mock_mode' || status === 'needs_user_action') return 'warn';
+      return '';
+    }
+
+    function integrationLabel(status) {
+      const labels = {
+        ready: 'ready',
+        configured: 'configured',
+        not_configured: 'not configured',
+        unavailable: 'unavailable',
+        mock_mode: 'mock mode',
+        needs_user_action: 'needs setup',
+        unsafe_disabled: 'disabled',
+      };
+      return labels[status] || status;
+    }
+
     function renderSignals(status) {
-      const modules = status.modules;
+      const modules = status.modules || {};
+      const integrations = status.integrations || {};
+      const signalState = (connected, integrationStatus) => {
+        if (integrationStatus) return integrationLabel(integrationStatus);
+        return connected ? 'connected' : 'not connected';
+      };
+      const signalDot = (connected, integrationStatus) => {
+        if (integrationStatus === 'ready' || integrationStatus === 'configured') return 'ok';
+        if (connected) return 'ok';
+        return '';
+      };
       const rows = [
-        ['Cloudflare Worker', 'Backend route layer', true],
-        ['GitHub supervisor', 'PR and check summaries', modules.githubSupervisor.connected],
-        ['Gmail', 'Draft-only', modules.gmail.connected],
-        ['Memory vault', modules.vault.mode, modules.vault.connected],
-        ['Local bridge', 'Localhost + allowlist', modules.localAgent.connected],
+        ['Cloudflare Worker', 'Backend route layer', true, integrations.cloudflare_worker?.status],
+        ['GitHub supervisor', 'PR and check summaries', modules.githubSupervisor?.connected, integrations.github?.status],
+        ['Gmail', 'Draft-only', modules.gmail?.connected, integrations.gmail?.status],
+        ['Memory vault', integrations.obsidian_vault?.mode || 'preview mode', modules.vault?.connected, integrations.obsidian_vault?.status],
+        ['Local bridge', 'Localhost + allowlist', modules.localAgent?.connected, integrations.local_agent?.status],
+        ['OpenClaw worker', 'Optional scoped execution', false, integrations.openclaw_worker?.status],
+        ['Free provider pool', 'Policy-driven routing', false, integrations.free_provider_pool?.status],
       ];
-      document.getElementById('signals').innerHTML = rows.map(([name, detail, connected]) =>
-        `<div class="signal"><span class="dot ${connected ? 'ok' : ''}"></span><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></div><span class="signal-state">${connected ? 'connected' : 'not connected'}</span></div>`
+      document.getElementById('signals').innerHTML = rows.map(([name, detail, connected, integrationStatus]) =>
+        `<div class="signal"><span class="dot ${signalDot(connected, integrationStatus)}"></span><div><strong>${escapeHtml(name)}</strong><small>${escapeHtml(detail)}</small></div><span class="signal-state">${escapeHtml(signalState(connected, integrationStatus))}</span></div>`
       ).join('');
       document.getElementById('rail-dot').className = 'dot ok';
       document.getElementById('rail-state').textContent = 'Worker connected';
       document.getElementById('focus-status').textContent = 'WORKSPACE ONLINE';
-      document.getElementById('signal-badge').textContent = 'live';
+      document.getElementById('signal-badge').textContent = status.safety_mode ? 'truth mode' : 'live';
       document.getElementById('signal-badge').className = 'badge ok';
-      document.getElementById('gmail-badge').textContent = modules.gmail.connected ? 'draft-only' : 'not connected';
-      document.getElementById('vault-badge').textContent = modules.vault.connected ? 'connected' : modules.vault.mode;
-      document.getElementById('local-badge').textContent = modules.localAgent.connected ? 'connected' : 'not connected';
-      document.getElementById('model-badge').textContent = modules.modelRouter.connected ? 'configured' : 'none configured';
+      document.getElementById('gmail-badge').textContent = integrationLabel(integrations.gmail?.status || 'not_configured');
+      document.getElementById('gmail-badge').className = `badge ${integrationBadgeClass(integrations.gmail?.status)}`;
+      document.getElementById('vault-badge').textContent = integrationLabel(integrations.obsidian_vault?.status || 'mock_mode');
+      document.getElementById('vault-badge').className = `badge ${integrationBadgeClass(integrations.obsidian_vault?.status)}`;
+      document.getElementById('local-badge').textContent = integrationLabel(integrations.local_agent?.status || 'not_configured');
+      document.getElementById('local-badge').className = `badge ${integrationBadgeClass(integrations.local_agent?.status)}`;
+      const pool = integrations.free_provider_pool || {};
+      const poolLabel = pool.partial ? `partial (${pool.configuredCount || 0}/${pool.totalFreeProviders || 0})` : integrationLabel(pool.status || 'not_configured');
+      document.getElementById('model-badge').textContent = poolLabel;
+      document.getElementById('model-badge').className = `badge ${integrationBadgeClass(pool.status)}`;
+      const openclawEl = document.getElementById('signal-openclaw');
+      if (openclawEl) openclawEl.textContent = integrationLabel(integrations.openclaw_worker?.status || 'not_configured');
+      const freePoolEl = document.getElementById('signal-free-pool');
+      if (freePoolEl) freePoolEl.textContent = poolLabel;
+      const foundationBadge = document.getElementById('foundation-badge');
+      if (foundationBadge) {
+        foundationBadge.textContent = status.safety_mode ? 'safety on' : 'ready';
+        foundationBadge.className = `badge ${status.safety_mode ? 'ok' : ''}`;
+      }
     }
 
     async function loadProviderRegistry() {
@@ -579,7 +627,7 @@
         els.providersGrid.innerHTML = result.providers.map(p =>
           `<span class="provider ${p.configured ? 'on' : ''}">${escapeHtml(p.id)} · ${escapeHtml(p.status)}</span>`
         ).join('');
-        document.getElementById('model-badge').textContent = result.providers.some(p => p.configured) ? 'configured' : 'none configured';
+        document.getElementById('model-badge').textContent = result.providers.some(p => p.configured) ? 'partial / configured' : 'not configured';
       } catch (e) {
         els.providersGrid.innerHTML = '<span class="provider">providers · not connected</span>';
       }
