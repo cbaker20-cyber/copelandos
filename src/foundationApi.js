@@ -1,6 +1,7 @@
 import { routeCommand } from './commandRouter.js';
 import { evaluatePermission, listPermissionRules } from './permissions.js';
 import { listProviderStatuses, routeModel } from './modelRouter.js';
+import { buildIntegrationStatuses, buildTruthDashboardStatus } from './integrationStatus.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
@@ -67,25 +68,36 @@ export async function handleFoundationRequest({
   modelConfig,
   createEmailDraft,
 }) {
-  if (path === '/api/status') {
+  if (path === '/api/status' || path === '/api/integrations/status') {
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
-    const integrations = listAutomationIntegrations(env);
+    const automations = listAutomationIntegrations(env);
+    const integrationStatuses = buildIntegrationStatuses(env);
+    const truth = buildTruthDashboardStatus(env, { version: 'foundation' });
     return json({
       ok: true,
       system: 'CopelandOS',
+      app: truth.app,
+      version: truth.version,
+      environment_mode: truth.environment_mode,
       foundation: true,
       complete: false,
       canonicalBackend: 'worker.js',
+      safety_mode: true,
+      integrations: integrationStatuses,
+      warnings: truth.warnings,
+      missing_setup: truth.missing_setup,
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
-        automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
+        automations: { connected: true, endpoint: '/api/automation/integrations', count: automations.length, configured: automations.filter((item) => item.connected).map((item) => item.id) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
-        gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
-        vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
-        localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
-        githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
+        gmail: { connected: integrationStatuses.gmail.status === 'configured', mode: 'draft-only' },
+        vault: { connected: integrationStatuses.obsidian_vault.status === 'configured', mode: integrationStatuses.obsidian_vault.mode || 'preview' },
+        localAgent: { connected: false, configured: ['configured', 'needs_user_action'].includes(integrationStatuses.local_agent.status), message: integrationStatuses.local_agent.note },
+        githubSupervisor: { connected: false, configured: integrationStatuses.github.status === 'configured', message: integrationStatuses.github.note },
+        openclawWorker: { connected: false, configured: integrationStatuses.openclaw_worker.status === 'configured', status: integrationStatuses.openclaw_worker.status, message: integrationStatuses.openclaw_worker.note },
+        freeProviderPool: { status: integrationStatuses.free_provider_pool.status, configuredCount: integrationStatuses.free_provider_pool.configuredCount || 0, partial: integrationStatuses.free_provider_pool.partial === true },
       },
     });
   }

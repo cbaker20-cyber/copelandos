@@ -29,7 +29,9 @@ test('system status never fakes disconnected integrations', async () => {
   const response = await worker.fetch(new Request('https://worker.example/api/status'), {}, {});
   const result = await response.json();
   assert.equal(result.complete, false);
+  assert.equal(result.safety_mode, true);
   assert.equal(result.modules.gmail.connected, false);
   assert.equal(result.modules.localAgent.connected, false);
   assert.equal(result.modules.githubSupervisor.connected, false);
+  assert.equal(result.integrations.openclaw_worker.status, 'not_configured');
 });
