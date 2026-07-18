@@ -39,7 +39,9 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 
 ## Backend decision
 
-`wrangler.toml` points to `worker.js`, so it remains canonical. `functions/api/[[route]].js` is retained only as legacy migration evidence. New routes must not be added there.
+`wrangler.toml` points to `worker.js` and serves `frontend/` via Wrangler assets, so one Worker URL is the canonical production topology. See [deployment](deployment.md).
+
+`functions/api/[[route]].js` is retained only as legacy migration evidence. New routes must not be added there.
 
 ## Data flow
 
