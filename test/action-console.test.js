@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import worker from '../worker.js';
+import { bearerAuthHeaders, TEST_API_AUTH_TOKEN, withApiAuth } from './helpers/auth.js';
 
 test('Worker root serves the usable CopelandOS console', async () => {
   const response = await worker.fetch(new Request('https://worker.example/'), {}, {});
@@ -10,19 +11,19 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
   assert.match(html, /CopelandOS/);
-  assert.match(html, /Create Gmail draft/);
-  assert.match(html, /Save \/ preview note/);
+  assert.match(html, /Siri Shortcut capture/);
+  assert.match(html, /Create plan/);
   assert.match(html, /api\/capture\/idea/);
-  assert.match(html, /Google Workspace setup/);
+  assert.match(html, /Rainmeter pairing/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {
   const request = new Request('https://worker.example/api/hermes/route', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ task: 'Use Mimo to teach me the Worker routing code', source: 'console' }),
   });
-  const response = await worker.fetch(request, {}, {});
+  const response = await worker.fetch(request, withApiAuth(), {});
   const result = await response.json();
 
   assert.equal(response.status, 200);
@@ -54,10 +55,10 @@ test('Automation registry includes Mimo, Ornith, and review-first automators', a
 test('Hermes routes Ornith and webhook automation as approval-first plans', async () => {
   const request = new Request('https://worker.example/api/hermes/route', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ task: 'Use Ornith or n8n to automate Drive cleanup with a webhook', source: 'console' }),
   });
-  const response = await worker.fetch(request, {}, {});
+  const response = await worker.fetch(request, withApiAuth(), {});
   const result = await response.json();
 
   assert.equal(response.status, 200);
@@ -70,10 +71,10 @@ test('Hermes routes Ornith and webhook automation as approval-first plans', asyn
 test('Hermes blocks high-risk automation and produces a review prompt', async () => {
   const request = new Request('https://worker.example/api/hermes/route', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ task: 'deploy and merge the PR then send email', source: 'console' }),
   });
-  const response = await worker.fetch(request, {}, {});
+  const response = await worker.fetch(request, withApiAuth(), {});
   const result = await response.json();
 
   assert.equal(response.status, 200);
@@ -83,7 +84,11 @@ test('Hermes blocks high-risk automation and produces a review prompt', async ()
 });
 
 test('Apple Shortcuts can capture with an easy GET URL', async () => {
-  const response = await worker.fetch(new Request('https://worker.example/api/capture/idea?text=Shortcut%20GET%20works&source=ios-shortcuts&urgency=medium&tags=ios,shortcut'), {}, {});
+  const response = await worker.fetch(
+    new Request('https://worker.example/api/capture/idea?text=Shortcut%20GET%20works&source=ios-shortcuts&urgency=medium&tags=ios,shortcut&token=shortcut-capture-token'),
+    { CAPTURE_TOKEN: 'shortcut-capture-token' },
+    {},
+  );
   const result = await response.json();
 
   assert.equal(response.status, 201);
@@ -97,7 +102,7 @@ test('Apple Shortcuts can capture with an easy GET URL', async () => {
 test('Obsidian compatibility save uses safe mock vault path without credentials', async () => {
   const request = new Request('https://worker.example/api/obsidian/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({
       title: 'Console Note',
       folder: 'Inbox',
@@ -106,7 +111,7 @@ test('Obsidian compatibility save uses safe mock vault path without credentials'
       tags: ['test'],
     }),
   });
-  const response = await worker.fetch(request, {}, {});
+  const response = await worker.fetch(request, withApiAuth(), {});
   const result = await response.json();
 
   assert.equal(response.status, 200);
@@ -120,39 +125,40 @@ test('Obsidian compatibility save uses safe mock vault path without credentials'
 test('Obsidian compatibility save blocks secrets and private student data', async () => {
   const secretRequest = new Request('https://worker.example/api/obsidian/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ title: 'Bad', content: `sk-${'a'.repeat(30)}` }),
   });
-  const secretResponse = await worker.fetch(secretRequest, {}, {});
+  const secretResponse = await worker.fetch(secretRequest, withApiAuth(), {});
   const secretResult = await secretResponse.json();
   assert.equal(secretResponse.status, 400);
   assert.match(secretResult.error, /secret/i);
 
   const studentRequest = new Request('https://worker.example/api/obsidian/save', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ title: 'Student', content: 'Student ID should not be stored here.' }),
   });
-  const studentResponse = await worker.fetch(studentRequest, {}, {});
+  const studentResponse = await worker.fetch(studentRequest, withApiAuth(), {});
   const studentResult = await studentResponse.json();
   assert.equal(studentResponse.status, 400);
   assert.match(studentResult.error, /private student data/i);
 });
 
 test('optional capture token protects public Shortcut intake when configured', async () => {
+  const env = { CAPTURE_TOKEN: 'secret-capture-token', API_AUTH_TOKEN: TEST_API_AUTH_TOKEN };
   const request = new Request('https://worker.example/api/capture/idea', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ text: 'Shortcut capture test', source: 'ios-shortcuts' }),
   });
-  const blocked = await worker.fetch(request, { CAPTURE_TOKEN: 'secret-capture-token' }, {});
+  const blocked = await worker.fetch(request, env, {});
   assert.equal(blocked.status, 401);
 
-  const allowed = await worker.fetch(new Request('https://worker.example/api/capture/idea', {
+  const allowed = await worker.fetch(new Request('https://worker.example/api/capture/idea?token=secret-capture-token', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secret-capture-token' },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders() },
     body: JSON.stringify({ text: 'Shortcut capture test', source: 'ios-shortcuts' }),
-  }), { CAPTURE_TOKEN: 'secret-capture-token' }, {});
+  }), env, {});
   const result = await allowed.json();
   assert.equal(allowed.status, 201);
   assert.equal(result.ok, true);

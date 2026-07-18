@@ -13,15 +13,17 @@ Work top to bottom, one draft PR at a time. Do not add assistant features until 
 
 ## Task 1: Deployment consolidation
 
-- Decide whether to delete the legacy Pages Function or extract shared handlers.
-- Reconcile Cloudflare PR #1 with `wrangler.toml`; do not merge a static-only configuration over the canonical Worker.
-- Verify one documented production topology.
+- **Status:** Complete (see `docs/deployment.md`, `PROJECT_STATE.md`).
+- Decide whether to delete the legacy Pages Function or extract shared handlers. → Legacy function retained with deprecation banner; `worker.js` is canonical.
+- Reconcile Cloudflare PR #1 with `wrangler.toml`; do not merge a static-only configuration over the canonical Worker. → `wrangler.jsonc` removed; `wrangler.toml` is the sole config.
+- Verify one documented production topology. → Documented in `docs/deployment.md` and updated `SETUP.md`.
 
 ## Task 2: Authentication and authorization
 
-- Add an access-control layer in front of Gmail, vault writes, and provider-backed routes.
-- Do not treat CORS as authentication.
-- Document session/token threat assumptions before implementation.
+- **Status:** Complete (see `docs/auth-model.md`, `src/auth.js`).
+- Add an access-control layer in front of Gmail, vault writes, and provider-backed routes. → `API_AUTH_TOKEN` bearer check in `worker.js`.
+- Do not treat CORS as authentication. → Documented in `docs/auth-model.md`; CORS unchanged.
+- Document session/token threat assumptions before implementation. → `docs/auth-model.md`.
 
 ## Task 3: Request validation and limits
 

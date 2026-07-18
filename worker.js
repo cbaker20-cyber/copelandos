@@ -11,6 +11,7 @@ import { listTools, listMcpServers, checkToolPermission, checkMcpPermission, get
 import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from './src/council.js';
 import { persistVaultDocument, sanitizePathSegment, validateVaultContent } from './src/vault.js';
 import { renderCommandCenterHtml } from './src/commandCenterHtml.js';
+import { checkApiAccess } from './src/auth.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -32,6 +33,9 @@ export default {
         status,
         headers: { 'Content-Type': 'application/json', ...cors },
       });
+
+    const access = checkApiAccess(request, env);
+    if (!access.ok) return json(access.body, access.status);
 
     if (path === '/' || path === '/index.html' || path === '/console') {
       return new Response(renderCommandCenterHtml(), {
@@ -55,6 +59,7 @@ export default {
             gmail: !!env.GMAIL_REFRESH_TOKEN,
             obsidian: !!(env.GITHUB_TOKEN && env.GITHUB_REPO),
             shortcutCapture: !env.CAPTURE_TOKEN ? 'open-local-or-same-origin' : 'bearer-token-required',
+            apiAuth: env.API_AUTH_TOKEN ? 'bearer-token-required' : 'not-configured',
             ai_providers: Object.keys(modelConfig.providers).filter((provider) => routeModel('reasoning', env, {
               ...modelConfig,
               routes: { reasoning: [provider] },

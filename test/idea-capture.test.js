@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import worker from '../worker.js';
+import { bearerAuthHeaders, withApiAuth } from './helpers/auth.js';
 
 function makeRequest(path, options = {}) {
   const url = `https://worker.example${path}`;
   return new Request(url, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { 'Content-Type': 'application/json', ...bearerAuthHeaders(), ...options.headers },
     ...options,
   });
 }
@@ -16,7 +17,7 @@ async function postIdea(body, env = {}) {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  const response = await worker.fetch(request, env, {});
+  const response = await worker.fetch(request, withApiAuth(env), {});
   return { response, data: await response.json() };
 }
 
@@ -177,7 +178,7 @@ test('POST /api/ideas/:id/convert accepts requested note type aliases', async ()
     method: 'POST',
     body: JSON.stringify({ type: 'research-note' }),
   });
-  const response = await worker.fetch(convertReq, {}, {});
+  const response = await worker.fetch(convertReq, withApiAuth(), {});
   const data = await response.json();
   assert.equal(response.status, 200);
   assert.equal(data.idea.status, 'converted-to-note');

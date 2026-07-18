@@ -1,8 +1,12 @@
 /**
+ * DEPRECATED — legacy Cloudflare Pages Function (migration evidence only).
+ *
+ * The canonical backend is worker.js, deployed via wrangler.toml.
+ * Do not add routes or features here. See docs/deployment.md.
+ *
+ * Original note:
  * CopelandOS — Cloudflare Pages Function
  * File: functions/api/[[route]].js
- * This single file handles ALL /api/* routes.
- * Cloudflare auto-deploys it when you push to GitHub.
  */
 
 export async function onRequest(context) {
