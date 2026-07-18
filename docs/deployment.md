@@ -38,6 +38,7 @@ Set secrets in the Cloudflare dashboard or with `wrangler secret put <NAME>`.
 | Variable | Purpose |
 |---|---|
 | `ALLOWED_ORIGIN` | Exact browser origin allowed for cross-origin API calls (no trailing slash). Set to the Worker URL when the dashboard and API share the same origin, or to a separate frontend origin if you host one elsewhere. |
+| `API_AUTH_TOKEN` | Bearer token required for Gmail, vault writes, and provider-backed routes |
 | Provider keys | `CEREBRAS_KEY`, `GROQ_KEY`, `GEMINI_KEY`, `OPENROUTER_KEY`, etc. |
 | `SERPER_KEY` | Web search |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail draft access |

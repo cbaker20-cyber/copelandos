@@ -42,11 +42,20 @@ test('the mail compatibility route creates a Gmail draft', async (t) => {
   };
   t.after(() => { globalThis.fetch = originalFetch; });
 
+  const env = {
+    ALLOWED_ORIGIN: 'https://app.example',
+    API_AUTH_TOKEN: 'test-api-auth-token-32chars-min',
+    GMAIL_CLIENT_ID: 'test-client',
+    GMAIL_CLIENT_SECRET: 'test-secret',
+    GMAIL_REFRESH_TOKEN: 'test-refresh',
+  };
+
   const request = new Request('https://worker.example/api/mail/send', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Origin: 'https://app.example',
+      Authorization: 'Bearer test-api-auth-token-32chars-min',
     },
     body: JSON.stringify({
       to: 'recipient@example.com',
@@ -55,13 +64,6 @@ test('the mail compatibility route creates a Gmail draft', async (t) => {
       confirmed: true,
     }),
   });
-  const env = {
-    ALLOWED_ORIGIN: 'https://app.example',
-    GMAIL_CLIENT_ID: 'test-client',
-    GMAIL_CLIENT_SECRET: 'test-secret',
-    GMAIL_REFRESH_TOKEN: 'test-refresh',
-  };
-
   const response = await worker.fetch(request, env, {});
   const result = await response.json();
 
@@ -75,15 +77,17 @@ test('the mail compatibility route creates a Gmail draft', async (t) => {
 });
 
 test('Gmail draft creation requires an explicit medium-risk confirmation', async () => {
+  const token = 'test-api-auth-token-32chars-min';
   const request = new Request('https://worker.example/api/email/draft', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Origin: 'https://app.example',
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ to: 'recipient@example.com', subject: 'Draft', body: 'Body' }),
   });
-  const response = await worker.fetch(request, { ALLOWED_ORIGIN: 'https://app.example' }, {});
+  const response = await worker.fetch(request, { ALLOWED_ORIGIN: 'https://app.example', API_AUTH_TOKEN: token }, {});
   const result = await response.json();
 
   assert.equal(response.status, 409);

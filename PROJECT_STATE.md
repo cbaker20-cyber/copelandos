@@ -24,6 +24,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Brain pipeline: idea capture, triage, planning, vault conversion
 - Foundation API: status, projects, commands, vault, remote status
 - Push-to-talk browser voice input (no always-on microphone)
+- Bearer-token access control on Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`)
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -46,13 +47,13 @@ From `docs/cursor-ready-issues.md` (work top to bottom):
 | Task | Status |
 |---|---|
 | 1. Deployment consolidation | Complete |
-| 2. Authentication and authorization | Not started |
+| 2. Authentication and authorization | Complete |
 | 3. Request validation and limits | Not started |
 | 4. OAuth callback hardening | Not started |
 
 ## Known gaps
 
-- No user authentication on Worker routes (CORS only)
+- Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - OAuth `state` validation and safer refresh-token enrollment pending
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented

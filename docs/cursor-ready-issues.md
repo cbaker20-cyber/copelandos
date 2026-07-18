@@ -20,9 +20,10 @@ Work top to bottom, one draft PR at a time. Do not add assistant features until 
 
 ## Task 2: Authentication and authorization
 
-- Add an access-control layer in front of Gmail, vault writes, and provider-backed routes.
-- Do not treat CORS as authentication.
-- Document session/token threat assumptions before implementation.
+- **Status:** Complete (see `docs/auth-model.md`, `src/auth.js`).
+- Add an access-control layer in front of Gmail, vault writes, and provider-backed routes. → `API_AUTH_TOKEN` bearer check in `worker.js`.
+- Do not treat CORS as authentication. → Documented in `docs/auth-model.md`; CORS unchanged.
+- Document session/token threat assumptions before implementation. → `docs/auth-model.md`.
 
 ## Task 3: Request validation and limits
 

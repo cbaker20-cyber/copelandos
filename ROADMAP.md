@@ -4,26 +4,31 @@ Approved priorities. Security tasks in `docs/cursor-ready-issues.md` take preced
 
 ## Current sprint: Security foundation
 
-### PR 1 — Deployment consolidation (in progress)
+### PR 1 — Deployment consolidation (complete)
 
 - Document canonical single-Worker topology (`wrangler.toml` + `worker.js` + `frontend/` assets).
 - Deprecate `functions/api/[[route]].js`; do not expand it.
 - Reconcile `wrangler.jsonc` (static-only Cloudflare bot config) with `wrangler.toml`.
 - Update `SETUP.md` and add `docs/deployment.md`.
 
-### PR 2 — Identity and session boundary
+### PR 2 — Authentication and authorization (complete)
 
-- Add real user authentication for Worker routes.
+- Bearer-token access control for Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`).
+- Threat model documented in `docs/auth-model.md`.
+- CORS remains origin restriction only, not authentication.
+
+### PR 3 — Identity and session boundary
+
 - Add OAuth `state` and a safer Gmail enrollment flow (no refresh tokens in HTML).
 - Add request schemas, size limits, rate limits, and security headers.
 
-### PR 3 — GitHub project supervisor
+### PR 4 — GitHub project supervisor
 
 - Read-only GitHub status for the five registry projects.
 - PR/check summaries with connector or narrowly scoped GitHub App credentials.
 - No merges, branch deletion, or deployment.
 
-### PR 4 — Local-agent pairing
+### PR 5 — Local-agent pairing
 
 - Design authenticated pairing and encrypted transport.
 - Add status polling, confirmation receipts, audit events, and a kill switch.
