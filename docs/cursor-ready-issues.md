@@ -27,11 +27,13 @@ Work top to bottom, one draft PR at a time. Do not add assistant features until 
 
 ## Task 3: Request validation and limits
 
-- Add body-size limits, strict route methods, field length limits, and safe error responses.
-- Add rate limiting or Cloudflare controls for provider-backed routes.
+- **Status:** Complete (see `docs/request-limits.md`, `src/requestLimits.js`).
+- Add body-size limits, strict route methods, field length limits, and safe error responses. → Centralized in `src/requestLimits.js` and wired into `worker.js`.
+- Add rate limiting or Cloudflare controls for provider-backed routes. → In-memory per-client limiter (30/min) with `429` + `Retry-After`.
 
 ## Task 4: OAuth callback hardening
 
-- Add and validate OAuth `state`.
-- Stop rendering refresh tokens into an HTML response; document a safer enrollment flow.
-- Review least-privilege Gmail scopes.
+- **Status:** Complete (see `docs/gmail-oauth.md`, `src/gmailOAuth.js`).
+- Add and validate OAuth `state`. → HMAC-signed `state` with 10-minute TTL on `/api/auth/callback`.
+- Stop rendering refresh tokens into an HTML response; document a safer enrollment flow. → Secure pickup via `/api/auth/enrollment/pickup`; legacy HTML behind `GMAIL_OAUTH_LEGACY_HTML=true`.
+- Review least-privilege Gmail scopes. → `gmail.compose` + `gmail.readonly` only.

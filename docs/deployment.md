@@ -40,6 +40,8 @@ Set secrets in the Cloudflare dashboard or with `wrangler secret put <NAME>`.
 | `ALLOWED_ORIGIN` | Exact browser origin allowed for cross-origin API calls (no trailing slash). Set to the Worker URL when the dashboard and API share the same origin, or to a separate frontend origin if you host one elsewhere. |
 | `API_AUTH_TOKEN` | Bearer token required for Gmail, vault writes, and provider-backed routes |
 | Provider keys | `CEREBRAS_KEY`, `GROQ_KEY`, `GEMINI_KEY`, `OPENROUTER_KEY`, etc. |
+
+Provider-backed routes are rate-limited to 30 requests per minute per client IP. See [request-limits.md](request-limits.md).
 | `SERPER_KEY` | Web search |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | Gmail draft access |
 | `GITHUB_TOKEN`, `GITHUB_REPO` | Obsidian vault sync |
@@ -80,7 +82,7 @@ Register this redirect URI in Google Cloud Console:
 https://copelandos.<account>.workers.dev/api/auth/callback
 ```
 
-Start enrollment at `/api/auth/gmail` on the deployed Worker.
+Start enrollment at `/api/auth/gmail` on the deployed Worker (requires `API_AUTH_TOKEN`). See [gmail-oauth.md](gmail-oauth.md) for the secure pickup flow.
 
 ## Optional local agent
 

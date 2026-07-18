@@ -1,6 +1,6 @@
 # CopelandOS Project State
 
-Last updated: 2026-07-18
+Last updated: 2026-07-18 (Task 4 complete)
 
 ## Architecture summary
 
@@ -25,6 +25,8 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Foundation API: status, projects, commands, vault, remote status
 - Push-to-talk browser voice input (no always-on microphone)
 - Bearer-token access control on Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`)
+- Request body limits, field validation, provider rate limiting, and security headers
+- Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -48,13 +50,12 @@ From `docs/cursor-ready-issues.md` (work top to bottom):
 |---|---|
 | 1. Deployment consolidation | Complete |
 | 2. Authentication and authorization | Complete |
-| 3. Request validation and limits | Not started |
-| 4. OAuth callback hardening | Not started |
+| 3. Request validation and limits | Complete |
+| 4. OAuth callback hardening | Complete |
 
 ## Known gaps
 
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
-- OAuth `state` validation and safer refresh-token enrollment pending
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented
 - `wrangler.jsonc` removed; `wrangler.toml` is the sole Wrangler config

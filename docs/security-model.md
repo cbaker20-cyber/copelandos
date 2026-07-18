@@ -27,7 +27,8 @@
 
 - Exact-origin CORS reduces browser exposure but is not authentication.
 - Protected routes require `API_AUTH_TOKEN` (see [auth-model.md](auth-model.md)); CORS alone does not gate Gmail, vault writes, or provider calls.
-- OAuth `state` and refresh-token enrollment still need a safer design.
+- Request validation, provider rate limits, and security headers are enforced in `src/requestLimits.js` (see [request-limits.md](request-limits.md)).
+- Gmail OAuth uses signed `state`, secure pickup enrollment, and least-privilege scopes (see [gmail-oauth.md](gmail-oauth.md)).
 - The Worker cannot securely connect to a local agent without a reviewed transport and token-storage design.
 - Pattern checks can catch obvious secrets but cannot prove that free text contains no private information; users remain responsible for review.
 - Provider/model identifiers may need updates as vendors change APIs.

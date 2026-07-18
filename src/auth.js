@@ -1,4 +1,4 @@
-const GMAIL_PREFIXES = ['/api/mail/', '/api/email/draft', '/api/auth/gmail', '/api/auth/callback'];
+const GMAIL_PREFIXES = ['/api/mail/', '/api/email/draft', '/api/auth/gmail', '/api/auth/callback', '/api/auth/enrollment/pickup'];
 const VAULT_WRITE_EXACT = new Set(['/api/vault/write', '/api/obsidian/save', '/api/idea']);
 const VAULT_WRITE_PREFIXES = ['/api/capture/idea'];
 const PROVIDER_EXACT = new Set(['/api/ai', '/api/search', '/api/hermes/route', '/api/automation/route']);

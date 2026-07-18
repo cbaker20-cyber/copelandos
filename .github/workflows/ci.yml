@@ -27,6 +27,9 @@ jobs:
         run: |
           node --check worker.js
           node --check src/foundationApi.js
+          node --check src/auth.js
+          node --check src/requestLimits.js
+          node --check src/gmailOAuth.js
           node --check src/vault.js
           node --check src/hermesAgent.js
           node --check src/automationIntegrations.js
