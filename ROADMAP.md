@@ -17,18 +17,25 @@ Approved priorities. Security tasks in `docs/cursor-ready-issues.md` take preced
 - Threat model documented in `docs/auth-model.md`.
 - CORS remains origin restriction only, not authentication.
 
-### PR 3 — Identity and session boundary
+### PR 3 — Request validation and limits (complete)
+
+- Body-size limits, JSON validation, and field length caps on high-risk routes.
+- Provider-backed route rate limiting with `429` + `Retry-After`.
+- Baseline security headers on all Worker responses.
+- Safe error responses that do not expose upstream bodies.
+
+### PR 4 — OAuth callback hardening
 
 - Add OAuth `state` and a safer Gmail enrollment flow (no refresh tokens in HTML).
-- Add request schemas, size limits, rate limits, and security headers.
+- Review least-privilege Gmail scopes.
 
-### PR 4 — GitHub project supervisor
+### PR 5 — GitHub project supervisor
 
 - Read-only GitHub status for the five registry projects.
 - PR/check summaries with connector or narrowly scoped GitHub App credentials.
 - No merges, branch deletion, or deployment.
 
-### PR 5 — Local-agent pairing
+### PR 6 — Local-agent pairing
 
 - Design authenticated pairing and encrypted transport.
 - Add status polling, confirmation receipts, audit events, and a kill switch.

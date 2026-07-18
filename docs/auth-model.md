@@ -31,7 +31,7 @@ Threat assumptions and access-control design for CopelandOS Worker routes. Read 
 ### Out of scope (this PR)
 
 - OAuth `state` validation and safer refresh-token enrollment (Task 4)
-- Per-route rate limits and body-size caps (Task 3)
+- Per-route rate limits and body-size caps (Task 3) — see [request-limits.md](request-limits.md)
 - Browser session cookies or refreshable login flows
 - Local-agent pairing transport
 

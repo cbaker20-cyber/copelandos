@@ -12,6 +12,13 @@ import { createCouncilPrompt, createMockCouncilResult, produceFinalPlan } from '
 import { persistVaultDocument, sanitizePathSegment, validateVaultContent } from './src/vault.js';
 import { renderCommandCenterHtml } from './src/commandCenterHtml.js';
 import { checkApiAccess } from './src/auth.js';
+import {
+  checkProviderRateLimit,
+  parseJsonBody,
+  safeInternalError,
+  securityHeaders,
+  validateRouteBody,
+} from './src/requestLimits.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -26,12 +33,15 @@ export default {
       });
     }
 
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: { ...cors, ...securityHeaders() } });
+    }
 
-    const json = (data, status = 200) =>
+    const hardenedHeaders = { ...securityHeaders(), ...cors };
+    const json = (data, status = 200, extraHeaders = {}) =>
       new Response(JSON.stringify(data), {
         status,
-        headers: { 'Content-Type': 'application/json', ...cors },
+        headers: { 'Content-Type': 'application/json', ...hardenedHeaders, ...extraHeaders },
       });
 
     const access = checkApiAccess(request, env);
@@ -40,14 +50,26 @@ export default {
     if (path === '/' || path === '/index.html' || path === '/console') {
       return new Response(renderCommandCenterHtml(), {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', ...cors },
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...hardenedHeaders },
       });
     }
 
     try {
       let body = {};
-      if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-        body = await request.json().catch(() => ({}));
+      if (path.startsWith('/api/')) {
+        const rateLimit = checkProviderRateLimit(request, path);
+        if (!rateLimit.ok) {
+          return json(rateLimit.body, rateLimit.status, {
+            'Retry-After': String(rateLimit.retryAfterSec || 60),
+          });
+        }
+
+        const parsed = await parseJsonBody(request);
+        if (!parsed.ok) return json(parsed.body, parsed.status);
+        body = parsed.body;
+
+        const validated = validateRouteBody(path, body);
+        if (!validated.ok) return json(validated.body, validated.status);
       }
 
       if (path === '/api/health') {
@@ -173,7 +195,6 @@ export default {
       if (path === '/api/ai') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         const { messages, system } = body;
-        if (!Array.isArray(messages)) return json({ error: 'messages must be an array' }, 400);
         const selected = routeModel(body.taskType || 'reasoning', env, modelConfig);
         if (!selected.ok) return json({ error: selected.error, tried: selected.tried }, 503);
         const clients = {
@@ -189,8 +210,8 @@ export default {
           const key = getProviderCredential(env, selected.provider, modelConfig);
           const text = await clients[selected.provider](messages, system, key, env, selected.model);
           return json({ text, provider: selected.provider, model: selected.model, taskType: selected.taskType });
-        } catch (error) {
-          return json({ error: `${selected.provider} request failed: ${error.message}` }, 503);
+        } catch {
+          return json({ error: `${selected.provider} request failed.` }, 503);
         }
       }
 
@@ -202,7 +223,7 @@ export default {
           headers: { 'X-API-KEY': env.SERPER_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({ q: body.query, num: body.num || 6 }),
         });
-        if (!response.ok) return json({ error: `Serper ${response.status}` }, 500);
+        if (!response.ok) return json({ error: 'Search request failed.' }, 500);
         const data = await response.json();
         return json({
           query: body.query,
@@ -217,12 +238,13 @@ export default {
       }
 
       if (path === '/api/mail/list') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         const token = await getGmailToken(env);
         const params = new URLSearchParams({ maxResults: String(body.maxResults || 15), q: body.query || 'in:inbox' });
         const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!response.ok) return json({ error: `Gmail list failed: ${response.status}` }, 500);
+        if (!response.ok) return json({ error: 'Gmail list failed.' }, 500);
         const data = await response.json();
         const messages = await Promise.all((data.messages || []).slice(0, 15).map(async (message) => {
           const metaResponse = await fetch(
@@ -237,6 +259,7 @@ export default {
       }
 
       if (path === '/api/mail/read') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         const token = await getGmailToken(env);
         const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${body.id}?format=full`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -294,7 +317,6 @@ export default {
       if (path === '/api/idea') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
         const { idea, context = '' } = body;
-        if (!idea) return json({ ok: false, error: 'idea is required.' }, 400);
         const system = 'You are Chief of Staff for Copeland. Expand a raw idea into an actionable markdown note with title, summary, next actions, resources, category, and priority.';
         let expanded = `## Idea: ${idea}\n\n${context}`.trim();
         const providers = [
@@ -344,13 +366,13 @@ export default {
           }),
         });
         const data = await response.json();
-        if (data.refresh_token) return renderOAuthTokenPage(data.refresh_token, cors);
+        if (data.refresh_token) return renderOAuthTokenPage(data.refresh_token, hardenedHeaders);
         return json({ ok: false, error: 'OAuth failed', details: sanitizeOAuthError(data) }, 400);
       }
 
       return json({ ok: true, status: 'CopelandOS Worker online', console: `${url.origin}/console` });
-    } catch (error) {
-      return json({ ok: false, error: error.message }, 500);
+    } catch {
+      return json(safeInternalError(), 500);
     }
   },
 };
@@ -559,10 +581,10 @@ function sanitizeOAuthError(data) {
   return Object.fromEntries(Object.entries(data || {}).filter(([key]) => allowed.includes(key)));
 }
 
-function renderOAuthTokenPage(refreshToken, cors) {
+function renderOAuthTokenPage(refreshToken, headers) {
   const escaped = escapeHtml(refreshToken);
   return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gmail connected</title></head><body style="background:#0a0a0c;color:#eee;font-family:ui-monospace,monospace;padding:32px;max-width:780px"><h2 style="color:#6ef0ad">Gmail draft access connected</h2><p>Add this secret in Cloudflare Workers settings:</p><p><strong>Name:</strong> GMAIL_REFRESH_TOKEN</p><pre style="background:#111827;padding:16px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:#6fdfff">${escaped}</pre><p>This enables draft creation only. CopelandOS still does not send emails from the console.</p></body></html>`, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', ...cors },
+    headers: { 'Content-Type': 'text/html; charset=utf-8', ...headers },
   });
 }
 

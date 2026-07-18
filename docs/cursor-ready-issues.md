@@ -27,8 +27,9 @@ Work top to bottom, one draft PR at a time. Do not add assistant features until 
 
 ## Task 3: Request validation and limits
 
-- Add body-size limits, strict route methods, field length limits, and safe error responses.
-- Add rate limiting or Cloudflare controls for provider-backed routes.
+- **Status:** Complete (see `docs/request-limits.md`, `src/requestLimits.js`).
+- Add body-size limits, strict route methods, field length limits, and safe error responses. → Centralized in `src/requestLimits.js` and wired into `worker.js`.
+- Add rate limiting or Cloudflare controls for provider-backed routes. → In-memory per-client limiter (30/min) with `429` + `Retry-After`.
 
 ## Task 4: OAuth callback hardening
 
