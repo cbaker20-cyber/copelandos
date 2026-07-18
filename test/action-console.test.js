@@ -11,10 +11,10 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
   assert.match(html, /CopelandOS/);
-  assert.match(html, /Create Gmail draft/);
-  assert.match(html, /Save \/ preview note/);
+  assert.match(html, /Siri Shortcut capture/);
+  assert.match(html, /Create plan/);
   assert.match(html, /api\/capture\/idea/);
-  assert.match(html, /Google Workspace setup/);
+  assert.match(html, /Rainmeter pairing/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {

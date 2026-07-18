@@ -112,6 +112,7 @@ test('capture route accepts CAPTURE_TOKEN when API_AUTH_TOKEN is not configured'
   assert.equal(isApiAuthorized(request, { CAPTURE_TOKEN: 'shortcut-only' }, '/api/capture/idea').ok, true);
 });
 
+test('checkApiAccess allows public paths without credentials', () => {
   const request = new Request('https://worker.example/api/projects');
   assert.equal(checkApiAccess(request, {}).ok, true);
 });
