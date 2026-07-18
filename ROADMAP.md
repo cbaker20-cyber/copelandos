@@ -2,7 +2,9 @@
 
 Approved priorities. Security tasks in `docs/cursor-ready-issues.md` take precedence over feature work.
 
-## Current sprint: Security foundation
+## Current sprint: Security foundation (complete)
+
+All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security-audit.md` for the post-queue audit.
 
 ### PR 1 — Deployment consolidation (complete)
 

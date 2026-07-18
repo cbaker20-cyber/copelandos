@@ -115,6 +115,29 @@ export function sanitizeOAuthError(data) {
   return Object.fromEntries(Object.entries(data || {}).filter(([key]) => allowed.includes(key)));
 }
 
+export function parseOAuthCallbackQuery(searchParams) {
+  const error = searchParams.get('error');
+  if (error) {
+    return {
+      ok: false,
+      status: 400,
+      body: {
+        ok: false,
+        error: 'OAuth authorization was denied or failed.',
+        details: sanitizeOAuthError({
+          error,
+          error_description: searchParams.get('error_description') || '',
+        }),
+      },
+    };
+  }
+  const code = searchParams.get('code');
+  if (!code) {
+    return { ok: false, status: 400, body: { ok: false, error: 'Missing OAuth code.' } };
+  }
+  return { ok: true, code, state: searchParams.get('state') };
+}
+
 export function wantsLegacyHtmlEnrollment(env) {
   return String(env.GMAIL_OAUTH_LEGACY_HTML || '').toLowerCase() === 'true';
 }

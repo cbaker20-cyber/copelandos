@@ -1,6 +1,6 @@
 # CopelandOS Project State
 
-Last updated: 2026-07-18 (Task 4 complete)
+Last updated: 2026-07-18 (security audit)
 
 ## Architecture summary
 
@@ -27,6 +27,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Bearer-token access control on Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`)
 - Request body limits, field validation, provider rate limiting, and security headers
 - Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
+- Post-queue security audit: legacy Pages `410` guard, OAuth denial handling, header hardening
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -52,6 +53,8 @@ From `docs/cursor-ready-issues.md` (work top to bottom):
 | 2. Authentication and authorization | Complete |
 | 3. Request validation and limits | Complete |
 | 4. OAuth callback hardening | Complete |
+
+Security queue: **complete**. Post-queue audit documented in `docs/security-audit.md`.
 
 ## Known gaps
 

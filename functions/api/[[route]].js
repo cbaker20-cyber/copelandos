@@ -32,6 +32,15 @@ export async function onRequest(context) {
       headers: { 'Content-Type': 'application/json', ...cors },
     });
 
+  if (route !== 'health') {
+    return json({
+      ok: false,
+      error: 'This legacy Pages Function is deprecated. Deploy worker.js via wrangler.toml.',
+      canonical: 'worker.js',
+      documentation: 'docs/deployment.md',
+    }, 410);
+  }
+
   try {
     // ── GET /api/health ─────────────────────────────────
     if (route === 'health') {

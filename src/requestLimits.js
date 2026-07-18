@@ -179,6 +179,15 @@ export function validateRouteBody(path, body) {
     return { ok: true };
   }
 
+  if (path === '/api/auth/enrollment/pickup') {
+    const required = requireString(body.pickupId, 'pickupId');
+    if (required) return required;
+    if (!/^[0-9a-f-]{36}$/i.test(body.pickupId)) {
+      return { ok: false, status: 400, body: { ok: false, error: 'pickupId must be a valid UUID.' } };
+    }
+    return { ok: true };
+  }
+
   return { ok: true };
 }
 
