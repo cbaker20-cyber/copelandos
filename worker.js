@@ -18,6 +18,7 @@ import {
   createEnrollmentPickup,
   createOAuthState,
   exchangeAuthorizationCode,
+  parseOAuthCallbackQuery,
   renderLegacyOAuthTokenPage,
   renderSecureEnrollmentPage,
   validateOAuthState,
@@ -40,7 +41,7 @@ export default {
     if (!isOriginAllowed(request, env)) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json', Vary: 'Origin' },
+        headers: { 'Content-Type': 'application/json', Vary: 'Origin', ...securityHeaders() },
       });
     }
 
@@ -360,13 +361,16 @@ export default {
 
       if (path === '/api/auth/callback') {
         if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
-        const code = url.searchParams.get('code');
-        const state = url.searchParams.get('state');
-        if (!code) return json({ ok: false, error: 'Missing OAuth code.' }, 400);
-        const stateValidation = await validateOAuthState(state, env);
+        const callbackParams = parseOAuthCallbackQuery(url.searchParams);
+        if (!callbackParams.ok) return json(callbackParams.body, callbackParams.status);
+        const stateValidation = await validateOAuthState(callbackParams.state, env);
         if (!stateValidation.ok) return json({ ok: false, error: stateValidation.error }, 400);
 
-        const exchange = await exchangeAuthorizationCode({ code, origin: url.origin, env });
+        const exchange = await exchangeAuthorizationCode({
+          code: callbackParams.code,
+          origin: url.origin,
+          env,
+        });
         if (!exchange.ok) return json(exchange.body, exchange.status);
 
         if (wantsLegacyHtmlEnrollment(env)) {
@@ -379,11 +383,7 @@ export default {
 
       if (path === '/api/auth/enrollment/pickup') {
         if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
-        const pickupId = body.pickupId;
-        if (!pickupId || typeof pickupId !== 'string') {
-          return json({ ok: false, error: 'pickupId is required.' }, 400);
-        }
-        const refreshToken = consumeEnrollmentPickup(pickupId);
+        const refreshToken = consumeEnrollmentPickup(body.pickupId);
         if (!refreshToken) {
           return json({ ok: false, error: 'Pickup expired, already used, or not found.' }, 410);
         }

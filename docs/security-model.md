@@ -29,6 +29,7 @@
 - Protected routes require `API_AUTH_TOKEN` (see [auth-model.md](auth-model.md)); CORS alone does not gate Gmail, vault writes, or provider calls.
 - Request validation, provider rate limits, and security headers are enforced in `src/requestLimits.js` (see [request-limits.md](request-limits.md)).
 - Gmail OAuth uses signed `state`, secure pickup enrollment, and least-privilege scopes (see [gmail-oauth.md](gmail-oauth.md)).
+- Legacy Pages Function returns `410` for all routes except `/api/health` (see [security-audit.md](security-audit.md)).
 - The Worker cannot securely connect to a local agent without a reviewed transport and token-storage design.
 - Pattern checks can catch obvious secrets but cannot prove that free text contains no private information; users remain responsible for review.
 - Provider/model identifiers may need updates as vendors change APIs.

@@ -11,11 +11,18 @@ test('wrangler.toml is the sole config and points to worker.js with frontend ass
   assert.match(toml, /directory\s*=\s*"\.\/frontend"/);
 });
 
-test('legacy Pages function is marked deprecated', () => {
+test('legacy Pages function is marked deprecated and fails closed', async () => {
   const legacy = readFileSync('functions/api/[[route]].js', 'utf8');
   assert.match(legacy, /DEPRECATED/i);
   assert.match(legacy, /worker\.js/);
   assert.match(legacy, /docs\/deployment\.md/);
+
+  const { onRequest } = await import('../functions/api/[[route]].js');
+  const blocked = await onRequest({
+    request: new Request('https://pages.example/api/ai', { method: 'POST', body: '{}' }),
+    env: {},
+  });
+  assert.equal(blocked.status, 410);
 });
 
 test('deployment documentation describes single-Worker topology', () => {
