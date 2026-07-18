@@ -33,7 +33,9 @@ directory = "./frontend"
 #   VAULT_BRANCH   — e.g. "main" (default: "main")
 #
 # Security:
-#   ALLOWED_ORIGIN — Your Cloudflare Pages URL, e.g. "https://copelandos.pages.dev"
+#   ALLOWED_ORIGIN — Exact browser origin for cross-origin API calls (no trailing slash).
+#                    For the canonical single-Worker deployment, use your Worker URL,
+#                    e.g. "https://copelandos.YOUR-SUBDOMAIN.workers.dev"
 
 # Optional: model overrides
 

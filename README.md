@@ -13,7 +13,7 @@ It is not complete, and disconnected integrations say so. The current foundation
 - `local-agent/` is an optional localhost-only Node service with a shared token and explicit allowlist.
 - `functions/api/[[route]].js` is legacy migration evidence, not a second active backend. Do not add features there.
 
-See [architecture](docs/architecture.md), [security model](docs/security-model.md), and [roadmap](docs/roadmap.md).
+See [architecture](docs/architecture.md), [deployment](docs/deployment.md), [security model](docs/security-model.md), [roadmap](ROADMAP.md), and [project state](PROJECT_STATE.md).
 
 ## What works in this foundation
 
