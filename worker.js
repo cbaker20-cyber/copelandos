@@ -13,6 +13,17 @@ import { persistVaultDocument, sanitizePathSegment, validateVaultContent } from 
 import { renderCommandCenterHtml } from './src/commandCenterHtml.js';
 import { checkApiAccess } from './src/auth.js';
 import {
+  buildGmailAuthUrl,
+  consumeEnrollmentPickup,
+  createEnrollmentPickup,
+  createOAuthState,
+  exchangeAuthorizationCode,
+  renderLegacyOAuthTokenPage,
+  renderSecureEnrollmentPage,
+  validateOAuthState,
+  wantsLegacyHtmlEnrollment,
+} from './src/gmailOAuth.js';
+import {
   checkProviderRateLimit,
   parseJsonBody,
   safeInternalError,
@@ -340,34 +351,49 @@ export default {
       }
 
       if (path === '/api/auth/gmail') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
         if (!env.GMAIL_CLIENT_ID) return json({ ok: false, error: 'GMAIL_CLIENT_ID is not configured.' }, 503);
-        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-        authUrl.searchParams.set('client_id', env.GMAIL_CLIENT_ID);
-        authUrl.searchParams.set('redirect_uri', `${url.origin}/api/auth/callback`);
-        authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/gmail.compose');
-        authUrl.searchParams.set('access_type', 'offline');
-        authUrl.searchParams.set('prompt', 'consent');
-        return Response.redirect(authUrl.toString(), 302);
+        const stateResult = await createOAuthState(env);
+        if (!stateResult.ok) return json({ ok: false, error: stateResult.error }, 503);
+        return Response.redirect(buildGmailAuthUrl(url.origin, env, stateResult.state), 302);
       }
 
       if (path === '/api/auth/callback') {
+        if (request.method !== 'GET') return json({ ok: false, error: 'Method not allowed. Use GET.' }, 405);
         const code = url.searchParams.get('code');
+        const state = url.searchParams.get('state');
         if (!code) return json({ ok: false, error: 'Missing OAuth code.' }, 400);
-        const response = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            code,
-            client_id: env.GMAIL_CLIENT_ID,
-            client_secret: env.GMAIL_CLIENT_SECRET,
-            redirect_uri: `${url.origin}/api/auth/callback`,
-            grant_type: 'authorization_code',
-          }),
+        const stateValidation = await validateOAuthState(state, env);
+        if (!stateValidation.ok) return json({ ok: false, error: stateValidation.error }, 400);
+
+        const exchange = await exchangeAuthorizationCode({ code, origin: url.origin, env });
+        if (!exchange.ok) return json(exchange.body, exchange.status);
+
+        if (wantsLegacyHtmlEnrollment(env)) {
+          return renderLegacyOAuthTokenPage(exchange.refreshToken, hardenedHeaders);
+        }
+
+        const pickupId = createEnrollmentPickup(exchange.refreshToken);
+        return renderSecureEnrollmentPage(pickupId, hardenedHeaders);
+      }
+
+      if (path === '/api/auth/enrollment/pickup') {
+        if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed. Use POST.' }, 405);
+        const pickupId = body.pickupId;
+        if (!pickupId || typeof pickupId !== 'string') {
+          return json({ ok: false, error: 'pickupId is required.' }, 400);
+        }
+        const refreshToken = consumeEnrollmentPickup(pickupId);
+        if (!refreshToken) {
+          return json({ ok: false, error: 'Pickup expired, already used, or not found.' }, 410);
+        }
+        return json({
+          ok: true,
+          enrolled: true,
+          secretName: 'GMAIL_REFRESH_TOKEN',
+          refresh_token: refreshToken,
+          instruction: 'Store this value with wrangler secret put GMAIL_REFRESH_TOKEN and never commit it.',
         });
-        const data = await response.json();
-        if (data.refresh_token) return renderOAuthTokenPage(data.refresh_token, hardenedHeaders);
-        return json({ ok: false, error: 'OAuth failed', details: sanitizeOAuthError(data) }, 400);
       }
 
       return json({ ok: true, status: 'CopelandOS Worker online', console: `${url.origin}/console` });
@@ -574,20 +600,4 @@ function extractEmailBody(payload) {
 function decode64(data) {
   try { return decodeURIComponent(escape(atob(data.replace(/-/g, '+').replace(/_/g, '/')))); }
   catch { return atob(data.replace(/-/g, '+').replace(/_/g, '/')); }
-}
-
-function sanitizeOAuthError(data) {
-  const allowed = ['error', 'error_description'];
-  return Object.fromEntries(Object.entries(data || {}).filter(([key]) => allowed.includes(key)));
-}
-
-function renderOAuthTokenPage(refreshToken, headers) {
-  const escaped = escapeHtml(refreshToken);
-  return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gmail connected</title></head><body style="background:#0a0a0c;color:#eee;font-family:ui-monospace,monospace;padding:32px;max-width:780px"><h2 style="color:#6ef0ad">Gmail draft access connected</h2><p>Add this secret in Cloudflare Workers settings:</p><p><strong>Name:</strong> GMAIL_REFRESH_TOKEN</p><pre style="background:#111827;padding:16px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:#6fdfff">${escaped}</pre><p>This enables draft creation only. CopelandOS still does not send emails from the console.</p></body></html>`, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', ...headers },
-  });
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 }

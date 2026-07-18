@@ -24,10 +24,12 @@ Approved priorities. Security tasks in `docs/cursor-ready-issues.md` take preced
 - Baseline security headers on all Worker responses.
 - Safe error responses that do not expose upstream bodies.
 
-### PR 4 — OAuth callback hardening
+### PR 4 — OAuth callback hardening (complete)
 
-- Add OAuth `state` and a safer Gmail enrollment flow (no refresh tokens in HTML).
-- Review least-privilege Gmail scopes.
+- HMAC-signed OAuth `state` validation on Gmail callback.
+- Secure enrollment pickup flow; refresh tokens no longer rendered in HTML by default.
+- Least-privilege scopes: `gmail.compose` + `gmail.readonly` only.
+- Deprecated `GMAIL_OAUTH_LEGACY_HTML=true` for backwards compatibility.
 
 ### PR 5 — GitHub project supervisor
 

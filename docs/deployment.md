@@ -82,7 +82,7 @@ Register this redirect URI in Google Cloud Console:
 https://copelandos.<account>.workers.dev/api/auth/callback
 ```
 
-Start enrollment at `/api/auth/gmail` on the deployed Worker.
+Start enrollment at `/api/auth/gmail` on the deployed Worker (requires `API_AUTH_TOKEN`). See [gmail-oauth.md](gmail-oauth.md) for the secure pickup flow.
 
 ## Optional local agent
 

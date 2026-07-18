@@ -30,7 +30,7 @@ Threat assumptions and access-control design for CopelandOS Worker routes. Read 
 
 ### Out of scope (this PR)
 
-- OAuth `state` validation and safer refresh-token enrollment (Task 4)
+- OAuth `state` validation and safer refresh-token enrollment (Task 4) — see [gmail-oauth.md](gmail-oauth.md)
 - Per-route rate limits and body-size caps (Task 3) — see [request-limits.md](request-limits.md)
 - Browser session cookies or refreshable login flows
 - Local-agent pairing transport
@@ -54,7 +54,7 @@ Query-string tokens are not accepted on protected routes (they leak in logs and 
 | Class | Routes | Rationale |
 |---|---|---|
 | **Public** | `/api/health`, `/api/status`, `/api/projects`, registry reads, permission rules, brain/orchestration status | Capability and registry metadata only; no secret-backed side effects |
-| **Gmail** | `/api/mail/*`, `/api/email/draft`, `/api/auth/gmail`, `/api/auth/callback` | Uses Gmail OAuth refresh token |
+| **Gmail** | `/api/mail/*`, `/api/email/draft`, `/api/auth/gmail`, `/api/auth/callback`, `/api/auth/enrollment/pickup` | Uses Gmail OAuth refresh token |
 | **Vault write** | `/api/vault/write`, `/api/obsidian/save`, `/api/idea`, `/api/capture/idea`, `/api/ideas/:id/convert` | Creates or updates vault content via GitHub or mock store |
 | **Provider-backed** | `/api/ai`, `/api/search`, `/api/hermes/route`, `/api/automation/route` | Calls external APIs billed to configured keys |
 

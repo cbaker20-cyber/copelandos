@@ -33,6 +33,7 @@ Work top to bottom, one draft PR at a time. Do not add assistant features until 
 
 ## Task 4: OAuth callback hardening
 
-- Add and validate OAuth `state`.
-- Stop rendering refresh tokens into an HTML response; document a safer enrollment flow.
-- Review least-privilege Gmail scopes.
+- **Status:** Complete (see `docs/gmail-oauth.md`, `src/gmailOAuth.js`).
+- Add and validate OAuth `state`. → HMAC-signed `state` with 10-minute TTL on `/api/auth/callback`.
+- Stop rendering refresh tokens into an HTML response; document a safer enrollment flow. → Secure pickup via `/api/auth/enrollment/pickup`; legacy HTML behind `GMAIL_OAUTH_LEGACY_HTML=true`.
+- Review least-privilege Gmail scopes. → `gmail.compose` + `gmail.readonly` only.
