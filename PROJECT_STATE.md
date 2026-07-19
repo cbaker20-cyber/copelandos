@@ -23,6 +23,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Draft-only Gmail routes with medium-risk confirmation
 - Brain pipeline: idea capture, triage, planning, vault conversion
 - Foundation API: status, projects, commands, vault, remote status
+- Read-only integration registry and overnight control-loop map; all external integrations report not connected until real probes exist
 - Push-to-talk browser voice input (no always-on microphone)
 - Bearer-token access control on Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`)
 - Request body limits, field validation, provider rate limiting, and security headers

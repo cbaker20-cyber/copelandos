@@ -15,6 +15,7 @@
 - Exact-origin CORS reduces browser exposure but is not authentication.
 - The local agent requires a shared token and exact allowlist and binds to localhost by default.
 - GitHub-backed vault paths are constructed from fixed folders and sanitized segments.
+- Integration roadmap routes expose only non-secret metadata and fail closed; configured environment variables do not imply a live external connection.
 
 ## Action rules
 

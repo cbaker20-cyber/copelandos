@@ -614,6 +614,7 @@ p {
 .chip-grid,
 .brain-pipeline,
 .automation,
+.loop-list,
 .idea-list {
   display: grid;
   gap: 9px;
@@ -819,6 +820,56 @@ dialog,
 .auto-row span:last-child {
   color: var(--soft);
   font-family: ui-monospace, monospace;
+}
+
+.loop-list {
+  max-height: 236px;
+  overflow: auto;
+  margin: 13px 18px 0;
+  scrollbar-width: thin;
+}
+
+.loop-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid rgba(255,255,255,.70);
+  border-radius: 18px;
+  background: rgba(255,255,255,.46);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.82);
+}
+
+.loop-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(44,142,242,.22);
+  border-radius: 999px;
+  color: var(--accent);
+  font: 9px ui-monospace, monospace;
+}
+
+.loop-step strong {
+  display: block;
+  font-size: 10px;
+}
+
+.loop-step small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.loop-state {
+  color: var(--soft);
+  font: 8px ui-monospace, monospace;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .transcript {

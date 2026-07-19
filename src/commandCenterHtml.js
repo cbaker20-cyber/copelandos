@@ -29,7 +29,7 @@ export function renderCommandCenterHtml() {
   <main class="shell">
     <header class="topbar">
       <div class="brand"><div class="brand-left"><span class="mark" aria-hidden="true"></span><div><h1>COPELANDOS</h1><div class="subline">Mobile control surface</div></div></div><div class="switch"><button id="theme-lunar" type="button">Moon</button><button id="theme-solar" type="button">Sun</button></div></div>
-      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#system">System</a></nav>
+      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#loop">Loop</a><a class="tab" href="#system">System</a></nav>
     </header>
 
     <section id="home" class="section">
@@ -54,6 +54,10 @@ export function renderCommandCenterHtml() {
       <article class="panel"><div class="head"><div><div class="title">AI prompt</div><div class="muted">Routes through the configured provider stack.</div></div><span class="badge warn">bounded</span></div><form class="form" id="ai-form"><label>Ask<textarea id="ai-task" placeholder="Ask a small focused question..."></textarea></label><button class="primary" type="submit">Ask</button></form></article>
     </section>
 
+    <section id="loop" class="section grid">
+      <article class="panel wide"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Read-only capture -> plan -> route -> draft PR -> report map. No task runs automatically.</div></div><span class="badge" id="loop-badge">scaffold</span></div><div class="form"><ul class="list" id="loop-list"><li>Loading loop registry...</li></ul></div></article>
+    </section>
+
     <section id="system" class="section grid">
       <article class="panel"><div class="head"><div><div class="title">System status</div><div class="muted">Worker capabilities and phone-readiness.</div></div></div><div class="form"><div class="log" id="status-log">Loading...</div></div></article>
       <article class="panel"><div class="head"><div><div class="title">Rainmeter pairing</div><div class="muted">Keep Rainmeter light: clock, capture URL, launcher. No animated dashboard.</div></div></div><div class="form"><div class="code">C:\AI\Ops\rainmeter\copelandos-phone.ini</div><button id="copy-rainmeter-note" type="button">Copy Rainmeter plan</button><div class="mini">Use Rainmeter only as a desktop skin that opens this page and displays the Shortcut URL. The Worker stays the brain.</div></div></article>
@@ -61,7 +65,7 @@ export function renderCommandCenterHtml() {
     </section>
   </main>
 
-  <nav class="dock" aria-label="Quick dock"><a href="#home" title="Home">⌂</a><a href="#phone" title="Phone">▣</a><a href="#capture" title="Capture">✎</a><a href="#plan" title="Plan">☑</a><a href="#system" title="System">⚙</a><a href="/api/health" title="Health">✓</a></nav>
+  <nav class="dock" aria-label="Quick dock"><a href="#home" title="Home">⌂</a><a href="#phone" title="Phone">▣</a><a href="#capture" title="Capture">✎</a><a href="#plan" title="Plan">☑</a><a href="#loop" title="Loop">↻</a><a href="#system" title="System">⚙</a><a href="/api/health" title="Health">✓</a></nav>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -102,6 +106,25 @@ export function renderCommandCenterHtml() {
         log('Status failed: ' + error.message);
       }
     }
+    async function loadControlLoop(){
+      const list = $('loop-list');
+      try{
+        const data = await api('/api/integrations/control-loop');
+        list.innerHTML = '';
+        for(const step of data.loop || []){
+          const li = document.createElement('li');
+          const status = step.integration && step.integration.ready ? 'ready' : (step.integration && step.integration.status) || 'planned';
+          li.textContent = step.step + '. ' + step.name + ': ' + step.from + ' -> ' + step.to + ' [' + status + ']';
+          list.appendChild(li);
+        }
+        $('loop-badge').textContent = (data.loop || []).some((step) => step.integration && step.integration.ready) ? 'partly ready' : 'scaffold';
+      }catch(error){
+        list.innerHTML = '';
+        const li = document.createElement('li');
+        li.textContent = 'Loop registry unavailable: ' + error.message;
+        list.appendChild(li);
+      }
+    }
     $('refresh-status').onclick = refreshStatus;
     $('test-get-capture').onclick = async () => {
       const url = shortcutUrl($('shortcut-test').value);
@@ -129,6 +152,7 @@ export function renderCommandCenterHtml() {
     });
     refreshUrls();
     refreshStatus();
+    loadControlLoop();
   </script>
 </body>
 </html>`;

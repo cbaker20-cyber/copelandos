@@ -36,6 +36,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Voice interface:** browser Web Speech API, push-to-talk only.
 - **Model router:** chooses the first configured provider for a task category without revealing credentials.
 - **Permission engine:** classifies every named action as SAFE, MEDIUM, or HIGH.
+- **Integration registry:** read-only command-center roadmap for mobile capture, overnight loop, vault, task, and status surfaces. It never marks external systems connected from config alone.
 
 ## Backend decision
 
@@ -67,6 +68,9 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `GET /api/remote/status` | Honest local-agent connection status |
 | `POST /api/remote/request-action` | Permission classification; no remote execution without a connection |
 | `POST /api/ai/route` | Provider/model selection without key exposure |
+| `GET /api/integrations` | Read-only integration roadmap with honest connection status |
+| `POST /api/integrations/check` | Fail-closed integration availability check |
+| `GET /api/integrations/control-loop` | Overnight/mobile control-loop steps for the dashboard |
 
 ## Brain Pipeline API
 
