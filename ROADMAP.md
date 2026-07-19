@@ -54,6 +54,7 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 - Local-agent skeleton and allowlist
 - Jarvis dashboard with honest connection states and push-to-talk voice
 - Tests and architecture/security documentation
+- Read-only integration roadmap and overnight control-loop scaffold
 
 ## Later
 
