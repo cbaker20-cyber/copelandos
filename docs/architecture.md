@@ -32,6 +32,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Gmail draft assistant:** reads Gmail when configured and creates drafts only after confirmation.
 - **Band Council operations:** project policy forbids private student data and autonomous communication.
 - **School planner / research librarian / music helper:** dashboard and project-policy modules awaiting data connectors.
+- **Integration registry:** read-only roadmap of mobile, memory, provider, and overnight-loop surfaces; external integrations stay disconnected until real probes exist.
 - **Local Windows agent:** separate localhost service with exact allowlists.
 - **Voice interface:** browser Web Speech API, push-to-talk only.
 - **Model router:** chooses the first configured provider for a task category without revealing credentials.
@@ -67,6 +68,9 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `GET /api/remote/status` | Honest local-agent connection status |
 | `POST /api/remote/request-action` | Permission classification; no remote execution without a connection |
 | `POST /api/ai/route` | Provider/model selection without key exposure |
+| `GET /api/integrations` | Read-only integration roadmap with honest scaffold status |
+| `POST /api/integrations/check` | Fail-closed integration status check |
+| `GET /api/integrations/control-loop` | Phone-first overnight/control-loop steps for the dashboard |
 
 ## Brain Pipeline API
 
