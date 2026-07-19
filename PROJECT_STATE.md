@@ -23,6 +23,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Draft-only Gmail routes with medium-risk confirmation
 - Brain pipeline: idea capture, triage, planning, vault conversion
 - Foundation API: status, projects, commands, vault, remote status
+- Read-only integration roadmap registry and overnight control-loop status
 - Push-to-talk browser voice input (no always-on microphone)
 - Bearer-token access control on Gmail, vault writes, and provider-backed routes (`API_AUTH_TOKEN`)
 - Request body limits, field validation, provider rate limiting, and security headers
@@ -60,6 +61,7 @@ Security queue: **complete**. Post-queue audit documented in `docs/security-audi
 
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - GitHub project supervisor not connected
+- Integration registry is scaffold/status-only; external integrations are not live-probed
 - Local-agent pairing/encrypted transport not implemented
 - `wrangler.jsonc` removed; `wrangler.toml` is the sole Wrangler config
 

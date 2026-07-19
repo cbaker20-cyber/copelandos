@@ -53,6 +53,7 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 - Canonical Worker route foundation
 - Local-agent skeleton and allowlist
 - Jarvis dashboard with honest connection states and push-to-talk voice
+- Read-only integration registry and overnight control-loop scaffold
 - Tests and architecture/security documentation
 
 ## Later
@@ -61,6 +62,6 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 - Research library ingestion with citations
 - JazzBackend practice helpers
 - Optional voice synthesis and wake-free push-to-talk improvements
-- Automation schedules only after duplicate-work and permission controls exist
+- Live integration probes and automation schedules only after duplicate-work and permission controls exist
 
 For detailed module descriptions, see [docs/roadmap.md](docs/roadmap.md).

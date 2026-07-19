@@ -7,14 +7,20 @@ import { bearerAuthHeaders, TEST_API_AUTH_TOKEN, withApiAuth } from './helpers/a
 test('Worker root serves the usable CopelandOS console', async () => {
   const response = await worker.fetch(new Request('https://worker.example/'), {}, {});
   const html = await response.text();
+  const csp = response.headers.get('Content-Security-Policy');
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
+  assert.match(csp, /script-src 'self' 'nonce-[A-Za-z0-9_-]+'/);
+  assert.match(csp, /style-src 'self' 'nonce-[A-Za-z0-9_-]+'/);
+  assert.match(html, /<script nonce="[A-Za-z0-9_-]+">/);
+  assert.match(html, /<style nonce="[A-Za-z0-9_-]+">/);
   assert.match(html, /CopelandOS/);
   assert.match(html, /Siri Shortcut capture/);
   assert.match(html, /Create plan/);
   assert.match(html, /api\/capture\/idea/);
   assert.match(html, /Rainmeter pairing/);
+  assert.match(html, /Overnight control loop/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {

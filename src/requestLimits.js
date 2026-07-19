@@ -157,6 +157,14 @@ export function validateRouteBody(path, body) {
     return { ok: true };
   }
 
+  if (path === '/api/integrations/check') {
+    const required = requireString(body.integrationId, 'integrationId');
+    if (required) return required;
+    const idError = checkStringLength(body.integrationId, 'integrationId', LIMITS.MAX_SHORT_FIELD);
+    if (idError) return idError;
+    return { ok: true };
+  }
+
   if (path === '/api/mail/read') {
     const required = requireString(body.id, 'id');
     if (required) return required;
@@ -223,13 +231,17 @@ export function checkProviderRateLimit(request, path, limiter = defaultProviderL
   return limiter.check(`provider:${getClientKey(request)}`);
 }
 
-export function securityHeaders() {
+export function securityHeaders({ cspNonce } = {}) {
+  const contentSecurityPolicy = cspNonce
+    ? `default-src 'self'; script-src 'self' 'nonce-${cspNonce}'; style-src 'self' 'nonce-${cspNonce}'; frame-ancestors 'none'`
+    : "default-src 'self'; frame-ancestors 'none'";
+
   return {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+    'Content-Security-Policy': contentSecurityPolicy,
   };
 }
 
