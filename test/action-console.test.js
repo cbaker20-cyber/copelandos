@@ -10,11 +10,15 @@ test('Worker root serves the usable CopelandOS console', async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
+  assert.match(response.headers.get('Content-Security-Policy'), /script-src 'self' 'nonce-/);
+  assert.match(response.headers.get('Content-Security-Policy'), /style-src 'self' 'nonce-/);
   assert.match(html, /CopelandOS/);
   assert.match(html, /Siri Shortcut capture/);
   assert.match(html, /Create plan/);
   assert.match(html, /api\/capture\/idea/);
   assert.match(html, /Rainmeter pairing/);
+  assert.match(html, /Overnight control loop/);
+  assert.match(html, /activity\.textContent = line \+ '\\n\\n' \+ activity\.textContent/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {
@@ -38,7 +42,11 @@ test('Hermes routes Mimo-style learning without tool execution', async () => {
 });
 
 test('Automation registry includes Mimo, Ornith, and review-first automators', async () => {
-  const response = await worker.fetch(new Request('https://worker.example/api/automation/integrations'), {}, {});
+  const response = await worker.fetch(new Request('https://worker.example/api/automation/integrations'), {
+    GITHUB_TOKEN: 'token',
+    GITHUB_REPO: 'owner/repo',
+    GMAIL_REFRESH_TOKEN: 'refresh',
+  }, {});
   const result = await response.json();
   const ids = result.integrations.map((item) => item.id);
 
@@ -50,6 +58,8 @@ test('Automation registry includes Mimo, Ornith, and review-first automators', a
   assert.ok(ids.includes('zapier'));
   assert.ok(ids.includes('make'));
   assert.ok(result.integrations.every((item) => Array.isArray(item.blockedActions)));
+  assert.ok(result.integrations.some((item) => item.configured));
+  assert.ok(result.integrations.every((item) => item.connected === false));
 });
 
 test('Hermes routes Ornith and webhook automation as approval-first plans', async () => {

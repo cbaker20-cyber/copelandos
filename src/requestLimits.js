@@ -165,6 +165,14 @@ export function validateRouteBody(path, body) {
     return { ok: true };
   }
 
+  if (path === '/api/integrations/check') {
+    const required = requireString(body.integrationId, 'integrationId');
+    if (required) return required;
+    const integrationIdError = checkStringLength(body.integrationId, 'integrationId', LIMITS.MAX_SHORT_FIELD);
+    if (integrationIdError) return integrationIdError;
+    return { ok: true };
+  }
+
   if (path === '/api/mail/list') {
     const queryError = checkStringLength(body.query, 'query', LIMITS.MAX_SHORT_FIELD);
     if (queryError) return queryError;
@@ -223,13 +231,16 @@ export function checkProviderRateLimit(request, path, limiter = defaultProviderL
   return limiter.check(`provider:${getClientKey(request)}`);
 }
 
-export function securityHeaders() {
+export function securityHeaders({ cspNonce } = {}) {
+  const nonceDirective = cspNonce ? ` 'nonce-${cspNonce}'` : '';
   return {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+    'Content-Security-Policy': cspNonce
+      ? `default-src 'self'; script-src 'self'${nonceDirective}; style-src 'self'${nonceDirective}; frame-ancestors 'none'`
+      : "default-src 'self'; frame-ancestors 'none'",
   };
 }
 

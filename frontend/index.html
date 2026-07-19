@@ -22,6 +22,7 @@
           <a href="#communications"><span class="nav-icon">△</span>Drafts</a>
           <a href="#local"><span class="nav-icon">▣</span>Local bridge</a>
           <a href="#providers"><span class="nav-icon">⊞</span>Providers</a>
+          <a href="#loop"><span class="nav-icon">↻</span>Overnight loop</a>
           <a href="#tools"><span class="nav-icon">⊟</span>Tools</a>
         </div>
       </nav>
@@ -225,6 +226,12 @@
             <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
           </div>
         </article>
+        <article class="panel small-panel" id="loop">
+          <div class="panel-head"><div><div class="panel-title">Overnight control loop</div><div class="panel-sub">Read-only command-center map</div></div><span class="badge mock" id="loop-badge">scaffold</span></div>
+          <div class="automation" id="loop-list">
+            <div class="empty-state">Loop registry loads from the Worker. No task is executed automatically.</div>
+          </div>
+        </article>
       </section>
 
       <section class="section" id="tools">
@@ -324,6 +331,7 @@
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
       queueState: document.getElementById('queue-state'),
+      loopList: document.getElementById('loop-list'),
     };
 
     let speechReplies = false;
@@ -585,15 +593,30 @@
       }
     }
 
+    function renderControlLoop(controlLoop) {
+      const loop = controlLoop.loop || [];
+      if (!loop.length) {
+        els.loopList.innerHTML = '<div class="empty-state">No control-loop steps were returned by the Worker.</div>';
+        return;
+      }
+      els.loopList.innerHTML = loop.map(step => {
+        const integration = step.integration || {};
+        const state = integration.ready ? 'ready' : integration.status || 'planned';
+        return `<div class="auto-row"><span>${escapeHtml(step.step)}. ${escapeHtml(step.name)}</span><span>${escapeHtml(state)}</span></div>`;
+      }).join('');
+      document.getElementById('loop-badge').textContent = loop.some(step => step.integration?.ready) ? 'partly ready' : 'scaffold';
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
         `<span class="provider">${name} · not connected</span>`
       ).join('');
       try {
-        const [status, projects] = await Promise.all([api('/api/status'), api('/api/projects')]);
+        const [status, projects, controlLoop] = await Promise.all([api('/api/status'), api('/api/projects'), api('/api/integrations/control-loop')]);
         renderSignals(status);
         renderProjects(projects.projects);
+        renderControlLoop(controlLoop);
         await loadProviderRegistry();
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);

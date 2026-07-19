@@ -60,9 +60,10 @@ export default {
     if (!access.ok) return json(access.body, access.status);
 
     if (path === '/' || path === '/index.html' || path === '/console') {
-      return new Response(renderCommandCenterHtml(), {
+      const cspNonce = createCspNonce();
+      return new Response(renderCommandCenterHtml(cspNonce), {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', ...hardenedHeaders },
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...hardenedHeaders, ...securityHeaders({ cspNonce }) },
       });
     }
 
@@ -426,6 +427,14 @@ function isCaptureAuthorized(request, env) {
   const auth = request.headers.get('Authorization') || '';
   const token = new URL(request.url).searchParams.get('token') || '';
   return auth === `Bearer ${env.CAPTURE_TOKEN}` || token === env.CAPTURE_TOKEN;
+}
+
+function createCspNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 function createGenericVaultDocument({ title = 'Untitled Note', folder = 'Inbox', content = '', agent = 'copelandos', tags = [] } = {}, options = {}) {
