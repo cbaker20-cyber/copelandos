@@ -67,6 +67,9 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `GET /api/remote/status` | Honest local-agent connection status |
 | `POST /api/remote/request-action` | Permission classification; no remote execution without a connection |
 | `POST /api/ai/route` | Provider/model selection without key exposure |
+| `GET /api/integrations` | Read-only integration roadmap registry; never marks external systems connected |
+| `POST /api/integrations/check` | Fail-closed integration readiness check |
+| `GET /api/integrations/control-loop` | Overnight/control-loop map for the dashboard |
 
 ## Brain Pipeline API
 

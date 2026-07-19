@@ -13,6 +13,7 @@
 - Browser code receives capability status, never provider credentials.
 - Cloudflare secrets remain in `env` and are never logged or returned.
 - Exact-origin CORS reduces browser exposure but is not authentication.
+- Integration roadmap routes are read-only and report `connected: false` unless a future real connector and probe proves connectivity.
 - The local agent requires a shared token and exact allowlist and binds to localhost by default.
 - GitHub-backed vault paths are constructed from fixed folders and sanitized segments.
 
