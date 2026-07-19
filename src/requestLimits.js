@@ -157,6 +157,14 @@ export function validateRouteBody(path, body) {
     return { ok: true };
   }
 
+  if (path === '/api/integrations/check') {
+    const required = requireString(body.integrationId, 'integrationId');
+    if (required) return required;
+    const idError = checkStringLength(body.integrationId, 'integrationId', LIMITS.MAX_SHORT_FIELD);
+    if (idError) return idError;
+    return { ok: true };
+  }
+
   if (path === '/api/mail/read') {
     const required = requireString(body.id, 'id');
     if (required) return required;
