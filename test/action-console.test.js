@@ -10,6 +10,8 @@ test('Worker root serves the usable CopelandOS console', async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
+  assert.match(response.headers.get('Content-Security-Policy'), /script-src 'self' 'nonce-/);
+  assert.match(response.headers.get('Content-Security-Policy'), /style-src 'self' 'nonce-/);
   assert.match(html, /CopelandOS/);
   assert.match(html, /Siri Shortcut capture/);
   assert.match(html, /Create plan/);

@@ -231,13 +231,16 @@ export function checkProviderRateLimit(request, path, limiter = defaultProviderL
   return limiter.check(`provider:${getClientKey(request)}`);
 }
 
-export function securityHeaders() {
+export function securityHeaders({ cspNonce } = {}) {
+  const nonceDirective = cspNonce ? ` 'nonce-${cspNonce}'` : '';
   return {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+    'Content-Security-Policy': cspNonce
+      ? `default-src 'self'; script-src 'self'${nonceDirective}; style-src 'self'${nonceDirective}; frame-ancestors 'none'`
+      : "default-src 'self'; frame-ancestors 'none'",
   };
 }
 
