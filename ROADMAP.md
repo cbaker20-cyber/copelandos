@@ -57,6 +57,7 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 
 ## Later
 
+- Integration roadmap registry and mobile/overnight control-loop documentation (status-only foundation complete)
 - School calendar/assignment connectors with privacy review
 - Research library ingestion with citations
 - JazzBackend practice helpers

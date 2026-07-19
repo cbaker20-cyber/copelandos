@@ -28,6 +28,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Request body limits, field validation, provider rate limiting, and security headers
 - Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
 - Post-queue security audit: legacy Pages `410` guard, OAuth denial handling, header hardening
+- Read-only integration roadmap registry and overnight control-loop dashboard panel with fail-closed external status
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -61,6 +62,7 @@ Security queue: **complete**. Post-queue audit documented in `docs/security-audi
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented
+- Integration roadmap entries are scaffold/status-only unless a future connector adds live probes and tests
 - `wrangler.jsonc` removed; `wrangler.toml` is the sole Wrangler config
 
 ## Test commands
