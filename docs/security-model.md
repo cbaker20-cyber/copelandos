@@ -33,6 +33,7 @@
 - The Worker cannot securely connect to a local agent without a reviewed transport and token-storage design.
 - Pattern checks can catch obvious secrets but cannot prove that free text contains no private information; users remain responsible for review.
 - Provider/model identifiers may need updates as vendors change APIs.
+- `config/integrations.json` is a roadmap registry only; external integrations stay `connected: false` until a real connector and tested probe are added.
 
 ## Failure posture
 
