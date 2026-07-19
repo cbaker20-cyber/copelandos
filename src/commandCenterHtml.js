@@ -68,8 +68,8 @@ export function renderCommandCenterHtml() {
     const $ = (id) => document.getElementById(id);
     const activity = $('activity-log');
     function log(msg, data){
-      const line = '[' + new Date().toLocaleTimeString() + '] ' + msg + (data ? '\n' + JSON.stringify(data, null, 2) : '');
-      activity.textContent = line + '\n\n' + activity.textContent;
+      const line = '[' + new Date().toLocaleTimeString() + '] ' + msg + (data ? '\\n' + JSON.stringify(data, null, 2) : '');
+      activity.textContent = line + '\\n\\n' + activity.textContent;
     }
     function escapeHtml(value){
       return String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
