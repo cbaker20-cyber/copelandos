@@ -10,6 +10,10 @@ import {
   appendPlanningHistory,
   addPlanningDecision,
   addPlanningDependency,
+  appendReasoningSummary,
+  recordCompletedObjective,
+  recordBlockedObjective,
+  appendExecutionContext,
   appendExecutionSummary,
   getResumableContext,
   getPlanningMemorySnapshot,
@@ -64,7 +68,23 @@ export async function handlePlanningMemoryRequest({ path, request, body, env, js
     return json({ ok: true, plan: result.plan }, 201);
   }
 
-  const actionMatch = path.match(/^\/api\/planning-memory\/([^/]+)\/(history|decisions|dependencies|executions)$/);
+  const objectiveActionMatch = path.match(/^\/api\/planning-memory\/([^/]+)\/objectives\/(complete|block)$/);
+  if (objectiveActionMatch) {
+    const planId = decodeURIComponent(objectiveActionMatch[1]);
+    const action = objectiveActionMatch[2];
+    const guard = methodGuard(request, ['POST'], json);
+    if (guard) return guard;
+
+    const payload = body && typeof body === 'object' ? body : {};
+    const result = action === 'complete'
+      ? await recordCompletedObjective(env, planId, payload)
+      : await recordBlockedObjective(env, planId, payload);
+
+    if (!result.ok) return json({ ok: false, error: result.error }, result.status);
+    return json({ ok: true, ...result });
+  }
+
+  const actionMatch = path.match(/^\/api\/planning-memory\/([^/]+)\/(history|decisions|dependencies|reasoning|context|executions)$/);
   if (actionMatch) {
     const planId = decodeURIComponent(actionMatch[1]);
     const action = actionMatch[2];
@@ -83,6 +103,12 @@ export async function handlePlanningMemoryRequest({ path, request, body, env, js
         break;
       case 'dependencies':
         result = await addPlanningDependency(env, planId, payload);
+        break;
+      case 'reasoning':
+        result = await appendReasoningSummary(env, planId, payload);
+        break;
+      case 'context':
+        result = await appendExecutionContext(env, planId, payload);
         break;
       case 'executions':
         result = await appendExecutionSummary(env, planId, payload);

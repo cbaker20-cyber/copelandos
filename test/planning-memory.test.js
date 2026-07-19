@@ -10,6 +10,10 @@ import {
   appendPlanningHistory,
   addPlanningDecision,
   addPlanningDependency,
+  appendReasoningSummary,
+  recordCompletedObjective,
+  recordBlockedObjective,
+  appendExecutionContext,
   appendExecutionSummary,
   getResumableContext,
   getPlanningMemorySnapshot,
@@ -137,6 +141,100 @@ test('append history, decisions, dependencies, and execution summaries', async (
   });
   assert.equal(execution.ok, true);
   assert.equal(execution.plan.executionSummaries.length, 1);
+  assert.equal(execution.plan.executionContext.length, 1);
+});
+
+test('reasoning summaries, objectives, and execution context persist', async () => {
+  const created = await createPlanningMemory(env, {
+    objective: 'Extended memory fields',
+    agentId: 'agent-copelandos',
+  });
+  const planId = created.plan.id;
+
+  const reasoning = await appendReasoningSummary(env, planId, {
+    summary: 'Prioritize resume context aggregation',
+    source: 'planner',
+  });
+  assert.equal(reasoning.ok, true);
+
+  const decision = await addPlanningDecision(env, planId, {
+    text: 'Mirror decisions into reasoning summaries',
+    rationale: 'Single source for resume',
+  });
+  assert.equal(decision.ok, true);
+  assert.ok(decision.plan.reasoningSummaries.length >= 2);
+
+  const completed = await recordCompletedObjective(env, planId, {
+    objective: 'Phase 1 complete',
+    summary: 'Storage and API shipped',
+  });
+  assert.equal(completed.ok, true);
+  assert.equal(completed.plan.status, 'completed');
+  assert.equal(completed.plan.completedObjectives.length, 1);
+
+  const blockedPlan = await createPlanningMemory(env, {
+    objective: 'Blocked follow-up',
+    agentId: 'agent-copelandos',
+  });
+  const blocked = await recordBlockedObjective(env, blockedPlan.plan.id, {
+    reason: 'Waiting on KV namespace',
+  });
+  assert.equal(blocked.ok, true);
+  assert.equal(blocked.plan.status, 'blocked');
+
+  const context = await appendExecutionContext(env, planId, {
+    status: 'partial',
+    summary: 'Docs in progress',
+    source: 'agent',
+    agentRunId: 'run-123',
+  });
+  assert.equal(context.ok, true);
+  assert.equal(context.context.agentRunId, 'run-123');
+});
+
+test('status patch records completed and blocked objectives', async () => {
+  const created = await createPlanningMemory(env, {
+    objective: 'Auto-record on status change',
+    agentId: 'agent-copelandos',
+  });
+
+  const completed = await updatePlanningMemory(env, created.plan.id, {
+    status: 'completed',
+    completionSummary: 'All acceptance criteria met',
+  });
+  assert.equal(completed.plan.completedObjectives.length, 1);
+  assert.equal(completed.plan.completedObjectives[0].summary, 'All acceptance criteria met');
+
+  const blockedPlan = await createPlanningMemory(env, {
+    objective: 'Dependency blocked',
+    agentId: 'agent-copelandos',
+  });
+  const blocked = await updatePlanningMemory(env, blockedPlan.plan.id, {
+    status: 'blocked',
+    blockedReason: 'Upstream agent offline',
+  });
+  assert.equal(blocked.plan.blockedObjectives.length, 1);
+  assert.equal(blocked.plan.blockedObjectives[0].reason, 'Upstream agent offline');
+});
+
+test('normalizePlan migrates legacy executionSummaries-only records', async () => {
+  const created = await createPlanningMemory(env, {
+    objective: 'Legacy migration',
+    agentId: 'agent-copelandos',
+  });
+  const storage = getPlanningMemoryStorage(env);
+  const legacy = await storage.getPlan(created.plan.id);
+  delete legacy.executionContext;
+  delete legacy.reasoningSummaries;
+  delete legacy.completedObjectives;
+  delete legacy.blockedObjectives;
+  await storage.putPlan(legacy);
+
+  const reloaded = await getPlanningMemory(env, created.plan.id);
+  assert.ok(Array.isArray(reloaded.executionContext));
+  assert.ok(Array.isArray(reloaded.reasoningSummaries));
+  assert.ok(Array.isArray(reloaded.completedObjectives));
+  assert.ok(Array.isArray(reloaded.blockedObjectives));
 });
 
 test('getResumableContext links agent, task, and planning memory', async () => {
@@ -163,6 +261,9 @@ test('getResumableContext links agent, task, and planning memory', async () => {
   assert.ok(resume.resume.plans[0].linkedAgent);
   assert.ok(resume.resume.plans[0].linkedTask);
   assert.equal(resume.resume.plans[0].decisions.length, 1);
+  assert.ok(resume.resume.memory);
+  assert.ok(resume.resume.memory.reasoningSummaries.length >= 1);
+  assert.ok(resume.resume.memory.executionContext.length >= 0);
 });
 
 test('task completion syncs execution summary when planningMemoryId is set', async () => {
@@ -184,8 +285,10 @@ test('task completion syncs execution summary when planningMemoryId is set', asy
 
   const reloaded = await getPlanningMemory(env, plan.plan.id);
   assert.equal(reloaded.executionSummaries.length, 1);
+  assert.equal(reloaded.executionContext.length, 1);
   assert.equal(reloaded.executionSummaries[0].source, 'task');
   assert.equal(reloaded.executionSummaries[0].status, 'success');
+  assert.equal(reloaded.executionContext[0].taskAttempt, 1);
 });
 
 test('KV storage persists planning memory across resets', async () => {
@@ -217,7 +320,56 @@ test('planning memory mutation routes require authentication', () => {
   assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory', 'POST'), true);
   assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory', 'GET'), false);
   assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/decisions', 'POST'), true);
+  assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/reasoning', 'POST'), true);
+  assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/context', 'POST'), true);
+  assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/objectives/complete', 'POST'), true);
+  assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/objectives/block', 'POST'), true);
   assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/resume', 'GET'), false);
+});
+
+test('POST new planning memory routes via HTTP', async () => {
+  const createRequest = makeRequest('/api/planning-memory', {
+    method: 'POST',
+    headers: bearerAuthHeaders(),
+    body: JSON.stringify({
+      objective: 'HTTP extended routes',
+      agentId: 'agent-copelandos',
+    }),
+  });
+  const createResponse = await worker.fetch(createRequest, withApiAuth(), {});
+  const created = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  const planId = created.plan.id;
+
+  const reasoningRequest = makeRequest(`/api/planning-memory/${planId}/reasoning`, {
+    method: 'POST',
+    headers: bearerAuthHeaders(),
+    body: JSON.stringify({ summary: 'HTTP reasoning entry', source: 'agent' }),
+  });
+  const reasoningResponse = await worker.fetch(reasoningRequest, withApiAuth(), {});
+  const reasoning = await reasoningResponse.json();
+  assert.equal(reasoningResponse.status, 200);
+  assert.ok(reasoning.reasoning);
+
+  const contextRequest = makeRequest(`/api/planning-memory/${planId}/context`, {
+    method: 'POST',
+    headers: bearerAuthHeaders(),
+    body: JSON.stringify({ status: 'running', summary: 'In flight', source: 'agent' }),
+  });
+  const contextResponse = await worker.fetch(contextRequest, withApiAuth(), {});
+  const context = await contextResponse.json();
+  assert.equal(contextResponse.status, 200);
+  assert.ok(context.context);
+
+  const completeRequest = makeRequest(`/api/planning-memory/${planId}/objectives/complete`, {
+    method: 'POST',
+    headers: bearerAuthHeaders(),
+    body: JSON.stringify({ summary: 'Done via HTTP' }),
+  });
+  const completeResponse = await worker.fetch(completeRequest, withApiAuth(), {});
+  const completed = await completeResponse.json();
+  assert.equal(completeResponse.status, 200);
+  assert.equal(completed.plan.status, 'completed');
 });
 
 test('GET /api/planning-memory/resume is public', async () => {

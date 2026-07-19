@@ -7,7 +7,8 @@ const IDEA_CONVERT_PATTERN = /^\/api\/ideas\/[^/]+\/convert$/;
 const CAPTURE_PATH = '/api/capture/idea';
 const AGENT_ACTION_PATTERN = /^\/api\/agents\/[^/]+\/(heartbeat|runs|block|unblock)$/;
 const TASK_ACTION_PATTERN = /^\/api\/tasks\/[^/]+\/(claim|start|complete|fail|cancel|retry)$/;
-const PLANNING_ACTION_PATTERN = /^\/api\/planning-memory\/[^/]+\/(history|decisions|dependencies|executions)$/;
+const PLANNING_ACTION_PATTERN = /^\/api\/planning-memory\/[^/]+\/(history|decisions|dependencies|reasoning|context|executions)$/;
+const PLANNING_OBJECTIVE_PATTERN = /^\/api\/planning-memory\/[^/]+\/objectives\/(complete|block)$/;
 
 export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation', 'task_mutation', 'planning_mutation'];
 
@@ -28,6 +29,7 @@ export function isPlanningMemoryMutationRoute(path, method) {
   if (path === '/api/planning-memory' && method === 'POST') return true;
   if (method === 'PATCH' && /^\/api\/planning-memory\/[^/]+$/.test(path)) return true;
   if (method === 'POST' && PLANNING_ACTION_PATTERN.test(path)) return true;
+  if (method === 'POST' && PLANNING_OBJECTIVE_PATTERN.test(path)) return true;
   return false;
 }
 
