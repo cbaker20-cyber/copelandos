@@ -60,9 +60,11 @@ export default {
     if (!access.ok) return json(access.body, access.status);
 
     if (path === '/' || path === '/index.html' || path === '/console') {
-      return new Response(renderCommandCenterHtml(), {
+      const nonce = createCspNonce();
+      const htmlHeaders = { ...securityHeaders({ scriptNonce: nonce, styleNonce: nonce }), ...cors };
+      return new Response(renderCommandCenterHtml({ nonce }), {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', ...hardenedHeaders },
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...htmlHeaders },
       });
     }
 
@@ -419,6 +421,14 @@ function corsHeaders(request, env) {
   const origin = request.headers.get('Origin');
   if (origin && isOriginAllowed(request, env)) headers['Access-Control-Allow-Origin'] = origin;
   return headers;
+}
+
+function createCspNonce() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
 function isCaptureAuthorized(request, env) {

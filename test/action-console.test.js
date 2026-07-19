@@ -10,6 +10,13 @@ test('Worker root serves the usable CopelandOS console', async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /text\/html/);
+  const csp = response.headers.get('Content-Security-Policy');
+  const nonce = html.match(/<script nonce="([^"]+)">/)?.[1];
+  assert.ok(nonce);
+  assert.match(html, new RegExp(`<style nonce="${nonce}">`));
+  assert.match(csp, new RegExp(`script-src 'self' 'nonce-${nonce}'`));
+  assert.match(csp, new RegExp(`style-src 'self' 'nonce-${nonce}'`));
+  assert.doesNotMatch(csp, /unsafe-inline/);
   assert.match(html, /CopelandOS/);
   assert.match(html, /Siri Shortcut capture/);
   assert.match(html, /Create plan/);

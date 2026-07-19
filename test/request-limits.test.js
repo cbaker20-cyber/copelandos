@@ -129,6 +129,14 @@ test('securityHeaders include baseline hardening values', () => {
   assert.match(headers['Content-Security-Policy'], /frame-ancestors 'none'/);
 });
 
+test('securityHeaders allow dashboard inline assets only with nonces', () => {
+  const headers = securityHeaders({ scriptNonce: 'script123', styleNonce: 'style123' });
+  const csp = headers['Content-Security-Policy'];
+  assert.match(csp, /script-src 'self' 'nonce-script123'/);
+  assert.match(csp, /style-src 'self' 'nonce-style123'/);
+  assert.doesNotMatch(csp, /unsafe-inline/);
+});
+
 test('safeInternalError does not expose exception details', () => {
   assert.deepEqual(safeInternalError(), { ok: false, error: 'Internal server error.' });
 });
