@@ -434,7 +434,7 @@ function createCspNonce() {
   crypto.getRandomValues(bytes);
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return btoa(binary);
 }
 
 function createGenericVaultDocument({ title = 'Untitled Note', folder = 'Inbox', content = '', agent = 'copelandos', tags = [] } = {}, options = {}) {
