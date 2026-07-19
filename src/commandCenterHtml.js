@@ -1,4 +1,15 @@
-export function renderCommandCenterHtml() {
+function htmlAttribute(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+}
+
+export function renderCommandCenterHtml({ nonce = '' } = {}) {
+  const nonceAttr = nonce ? ` nonce="${htmlAttribute(nonce)}"` : '';
   return `<!doctype html>
 <html lang="en" data-theme="lunar">
 <head>
@@ -9,7 +20,7 @@ export function renderCommandCenterHtml() {
   <meta name="apple-mobile-web-app-title" content="CopelandOS">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>CopelandOS</title>
-  <style>
+  <style${nonceAttr}>
     :root{
       color-scheme:dark;
       --bg0:#111513;--bg1:#252c29;--bg2:#778078;
@@ -64,7 +75,7 @@ export function renderCommandCenterHtml() {
 
   <nav class="dock" aria-label="Quick dock"><a href="#home" title="Home">⌂</a><a href="#phone" title="Phone">▣</a><a href="#capture" title="Capture">✎</a><a href="#plan" title="Plan">☑</a><a href="#system" title="System">⚙</a><a href="#loop" title="Loop">↻</a><a href="/api/health" title="Health">✓</a></nav>
 
-  <script>
+  <script${nonceAttr}>
     const $ = (id) => document.getElementById(id);
     const activity = $('activity-log');
     function log(msg, data){
