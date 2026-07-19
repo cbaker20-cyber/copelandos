@@ -5,6 +5,14 @@ import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
 import {
+  checkIntegration,
+  getControlLoop,
+  getIntegrationSummary,
+  getMorningReportPlan,
+  listIntegrations,
+  validateIntegrationRegistry,
+} from './integrationRegistry.js';
+import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
   buildObsidianOpenUri,
@@ -81,6 +89,7 @@ export async function handleFoundationRequest({
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
         automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
+        integrations: { connected: false, summary: getIntegrationSummary(env) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
@@ -132,6 +141,32 @@ export async function handleFoundationRequest({
   if (path === '/api/ai/route') {
     if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
     return json(routeModel(body.taskType, env, modelConfig));
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      integrations: listIntegrations({ env }),
+      summary: getIntegrationSummary(env),
+      validation: validateIntegrationRegistry(),
+    });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    if (!body.integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    return json(checkIntegration(body.integrationId, env));
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    return json({
+      ok: true,
+      architecture: 'phone/Siri/Shortcut/share sheet -> CopelandOS inbox -> classifier -> planner -> provider router / AI council -> safe tool registry -> Obsidian memory -> Cursor/Codex task -> draft PR -> review status back into CopelandOS',
+      loop: getControlLoop(env),
+      morningReport: getMorningReportPlan(),
+    });
   }
 
   if (path === '/api/vault/write') {

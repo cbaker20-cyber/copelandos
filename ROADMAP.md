@@ -57,6 +57,7 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 
 ## Later
 
+- Phone-first integration roadmap scaffolds: mobile capture, overnight control loop, Obsidian/Cursor workflow, and provider routing docs are tracked as read-only status surfaces until real connectors are reviewed.
 - School calendar/assignment connectors with privacy review
 - Research library ingestion with citations
 - JazzBackend practice helpers
