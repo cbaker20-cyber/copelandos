@@ -56,16 +56,7 @@ export function renderCommandCenterHtml() {
 
     <section id="system" class="section grid">
       <article class="panel"><div class="head"><div><div class="title">System status</div><div class="muted">Worker capabilities and phone-readiness.</div></div></div><div class="form"><div class="log" id="status-log">Loading...</div></div></article>
-      <article class="panel"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Read-only capture to morning-report roadmap.</div></div><span class="badge ok" id="loop-badge">read-only</span></div><div class="form"><div class="log" id="loop-log">1. Capture - scaffold-only
-2. Classify - implemented
-3. Plan - implemented
-4. Route - implemented
-5. Council - scaffold-only
-6. Authorize Tools - implemented
-7. Remember - scaffold-only
-8. Queue Work - scaffold-only
-9. Draft PR - scaffold-only
-10. Report Back - scaffold-only</div></div></article>
+      <article class="panel"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Read-only capture to morning-report roadmap.</div></div><span class="badge ok" id="loop-badge">read-only</span></div><div class="form"><div class="log" id="loop-log">1. Capture - scaffold-only<br>2. Classify - implemented<br>3. Plan - implemented<br>4. Route - implemented<br>5. Council - scaffold-only<br>6. Authorize Tools - implemented<br>7. Remember - scaffold-only<br>8. Queue Work - scaffold-only<br>9. Draft PR - scaffold-only<br>10. Report Back - scaffold-only</div></div></article>
       <article class="panel"><div class="head"><div><div class="title">Rainmeter pairing</div><div class="muted">Keep Rainmeter light: clock, capture URL, launcher. No animated dashboard.</div></div></div><div class="form"><div class="code">C:\AI\Ops\rainmeter\copelandos-phone.ini</div><button id="copy-rainmeter-note" type="button">Copy Rainmeter plan</button><div class="mini">Use Rainmeter only as a desktop skin that opens this page and displays the Shortcut URL. The Worker stays the brain.</div></div></article>
       <article class="panel wide"><div class="head"><div><div class="title">Activity</div><div class="muted">Local response log.</div></div><button id="clear-log" type="button">Clear</button></div><div class="form"><div class="log" id="activity-log"></div></div></article>
     </section>
