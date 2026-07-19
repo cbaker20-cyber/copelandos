@@ -1,6 +1,6 @@
 # CopelandOS Project State
 
-Last updated: 2026-07-18 (security audit)
+Last updated: 2026-07-18 (structured planning memory)
 
 ## Architecture summary
 
@@ -8,7 +8,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 
 | Layer | Status | Notes |
 |---|---|---|
-| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline |
+| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline, agent orchestration, task queue |
 | Frontend (`frontend/`) | Active | Served via Wrangler `[assets]` from the Worker |
 | Legacy Pages Function (`functions/api/`) | Deprecated | Retained as migration evidence only |
 | Local Windows agent | Skeleton | Localhost + token + allowlist; not auto-connected |
@@ -28,6 +28,9 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Request body limits, field validation, provider rate limiting, and security headers
 - Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
 - Post-queue security audit: legacy Pages `410` guard, OAuth denial handling, header hardening
+- Agent orchestration registry: durable state via KV adapter (`AGENT_STATE_KV`); heartbeat, execution history, block/unblock (`/api/agents`)
+- Persistent task queue: enqueue, claim, retry, dead-letter (`/api/tasks`); KV-backed when `TASK_QUEUE_KV` is bound
+- Structured planning memory: rationale, decisions, dependencies, resume context (`/api/planning-memory`); links agents and tasks
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -58,6 +61,7 @@ Security queue: **complete**. Post-queue audit documented in `docs/security-audi
 
 ## Known gaps
 
+- Bind `PLANNING_MEMORY_KV`, `AGENT_STATE_KV`, and `TASK_QUEUE_KV` for full cross-cold-start durability
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented

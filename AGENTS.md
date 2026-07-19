@@ -7,8 +7,10 @@ Lead-engineer workflow for autonomous agents working in this repository.
 1. `README.md` — product scope and canonical architecture
 2. `PROJECT_STATE.md` — current implementation status
 3. `ROADMAP.md` — approved priorities
-4. `docs/cursor-ready-issues.md` — security queue (work top to bottom)
-5. `docs/deployment.md` — production topology
+4. `docs/cursor-ready-issues.md` — security queue (complete; work top to bottom)
+5. `docs/agent-orchestration.md` — agent registry and orchestration API
+6. `docs/planning-memory.md` — structured planning memory and resume context
+7. `docs/deployment.md` — production topology
 
 ## Canonical boundaries
 
@@ -22,9 +24,9 @@ Lead-engineer workflow for autonomous agents working in this repository.
 ## Workflow
 
 1. Read the docs above and inspect open issues/TODOs.
-2. Pick the highest-priority approved task from the security queue or roadmap.
+2. Pick the highest-priority approved task from the security queue or platform maturity roadmap.
 3. Implement exactly one logical task per PR.
-4. Add or update tests for every security behavior change.
+4. Add or update tests for every security behavior change and new platform capability.
 5. Run `npm test` and syntax checks from `README.md`.
 6. Update `PROJECT_STATE.md` and `ROADMAP.md` when status changes.
 7. Open a branch (`cursor/<descriptive-name>-8f5a`) and draft PR; never push directly to `main`.

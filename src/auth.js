@@ -5,8 +5,33 @@ const PROVIDER_EXACT = new Set(['/api/ai', '/api/search', '/api/hermes/route', '
 
 const IDEA_CONVERT_PATTERN = /^\/api\/ideas\/[^/]+\/convert$/;
 const CAPTURE_PATH = '/api/capture/idea';
+const AGENT_ACTION_PATTERN = /^\/api\/agents\/[^/]+\/(heartbeat|runs|block|unblock)$/;
+const TASK_ACTION_PATTERN = /^\/api\/tasks\/[^/]+\/(claim|start|complete|fail|cancel|retry)$/;
+const PLANNING_ACTION_PATTERN = /^\/api\/planning-memory\/[^/]+\/(history|decisions|dependencies|reasoning|context|executions)$/;
+const PLANNING_OBJECTIVE_PATTERN = /^\/api\/planning-memory\/[^/]+\/objectives\/(complete|block)$/;
 
-export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider'];
+export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation', 'task_mutation', 'planning_mutation'];
+
+export function isAgentMutationRoute(path, method) {
+  if (path === '/api/agents' && method === 'POST') return true;
+  if (method === 'PATCH' && /^\/api\/agents\/[^/]+$/.test(path)) return true;
+  if (method === 'POST' && AGENT_ACTION_PATTERN.test(path)) return true;
+  return false;
+}
+
+export function isTaskMutationRoute(path, method) {
+  if (path === '/api/tasks' && method === 'POST') return true;
+  if (method === 'POST' && TASK_ACTION_PATTERN.test(path)) return true;
+  return false;
+}
+
+export function isPlanningMemoryMutationRoute(path, method) {
+  if (path === '/api/planning-memory' && method === 'POST') return true;
+  if (method === 'PATCH' && /^\/api\/planning-memory\/[^/]+$/.test(path)) return true;
+  if (method === 'POST' && PLANNING_ACTION_PATTERN.test(path)) return true;
+  if (method === 'POST' && PLANNING_OBJECTIVE_PATTERN.test(path)) return true;
+  return false;
+}
 
 export function getProtectedRouteClasses(path) {
   const classes = [];
@@ -63,7 +88,8 @@ export function isApiAuthorized(request, env, path = new URL(request.url).pathna
 }
 
 export function checkApiAccess(request, env) {
-  if (!isProtectedRoute(new URL(request.url).pathname)) {
+  const path = new URL(request.url).pathname;
+  if (!isProtectedRoute(path) && !isAgentMutationRoute(path, request.method) && !isTaskMutationRoute(path, request.method) && !isPlanningMemoryMutationRoute(path, request.method)) {
     return { ok: true };
   }
   const auth = isApiAuthorized(request, env);

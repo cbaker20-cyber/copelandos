@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "defaults": {
+    "maxPlanningHistory": 25,
+    "maxReasoningSummaries": 50,
+    "maxDecisions": 50,
+    "maxCompletedObjectives": 30,
+    "maxBlockedObjectives": 30,
+    "maxDependencies": 30,
+    "maxExecutionContext": 50,
+    "maxExecutionSummaries": 50
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "defaults": {
+    "maxAttempts": 3,
+    "baseRetryDelayMs": 5000,
+    "maxRetryDelayMs": 300000
+  },
+  "taskTypes": [
+    {
+      "id": "agent-objective",
+      "description": "Work unit assigned to an orchestrated agent"
+    },
+    {
+      "id": "plan-review",
+      "description": "Review a planner output before execution"
+    },
+    {
+      "id": "vault-sync",
+      "description": "Synchronize or validate vault content"
+    }
+  ]
+}
