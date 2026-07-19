@@ -125,7 +125,7 @@ export async function enqueueTask(env, payload) {
   }
 
   if (payload?.assignedAgentId) {
-    const agent = getAgent(payload.assignedAgentId);
+    const agent = await getAgent(env, payload.assignedAgentId);
     if (!agent) {
       return { ok: false, error: 'Assigned agent not found', status: 404 };
     }
@@ -202,7 +202,7 @@ export async function claimTask(env, taskId, payload = {}) {
     return { ok: false, error: 'agentId is required to claim task', status: 400 };
   }
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(env, agentId);
   if (!agent) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
@@ -257,7 +257,7 @@ export async function completeTask(env, taskId, payload = {}) {
   const saved = await saveTask(env, task);
 
   if (task.assignedAgentId) {
-    recordAgentRun(task.assignedAgentId, {
+    await recordAgentRun(env, task.assignedAgentId, {
       status: 'success',
       summary: `Task ${task.id} completed`,
       metadata: { taskId: task.id, taskType: task.taskType },
@@ -291,7 +291,7 @@ export async function failTask(env, taskId, payload = {}) {
   const saved = await saveTask(env, task);
 
   if (task.assignedAgentId) {
-    recordAgentRun(task.assignedAgentId, {
+    await recordAgentRun(env, task.assignedAgentId, {
       status: 'failure',
       summary: `Task ${task.id} failed`,
       error: errorMessage,

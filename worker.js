@@ -117,7 +117,7 @@ export default {
       if (foundationResponse) return foundationResponse;
 
       if (path === '/api/agents' || path.startsWith('/api/agents/')) {
-        const agentResponse = await handleAgentRequest({ path, request, body, json });
+        const agentResponse = await handleAgentRequest({ path, request, body, env, json });
         if (agentResponse) return agentResponse;
       }
 

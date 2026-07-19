@@ -14,7 +14,7 @@ Priority order for autonomous operations (one capability per PR):
 |---|---|---|
 | 1 | Autonomous agent orchestration | Complete — in-memory registry, `/api/agents`, live `/api/orchestration/status` |
 | 2 | Persistent task queue | Complete — retries, dead letter, KV adapter; bind `TASK_QUEUE_KV` for durability |
-| 3 | Agent state persistence (KV/D1) | Planned |
+| 3 | Agent state persistence (KV/D1) | Complete — KV adapter for agent registry; bind `AGENT_STATE_KV` for durability |
 | 4 | Structured planning memory | Planned |
 | 5 | Health monitoring and observability | Planned |
 | 6 | Deployment reliability | Planned |

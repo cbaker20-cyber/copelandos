@@ -58,10 +58,10 @@ function createMockKv() {
 
 const env = {};
 
-test.beforeEach(() => {
+test.beforeEach(async () => {
   resetAgentOrchestrationForTests();
   resetTaskQueueForTests();
-  bootstrapAgentOrchestration();
+  await bootstrapAgentOrchestration(env);
 });
 
 test('enqueueTask validates task type and objective', async () => {

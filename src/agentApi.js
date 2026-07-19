@@ -23,7 +23,7 @@ function methodGuard(request, allowed, json) {
   return null;
 }
 
-export async function handleAgentRequest({ path, request, body, json }) {
+export async function handleAgentRequest({ path, request, body, env, json }) {
   if (path === '/api/agents') {
     const guard = methodGuard(request, ['GET', 'POST'], json);
     if (guard) return guard;
@@ -31,12 +31,12 @@ export async function handleAgentRequest({ path, request, body, json }) {
     if (request.method === 'GET') {
       return json({
         ok: true,
-        agents: listAgents(),
+        agents: await listAgents(env),
         agentTypes: listAgentTypes(),
       });
     }
 
-    const result = registerAgent(body || {});
+    const result = await registerAgent(env, body || {});
     if (!result.ok) {
       return json({ ok: false, error: result.error }, result.status);
     }
@@ -50,12 +50,12 @@ export async function handleAgentRequest({ path, request, body, json }) {
     if (guard) return guard;
 
     if (request.method === 'GET') {
-      const agent = getAgent(agentId);
+      const agent = await getAgent(env, agentId);
       if (!agent) return json({ ok: false, error: 'Agent not found' }, 404);
       return json({ ok: true, agent });
     }
 
-    const result = updateAgent(agentId, body || {});
+    const result = await updateAgent(env, agentId, body || {});
     if (!result.ok) {
       return json({ ok: false, error: result.error }, result.status);
     }
@@ -70,26 +70,26 @@ export async function handleAgentRequest({ path, request, body, json }) {
     if (guard) return guard;
 
     if (action === 'heartbeat') {
-      const result = recordAgentHeartbeat(agentId, body || {});
+      const result = await recordAgentHeartbeat(env, agentId, body || {});
       if (!result.ok) return json({ ok: false, error: result.error }, result.status);
       return json({ ok: true, agent: result.agent });
     }
 
     if (action === 'runs') {
-      const result = recordAgentRun(agentId, body || {});
+      const result = await recordAgentRun(env, agentId, body || {});
       if (!result.ok) return json({ ok: false, error: result.error }, result.status);
       return json({ ok: true, agent: result.agent, run: result.run });
     }
 
     if (action === 'block') {
       const reason = body?.reason;
-      const result = blockAgent(agentId, reason);
+      const result = await blockAgent(env, agentId, reason);
       if (!result.ok) return json({ ok: false, error: result.error }, result.status);
       return json({ ok: true, agent: result.agent });
     }
 
     if (action === 'unblock') {
-      const result = unblockAgent(agentId);
+      const result = await unblockAgent(env, agentId);
       if (!result.ok) return json({ ok: false, error: result.error }, result.status);
       return json({ ok: true, agent: result.agent });
     }
@@ -99,11 +99,12 @@ export async function handleAgentRequest({ path, request, body, json }) {
 }
 
 export async function buildOrchestrationStatusPayload(env = {}) {
-  const snapshot = getOrchestrationSnapshot();
+  const snapshot = await getOrchestrationSnapshot(env);
   const queue = await buildTaskQueueStatusSummary(env);
   return {
     ok: true,
     mode: snapshot.mode,
+    persistence: snapshot.persistence,
     automaticExecution: false,
     agentCount: snapshot.agentCount,
     blockedCount: snapshot.blockedCount,

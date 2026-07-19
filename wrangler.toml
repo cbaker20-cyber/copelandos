@@ -46,6 +46,12 @@ directory = "./frontend"
 # binding = "CACHE"
 # id = "your-kv-id-here"
 
+# KV namespace for durable agent orchestration state (optional)
+# Create with: wrangler kv namespace create AGENT_STATE
+# [[kv_namespaces]]
+# binding = "AGENT_STATE_KV"
+# id = "your-agent-state-kv-id-here"
+
 # KV namespace for durable task queue (optional; without it the queue is in-memory per isolate)
 # Create with: wrangler kv namespace create TASK_QUEUE
 # [[kv_namespaces]]

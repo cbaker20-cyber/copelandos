@@ -1,15 +1,20 @@
 /**
- * Autonomous agent orchestration — in-memory registry with execution history.
+ * Autonomous agent orchestration with pluggable durable storage.
  *
- * Agents are first-class records with repository assignment, objectives, status,
- * heartbeat, blocked state, priority, and owner. Configuration is data-driven via
- * config/agent-types.json and config/projects.json (no hard-coded workflows).
- *
- * Future extension: persist to KV/D1 and add a dispatch loop (see docs/agent-orchestration.md).
+ * Agent state (heartbeat, execution history, blocked state, objectives,
+ * priorities, ownership, metadata) persists via agentOrchestrationStorage.js.
+ * Bind AGENT_STATE_KV for cross-cold-start durability. See docs/agent-orchestration.md.
  */
 
 import agentTypesConfig from '../config/agent-types.json' with { type: 'json' };
 import projectsConfig from '../config/projects.json' with { type: 'json' };
+import {
+  getAgentStorage,
+  resetAgentStorageForTests,
+  resetAgentStorageDegradedForTests,
+  writeRegistryMeta,
+  markAgentStorageDegraded,
+} from './agentOrchestrationStorage.js';
 
 const MAX_EXECUTION_HISTORY = 50;
 const DEFAULT_HEARTBEAT_STALE_MS = 15 * 60 * 1000;
@@ -26,8 +31,7 @@ const VALID_STATUSES = new Set([
 
 const VALID_PRIORITIES = new Set(['low', 'normal', 'high', 'critical']);
 
-/** @type {Map<string, object>} */
-const agents = new Map();
+let bootstrapComplete = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -85,75 +89,111 @@ function buildAgentRecord(input) {
   };
 }
 
-function seedAgentsFromConfig() {
-  if (agents.size > 0) {
-    return;
-  }
+function buildSeededAgents() {
+  const seeded = [];
 
   for (const project of projectsConfig.projects || []) {
     const id = `agent-${slugify(project.id)}`;
     const projectState = project.status?.state || 'idle';
     const blocked = projectState === 'blocked';
-    agents.set(
+    seeded.push(buildAgentRecord({
       id,
-      buildAgentRecord({
-        id,
-        name: `${project.displayName} Agent`,
-        agentType: 'cursor',
-        repository: project.repo || null,
-        objective: project.goal || project.nextRecommendedTask || '',
-        taskStatus: blocked ? 'blocked' : projectStateToAgentStatus(projectState),
-        priority: project.id === 'copelandos' ? 'high' : 'normal',
-        owner: 'platform',
-        blocked,
-        blockedReason: blocked ? 'Project marked blocked in registry' : null,
-        metadata: {
-          projectId: project.id,
-          projectState,
-          seeded: true,
-        },
-      }),
-    );
+      name: `${project.displayName} Agent`,
+      agentType: 'cursor',
+      repository: project.repo || null,
+      objective: project.goal || project.nextRecommendedTask || '',
+      taskStatus: blocked ? 'blocked' : projectStateToAgentStatus(projectState),
+      priority: project.id === 'copelandos' ? 'high' : 'normal',
+      owner: 'platform',
+      blocked,
+      blockedReason: blocked ? 'Project marked blocked in registry' : null,
+      metadata: {
+        projectId: project.id,
+        projectState,
+        seeded: true,
+      },
+    }));
   }
 
-  const hermesId = 'agent-hermes-router';
-  if (!agents.has(hermesId)) {
-    agents.set(
-      hermesId,
-      buildAgentRecord({
-        id: hermesId,
-        name: 'Hermes Router',
-        agentType: 'hermes',
-        repository: 'local/copeland-os',
-        objective: 'Route objectives to specialized agents and automation handlers',
-        taskStatus: 'idle',
-        priority: 'high',
-        owner: 'platform',
-        metadata: { role: 'router', seeded: true },
-      }),
-    );
+  seeded.push(buildAgentRecord({
+    id: 'agent-hermes-router',
+    name: 'Hermes Router',
+    agentType: 'hermes',
+    repository: 'local/copeland-os',
+    objective: 'Route objectives to specialized agents and automation handlers',
+    taskStatus: 'idle',
+    priority: 'high',
+    owner: 'platform',
+    metadata: { role: 'router', seeded: true },
+  }));
+
+  return seeded;
+}
+
+async function getStorage(env) {
+  try {
+    return getAgentStorage(env);
+  } catch {
+    markAgentStorageDegraded();
+    return getAgentStorage(env);
+  }
+}
+
+async function saveAgent(env, agent) {
+  const storage = await getStorage(env);
+  agent.updatedAt = nowIso();
+  await storage.putAgent(agent);
+  return { ...agent, executionHistory: [...agent.executionHistory] };
+}
+
+async function ensureBootstrap(env) {
+  if (bootstrapComplete) return;
+
+  let storage;
+  try {
+    storage = await getStorage(env);
+    const existingIds = new Set(await storage.listAgentIds());
+    const seeded = buildSeededAgents();
+
+    if (existingIds.size === 0) {
+      for (const agent of seeded) {
+        await storage.putAgent(agent);
+      }
+      await writeRegistryMeta(storage);
+    } else {
+      for (const agent of seeded) {
+        if (!existingIds.has(agent.id)) {
+          await storage.putAgent(agent);
+        }
+      }
+    }
+
+    bootstrapComplete = true;
+  } catch {
+    markAgentStorageDegraded();
+    storage = await getStorage(env);
+    const existingIds = new Set(await storage.listAgentIds());
+    if (existingIds.size === 0) {
+      for (const agent of buildSeededAgents()) {
+        await storage.putAgent(agent);
+      }
+    }
+    bootstrapComplete = true;
   }
 }
 
 export function resetAgentOrchestrationForTests() {
-  agents.clear();
+  bootstrapComplete = false;
+  resetAgentStorageForTests();
+  resetAgentStorageDegradedForTests();
 }
 
-export function bootstrapAgentOrchestration() {
-  seedAgentsFromConfig();
+export async function bootstrapAgentOrchestration(env = {}) {
+  await ensureBootstrap(env);
 }
 
 export function listAgentTypes() {
   return agentTypesConfig.types.map((t) => ({ ...t }));
-}
-
-export function listAgents({ includeOffline = true } = {}) {
-  bootstrapAgentOrchestration();
-  const rows = Array.from(agents.values()).map((a) => ({ ...a, executionHistory: [...a.executionHistory] }));
-  if (includeOffline) {
-    return rows.sort(compareAgents);
-  }
-  return rows.filter((a) => a.taskStatus !== 'offline').sort(compareAgents);
 }
 
 function compareAgents(a, b) {
@@ -164,15 +204,33 @@ function compareAgents(a, b) {
   return a.id.localeCompare(b.id);
 }
 
-export function getAgent(agentId) {
-  bootstrapAgentOrchestration();
-  const agent = agents.get(agentId);
+export async function listAgents(env = {}, { includeOffline = true } = {}) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const ids = await storage.listAgentIds();
+  const rows = [];
+
+  for (const id of ids) {
+    const agent = await storage.getAgent(id);
+    if (!agent) continue;
+    if (!includeOffline && agent.taskStatus === 'offline') continue;
+    rows.push({ ...agent, executionHistory: [...agent.executionHistory] });
+  }
+
+  return rows.sort(compareAgents);
+}
+
+export async function getAgent(env, agentId) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const agent = await storage.getAgent(agentId);
   if (!agent) return null;
   return { ...agent, executionHistory: [...agent.executionHistory] };
 }
 
-export function registerAgent(payload) {
-  bootstrapAgentOrchestration();
+export async function registerAgent(env, payload) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
 
   const agentType = String(payload?.agentType || '').trim();
   if (!getAgentType(agentType)) {
@@ -185,7 +243,7 @@ export function registerAgent(payload) {
   }
 
   const id = String(payload?.id || `agent-${slugify(name)}-${Date.now().toString(36)}`).trim();
-  if (agents.has(id)) {
+  if (await storage.getAgent(id)) {
     return { ok: false, error: 'Agent id already exists', status: 409 };
   }
 
@@ -203,13 +261,14 @@ export function registerAgent(payload) {
     metadata: payload.metadata ?? {},
   });
 
-  agents.set(id, record);
-  return { ok: true, agent: { ...record, executionHistory: [...record.executionHistory] } };
+  const saved = await saveAgent(env, record);
+  return { ok: true, agent: saved };
 }
 
-export function updateAgent(agentId, patch) {
-  bootstrapAgentOrchestration();
-  const existing = agents.get(agentId);
+export async function updateAgent(env, agentId, patch) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const existing = await storage.getAgent(agentId);
   if (!existing) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
@@ -250,20 +309,20 @@ export function updateAgent(agentId, patch) {
     existing.blockedReason = patch.blockedReason ? String(patch.blockedReason) : null;
   }
 
-  existing.updatedAt = nowIso();
-  return { ok: true, agent: { ...existing, executionHistory: [...existing.executionHistory] } };
+  const saved = await saveAgent(env, existing);
+  return { ok: true, agent: saved };
 }
 
-export function recordAgentHeartbeat(agentId, payload = {}) {
-  bootstrapAgentOrchestration();
-  const existing = agents.get(agentId);
+export async function recordAgentHeartbeat(env, agentId, payload = {}) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const existing = await storage.getAgent(agentId);
   if (!existing) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
 
   const ts = nowIso();
   existing.heartbeatAt = ts;
-  existing.updatedAt = ts;
 
   if (payload.taskStatus !== undefined) {
     existing.taskStatus = normalizeStatus(payload.taskStatus);
@@ -279,7 +338,8 @@ export function recordAgentHeartbeat(agentId, payload = {}) {
     existing.metadata = { ...existing.metadata, ...payload.metadata };
   }
 
-  return { ok: true, agent: { ...existing, executionHistory: [...existing.executionHistory] } };
+  const saved = await saveAgent(env, existing);
+  return { ok: true, agent: saved };
 }
 
 function appendExecution(agent, entry) {
@@ -307,28 +367,26 @@ function appendExecution(agent, entry) {
     agent.taskStatus = 'failed';
   }
 
-  agent.updatedAt = nowIso();
   return record;
 }
 
-export function recordAgentRun(agentId, payload) {
-  bootstrapAgentOrchestration();
-  const existing = agents.get(agentId);
+export async function recordAgentRun(env, agentId, payload) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const existing = await storage.getAgent(agentId);
   if (!existing) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
 
   const run = appendExecution(existing, payload || {});
-  return {
-    ok: true,
-    agent: { ...existing, executionHistory: [...existing.executionHistory] },
-    run,
-  };
+  const saved = await saveAgent(env, existing);
+  return { ok: true, agent: saved, run };
 }
 
-export function blockAgent(agentId, reason) {
-  bootstrapAgentOrchestration();
-  const existing = agents.get(agentId);
+export async function blockAgent(env, agentId, reason) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const existing = await storage.getAgent(agentId);
   if (!existing) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
@@ -336,14 +394,15 @@ export function blockAgent(agentId, reason) {
   existing.blocked = true;
   existing.blockedReason = reason ? String(reason).slice(0, 500) : 'Blocked by operator';
   existing.taskStatus = 'blocked';
-  existing.updatedAt = nowIso();
 
-  return { ok: true, agent: { ...existing, executionHistory: [...existing.executionHistory] } };
+  const saved = await saveAgent(env, existing);
+  return { ok: true, agent: saved };
 }
 
-export function unblockAgent(agentId) {
-  bootstrapAgentOrchestration();
-  const existing = agents.get(agentId);
+export async function unblockAgent(env, agentId) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const existing = await storage.getAgent(agentId);
   if (!existing) {
     return { ok: false, error: 'Agent not found', status: 404 };
   }
@@ -353,14 +412,15 @@ export function unblockAgent(agentId) {
   if (existing.taskStatus === 'blocked') {
     existing.taskStatus = 'idle';
   }
-  existing.updatedAt = nowIso();
 
-  return { ok: true, agent: { ...existing, executionHistory: [...existing.executionHistory] } };
+  const saved = await saveAgent(env, existing);
+  return { ok: true, agent: saved };
 }
 
-export function getOrchestrationSnapshot({ heartbeatStaleMs = DEFAULT_HEARTBEAT_STALE_MS } = {}) {
-  bootstrapAgentOrchestration();
-  const all = listAgents();
+export async function getOrchestrationSnapshot(env = {}, { heartbeatStaleMs = DEFAULT_HEARTBEAT_STALE_MS } = {}) {
+  await ensureBootstrap(env);
+  const storage = await getStorage(env);
+  const all = await listAgents(env);
   const now = Date.now();
   const staleThreshold = now - heartbeatStaleMs;
 
@@ -385,7 +445,8 @@ export function getOrchestrationSnapshot({ heartbeatStaleMs = DEFAULT_HEARTBEAT_
   }
 
   return {
-    mode: 'orchestration-registry',
+    mode: storage.mode === 'kv' ? 'persistent-orchestration' : 'orchestration-registry',
+    persistence: storage.mode,
     agentCount: enriched.length,
     blockedCount: enriched.filter((a) => a.blocked).length,
     staleHeartbeatCount: enriched.filter((a) => a.health.heartbeatStale || a.health.heartbeatMissing).length,

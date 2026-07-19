@@ -73,7 +73,7 @@ export async function handleFoundationRequest({
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
     const integrations = listAutomationIntegrations(env);
-    const orchestration = getOrchestrationSnapshot();
+    const orchestration = await getOrchestrationSnapshot(env);
     const taskQueue = await getQueueSnapshot(env);
     return json({
       ok: true,
@@ -86,6 +86,7 @@ export async function handleFoundationRequest({
         orchestration: {
           connected: true,
           mode: orchestration.mode,
+          persistence: orchestration.persistence,
           endpoint: '/api/orchestration/status',
           agentCount: orchestration.agentCount,
           blockedCount: orchestration.blockedCount,
