@@ -4,6 +4,7 @@ import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
+import { getOrchestrationSnapshot } from './agentOrchestration.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -71,6 +72,7 @@ export async function handleFoundationRequest({
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
     const integrations = listAutomationIntegrations(env);
+    const orchestration = getOrchestrationSnapshot();
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -79,6 +81,13 @@ export async function handleFoundationRequest({
       canonicalBackend: 'worker.js',
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
+        orchestration: {
+          connected: true,
+          mode: orchestration.mode,
+          endpoint: '/api/orchestration/status',
+          agentCount: orchestration.agentCount,
+          blockedCount: orchestration.blockedCount,
+        },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
         automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },

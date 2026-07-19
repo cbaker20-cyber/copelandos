@@ -14,6 +14,7 @@ import {
 import { classify, classifyWithContext } from './ideaClassifier.js';
 import { createPlan, createCursorPrompt, createCodexPrompt } from './planner.js';
 import { appendIdeaToDailyNote, convertIdeaToNote, normalizeIdeaNoteType, persistVaultDocument, writeIdeaNote } from './vault.js';
+import { buildOrchestrationStatusPayload } from './agentApi.js';
 
 function methodGuard(request, allowed, json) {
   if (!allowed.includes(request.method)) {
@@ -99,21 +100,9 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
   if (path === '/api/orchestration/status') {
     const guard = methodGuard(request, ['GET'], json);
     if (guard) return guard;
+    const payload = buildOrchestrationStatusPayload();
     return json({
-      ok: true,
-      pipeline: [
-        'mobile capture',
-        'idea inbox',
-        'deterministic classifier',
-        'skill selection',
-        'planner',
-        'optional mock council',
-        'provider router',
-        'tool/MCP safety registry',
-        'vault memory',
-        'Cursor/Codex prompt generation',
-      ],
-      automaticExecution: false,
+      ...payload,
       queues: getProjectQueues(),
     });
   }
