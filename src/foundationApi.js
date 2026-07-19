@@ -5,6 +5,15 @@ import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
 import {
+  checkIntegration,
+  getControlLoop,
+  getIntegrationArchitecture,
+  getIntegrationSummary,
+  getMorningReportPlan,
+  listIntegrations,
+  validateIntegrationRegistry,
+} from './integrationRegistry.js';
+import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
   buildObsidianOpenUri,
@@ -71,6 +80,7 @@ export async function handleFoundationRequest({
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
     const integrations = listAutomationIntegrations(env);
+    const integrationSummary = getIntegrationSummary(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -80,13 +90,60 @@ export async function handleFoundationRequest({
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
-        automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
+        automations: {
+          connected: false,
+          endpoint: '/api/automation/integrations',
+          count: integrations.length,
+          configured: integrations.filter((item) => item.configured).map((item) => item.id),
+          message: 'Automation integrations are route/planning scaffolds; status does not perform live probes.',
+        },
+        integrations: {
+          connected: false,
+          endpoint: '/api/integrations',
+          controlLoopEndpoint: '/api/integrations/control-loop',
+          summary: integrationSummary,
+        },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },
         gmail: { connected: Boolean(env.GMAIL_REFRESH_TOKEN), mode: 'draft-only' },
         vault: { connected: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO), mode: env.GITHUB_TOKEN ? 'github' : 'mock' },
         localAgent: { connected: false, configured: Boolean(env.LOCAL_AGENT_URL), message: 'Local agent status requires an explicit local connection.' },
         githubSupervisor: { connected: false, configured: Boolean(env.GITHUB_TOKEN), message: 'Live GitHub summary is not queried by this foundation route.' },
       },
+    });
+  }
+
+  if (path === '/api/integrations') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const url = new URL(request.url);
+    return json({
+      ok: true,
+      integrations: listIntegrations({
+        category: url.searchParams.get('category') || null,
+        stage: url.searchParams.get('stage') || null,
+        env,
+      }),
+      summary: getIntegrationSummary(env),
+      validation: validateIntegrationRegistry(),
+      policy: 'read-only fail-closed integration roadmap',
+    });
+  }
+
+  if (path === '/api/integrations/check') {
+    if (request.method !== 'POST') return methodNotAllowed(json, 'POST');
+    const integrationId = body.integrationId || body.id;
+    if (!integrationId) return json({ ok: false, error: 'integrationId is required.' }, 400);
+    return json(checkIntegration(integrationId, env));
+  }
+
+  if (path === '/api/integrations/control-loop') {
+    if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
+    const architecture = getIntegrationArchitecture();
+    return json({
+      ok: true,
+      architecture,
+      architectureText: architecture.join(' -> '),
+      loop: getControlLoop(env),
+      morningReport: getMorningReportPlan(),
     });
   }
 

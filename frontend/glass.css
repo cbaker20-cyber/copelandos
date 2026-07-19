@@ -808,6 +808,15 @@ dialog,
   margin: 13px 18px 0;
 }
 
+.loop-list {
+  padding: 13px 18px 18px;
+  display: grid;
+  gap: 8px;
+  max-height: 236px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
 .auto-row {
   display: flex;
   justify-content: space-between;
@@ -819,6 +828,47 @@ dialog,
 .auto-row span:last-child {
   color: var(--soft);
   font-family: ui-monospace, monospace;
+}
+
+.loop-step {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 9px;
+  align-items: start;
+  padding: 8px 9px;
+  border: 1px solid rgba(255,255,255,.70);
+  border-radius: 14px;
+  background: rgba(255,255,255,.42);
+}
+
+.loop-num {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(44,142,242,.22);
+  border-radius: 50%;
+  color: var(--accent);
+  font: 8px ui-monospace, monospace;
+}
+
+.loop-step strong {
+  display: block;
+  font-size: 10px;
+}
+
+.loop-step small {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.loop-state {
+  color: var(--soft);
+  font: 8px ui-monospace, monospace;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .transcript {
