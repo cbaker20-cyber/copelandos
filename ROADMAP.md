@@ -6,6 +6,21 @@ Approved priorities. Security tasks in `docs/cursor-ready-issues.md` take preced
 
 All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security-audit.md` for the post-queue audit.
 
+## Platform maturity (in progress)
+
+Priority order for autonomous operations (one capability per PR):
+
+| Priority | Capability | Status |
+|---|---|---|
+| 1 | Autonomous agent orchestration | Complete — in-memory registry, `/api/agents`, live `/api/orchestration/status` |
+| 2 | Persistent task queue | Planned |
+| 3 | Agent state persistence (KV/D1) | Planned |
+| 4 | Structured planning memory | Planned |
+| 5 | Health monitoring and observability | Planned |
+| 6 | Deployment reliability | Planned |
+
+See `docs/agent-orchestration.md` for architecture and extension points.
+
 ### PR 1 — Deployment consolidation (complete)
 
 - Document canonical single-Worker topology (`wrangler.toml` + `worker.js` + `frontend/` assets).

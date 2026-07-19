@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "types": [
+    {
+      "id": "cursor",
+      "displayName": "Cursor implementation agent",
+      "capabilities": ["read_repo", "create_branch", "draft_pr", "run_tests"],
+      "defaultOwner": "copeland"
+    },
+    {
+      "id": "codex",
+      "displayName": "Codex architecture agent",
+      "capabilities": ["security_review", "architecture", "draft_pr"],
+      "defaultOwner": "copeland"
+    },
+    {
+      "id": "hermes",
+      "displayName": "Hermes planner router",
+      "capabilities": ["route", "plan", "classify_risk"],
+      "defaultOwner": "copeland"
+    },
+    {
+      "id": "supervisor",
+      "displayName": "Project supervisor",
+      "capabilities": ["read_status", "summarize_pr", "check_ci"],
+      "defaultOwner": "copeland"
+    }
+  ]
+}

@@ -29,6 +29,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Obsidian memory:** builds safe notes and URIs; writes to a configured private GitHub vault or returns a mock preview.
 - **GitHub supervisor:** route and UI placeholder only; currently reports not connected.
 - **Cursor/Codex orchestrator:** generates bounded prompts; it does not run agents or merge work itself.
+- **Agent orchestration registry:** tracks specialized agents (repo, objective, status, heartbeat, runs, blocked state). See [agent-orchestration.md](agent-orchestration.md).
 - **Gmail draft assistant:** reads Gmail when configured and creates drafts only after confirmation.
 - **Band Council operations:** project policy forbids private student data and autonomous communication.
 - **School planner / research librarian / music helper:** dashboard and project-policy modules awaiting data connectors.
@@ -83,4 +84,10 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `POST /api/ideas/:id/dismiss` | Mark an idea dismissed without deleting it |
 | `GET /api/project-queue` | Project-grouped captured ideas |
 | `GET /api/brain/status` | Honest brain planner/council/memory status |
-| `GET /api/orchestration/status` | End-to-end scaffold status |
+| `GET /api/orchestration/status` | Live agent orchestration snapshot |
+| `GET /api/agents` / `GET /api/agents/:id` | Agent registry reads |
+| `POST /api/agents` | Register agent (bearer auth) |
+| `PATCH /api/agents/:id` | Update agent (bearer auth) |
+| `POST /api/agents/:id/heartbeat` | Agent heartbeat (bearer auth) |
+| `POST /api/agents/:id/runs` | Record execution history (bearer auth) |
+| `POST /api/agents/:id/block` / `unblock` | Operator block controls (bearer auth) |

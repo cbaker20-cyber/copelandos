@@ -6,6 +6,7 @@ import {
   extractBearerToken,
   getProtectedRouteClasses,
   isProtectedRoute,
+  isAgentMutationRoute,
   isApiAuthorized,
 } from '../src/auth.js';
 import worker from '../worker.js';
@@ -115,4 +116,12 @@ test('capture route accepts CAPTURE_TOKEN when API_AUTH_TOKEN is not configured'
 test('checkApiAccess allows public paths without credentials', () => {
   const request = new Request('https://worker.example/api/projects');
   assert.equal(checkApiAccess(request, {}).ok, true);
+});
+
+test('checkApiAccess requires auth for agent mutations', () => {
+  const post = new Request('https://worker.example/api/agents', { method: 'POST' });
+  const get = new Request('https://worker.example/api/agents', { method: 'GET' });
+  assert.equal(checkApiAccess(post, { API_AUTH_TOKEN: TEST_TOKEN }).ok, false);
+  assert.equal(checkApiAccess(get, {}).ok, true);
+  assert.equal(isAgentMutationRoute('/api/agents/agent-copelandos/heartbeat', 'POST'), true);
 });
