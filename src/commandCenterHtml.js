@@ -56,6 +56,7 @@ export function renderCommandCenterHtml() {
 
     <section id="system" class="section grid">
       <article class="panel"><div class="head"><div><div class="title">System status</div><div class="muted">Worker capabilities and phone-readiness.</div></div></div><div class="form"><div class="log" id="status-log">Loading...</div></div></article>
+      <article class="panel"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Read-only capture to morning-report roadmap.</div></div><span class="badge" id="loop-badge">loading</span></div><div class="form"><div class="log" id="loop-log">Loading...</div></div></article>
       <article class="panel"><div class="head"><div><div class="title">Rainmeter pairing</div><div class="muted">Keep Rainmeter light: clock, capture URL, launcher. No animated dashboard.</div></div></div><div class="form"><div class="code">C:\AI\Ops\rainmeter\copelandos-phone.ini</div><button id="copy-rainmeter-note" type="button">Copy Rainmeter plan</button><div class="mini">Use Rainmeter only as a desktop skin that opens this page and displays the Shortcut URL. The Worker stays the brain.</div></div></article>
       <article class="panel wide"><div class="head"><div><div class="title">Activity</div><div class="muted">Local response log.</div></div><button id="clear-log" type="button">Clear</button></div><div class="form"><div class="log" id="activity-log"></div></div></article>
     </section>
@@ -102,6 +103,18 @@ export function renderCommandCenterHtml() {
         log('Status failed: ' + error.message);
       }
     }
+    async function refreshLoop(){
+      try{
+        const data = await api('/api/integrations/control-loop');
+        $('loop-badge').textContent = 'read-only';
+        $('loop-badge').className = 'badge ok';
+        $('loop-log').textContent = data.steps.map(step => step.step + '. ' + step.name + ' - ' + (step.integration ? step.integration.status : 'unknown')).join('\n');
+      }catch(error){
+        $('loop-badge').textContent = 'not loaded';
+        $('loop-badge').className = 'badge';
+        $('loop-log').textContent = error.message;
+      }
+    }
     $('refresh-status').onclick = refreshStatus;
     $('test-get-capture').onclick = async () => {
       const url = shortcutUrl($('shortcut-test').value);
@@ -129,6 +142,7 @@ export function renderCommandCenterHtml() {
     });
     refreshUrls();
     refreshStatus();
+    refreshLoop();
   </script>
 </body>
 </html>`;

@@ -225,6 +225,12 @@
             <div class="auto-row"><span>Local actions</span><span>confirmation</span></div>
           </div>
         </article>
+        <article class="panel small-panel" id="overnight-loop">
+          <div class="panel-head"><div><div class="panel-title">Overnight control loop</div><div class="panel-sub">Read-only roadmap</div></div><span class="badge" id="loop-badge">scaffold</span></div>
+          <div class="automation" id="loop-list">
+            <div class="auto-row"><span>Capture to report</span><span>not loaded</span></div>
+          </div>
+        </article>
       </section>
 
       <section class="section" id="tools">
@@ -324,6 +330,8 @@
       promptPanelState: document.getElementById('prompt-panel-state'),
       providersGrid: document.getElementById('providers-grid'),
       queueState: document.getElementById('queue-state'),
+      loopList: document.getElementById('loop-list'),
+      loopBadge: document.getElementById('loop-badge'),
     };
 
     let speechReplies = false;
@@ -585,6 +593,22 @@
       }
     }
 
+    async function loadControlLoop() {
+      if (!els.loopList) return;
+      try {
+        const result = await api('/api/integrations/control-loop');
+        els.loopList.innerHTML = result.steps.map(step =>
+          `<div class="auto-row"><span>${escapeHtml(step.step)}. ${escapeHtml(step.name)}</span><span>${escapeHtml(step.integration?.status || 'unknown')}</span></div>`
+        ).join('');
+        els.loopBadge.textContent = 'read-only';
+        els.loopBadge.className = 'badge ok';
+      } catch (e) {
+        els.loopList.innerHTML = '<div class="auto-row"><span>Capture to report</span><span>not connected</span></div>';
+        els.loopBadge.textContent = 'not loaded';
+        els.loopBadge.className = 'badge';
+      }
+    }
+
     async function loadFoundation() {
       renderProjects(fallbackProjects);
       els.providersGrid.innerHTML = ['openai','anthropic','groq','cerebras','gemini','openrouter','ollama'].map(name =>
@@ -595,6 +619,7 @@
         renderSignals(status);
         renderProjects(projects.projects);
         await loadProviderRegistry();
+        await loadControlLoop();
       } catch (error) {
         addLog('system', `Worker not connected: ${error.message}`);
       }
@@ -691,6 +716,7 @@
     setupVoice();
     loadFoundation();
     loadIdeas();
+    loadControlLoop();
   </script>
 </body>
 </html>
