@@ -69,8 +69,8 @@ export function renderCommandCenterHtml({ cspNonce = '' } = {}) {
     const $ = (id) => document.getElementById(id);
     const activity = $('activity-log');
     function log(msg, data){
-      const line = '[' + new Date().toLocaleTimeString() + '] ' + msg + (data ? '\n' + JSON.stringify(data, null, 2) : '');
-      activity.textContent = line + '\n\n' + activity.textContent;
+      const line = '[' + new Date().toLocaleTimeString() + '] ' + msg + (data ? '\\n' + JSON.stringify(data, null, 2) : '');
+      activity.textContent = line + '\\n\\n' + activity.textContent;
     }
     function setTheme(theme){ document.documentElement.dataset.theme = theme; localStorage.setItem('copelandos-theme', theme); document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'solar' ? '#e8ece3' : '#151a18'); }
     setTheme(localStorage.getItem('copelandos-theme') || 'lunar');
