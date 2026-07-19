@@ -31,6 +31,7 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 - **Cursor/Codex orchestrator:** generates bounded prompts; it does not run agents or merge work itself.
 - **Agent orchestration registry:** tracks specialized agents (repo, objective, status, heartbeat, runs, blocked state). See [agent-orchestration.md](agent-orchestration.md).
 - **Persistent task queue:** durable work units with retries and dead-letter handling. See [task-queue.md](task-queue.md).
+- **Structured planning memory:** rationale, decisions, dependencies, resume context. See [planning-memory.md](planning-memory.md).
 - **Gmail draft assistant:** reads Gmail when configured and creates drafts only after confirmation.
 - **Band Council operations:** project policy forbids private student data and autonomous communication.
 - **School planner / research librarian / music helper:** dashboard and project-policy modules awaiting data connectors.
@@ -90,6 +91,10 @@ The Cloudflare Worker and local agent are separate trust zones. The Worker does 
 | `POST /api/tasks` | Enqueue task (bearer auth) |
 | `POST /api/tasks/:id/claim` / `start` / `complete` / `fail` / `cancel` / `retry` | Task lifecycle (bearer auth) |
 | `GET /api/tasks/queue/status` | Queue depth and persistence mode |
+| `GET /api/planning-memory` / `GET /api/planning-memory/:id` | Planning memory reads |
+| `GET /api/planning-memory/resume` | Resumable context for agent/task/idea |
+| `POST /api/planning-memory` | Create plan (bearer auth) |
+| `POST /api/planning-memory/:id/history` / `decisions` / `dependencies` / `executions` | Append plan data (bearer auth) |
 | `GET /api/agents` / `GET /api/agents/:id` | Agent registry reads |
 | `POST /api/agents` | Register agent (bearer auth) |
 | `PATCH /api/agents/:id` | Update agent (bearer auth) |

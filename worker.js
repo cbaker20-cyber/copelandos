@@ -6,6 +6,7 @@ import { getProviderCredential, routeModel } from './src/modelRouter.js';
 import { handleIdeaRequest } from './src/ideaApi.js';
 import { handleAgentRequest } from './src/agentApi.js';
 import { handleTaskQueueRequest } from './src/taskQueueApi.js';
+import { handlePlanningMemoryRequest } from './src/planningMemoryApi.js';
 import { listSkills, publicSkillSummary } from './src/skills.js';
 import { createPlan, createTaskBrief, selectRoles } from './src/planner.js';
 import { listProviderStatuses, explainRoutingDecision, getLocalFallback, getNoSubscriptionRoute } from './src/providerRouter.js';
@@ -124,6 +125,11 @@ export default {
       if (path === '/api/tasks' || path.startsWith('/api/tasks/')) {
         const taskResponse = await handleTaskQueueRequest({ path, request, body, env, json });
         if (taskResponse) return taskResponse;
+      }
+
+      if (path === '/api/planning-memory' || path.startsWith('/api/planning-memory/')) {
+        const planningResponse = await handlePlanningMemoryRequest({ path, request, body, env, json });
+        if (planningResponse) return planningResponse;
       }
 
       if (

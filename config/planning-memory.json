@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "defaults": {
+    "maxPlanningHistory": 25,
+    "maxDecisions": 50,
+    "maxDependencies": 30,
+    "maxExecutionSummaries": 50
+  }
+}

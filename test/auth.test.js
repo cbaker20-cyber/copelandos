@@ -8,6 +8,7 @@ import {
   isProtectedRoute,
   isAgentMutationRoute,
   isTaskMutationRoute,
+  isPlanningMemoryMutationRoute,
   isApiAuthorized,
 } from '../src/auth.js';
 import worker from '../worker.js';
@@ -133,4 +134,12 @@ test('checkApiAccess requires auth for task mutations', () => {
   assert.equal(checkApiAccess(post, { API_AUTH_TOKEN: TEST_TOKEN }).ok, false);
   assert.equal(checkApiAccess(get, {}).ok, true);
   assert.equal(isTaskMutationRoute('/api/tasks/task-1/complete', 'POST'), true);
+});
+
+test('checkApiAccess requires auth for planning memory mutations', () => {
+  const post = new Request('https://worker.example/api/planning-memory', { method: 'POST' });
+  const get = new Request('https://worker.example/api/planning-memory/resume?agentId=agent-copelandos', { method: 'GET' });
+  assert.equal(checkApiAccess(post, { API_AUTH_TOKEN: TEST_TOKEN }).ok, false);
+  assert.equal(checkApiAccess(get, {}).ok, true);
+  assert.equal(isPlanningMemoryMutationRoute('/api/planning-memory/plan-1/history', 'POST'), true);
 });

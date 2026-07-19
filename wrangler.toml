@@ -57,3 +57,9 @@ directory = "./frontend"
 # [[kv_namespaces]]
 # binding = "TASK_QUEUE_KV"
 # id = "your-task-queue-kv-id-here"
+
+# KV namespace for structured planning memory (optional)
+# Create with: wrangler kv namespace create PLANNING_MEMORY
+# [[kv_namespaces]]
+# binding = "PLANNING_MEMORY_KV"
+# id = "your-planning-memory-kv-id-here"

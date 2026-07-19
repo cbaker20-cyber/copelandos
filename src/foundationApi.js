@@ -6,6 +6,7 @@ import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
 import { getOrchestrationSnapshot } from './agentOrchestration.js';
 import { getQueueSnapshot } from './taskQueue.js';
+import { getPlanningMemorySnapshot } from './planningMemory.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -75,6 +76,7 @@ export async function handleFoundationRequest({
     const integrations = listAutomationIntegrations(env);
     const orchestration = await getOrchestrationSnapshot(env);
     const taskQueue = await getQueueSnapshot(env);
+    const planningMemory = await getPlanningMemorySnapshot(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -97,6 +99,13 @@ export async function handleFoundationRequest({
           persistence: taskQueue.persistence,
           endpoint: '/api/tasks/queue/status',
           taskCount: taskQueue.taskCount,
+        },
+        planningMemory: {
+          connected: true,
+          mode: planningMemory.mode,
+          persistence: planningMemory.persistence,
+          endpoint: '/api/planning-memory/status',
+          planCount: planningMemory.planCount,
         },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
         automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },

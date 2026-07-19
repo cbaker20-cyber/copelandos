@@ -15,6 +15,7 @@ import {
   listAgentTypes,
 } from './agentOrchestration.js';
 import { buildTaskQueueStatusSummary } from './taskQueueApi.js';
+import { buildPlanningMemoryStatusSummary } from './planningMemoryApi.js';
 
 function methodGuard(request, allowed, json) {
   if (!allowed.includes(request.method)) {
@@ -101,6 +102,7 @@ export async function handleAgentRequest({ path, request, body, env, json }) {
 export async function buildOrchestrationStatusPayload(env = {}) {
   const snapshot = await getOrchestrationSnapshot(env);
   const queue = await buildTaskQueueStatusSummary(env);
+  const planningMemory = await buildPlanningMemoryStatusSummary(env);
   return {
     ok: true,
     mode: snapshot.mode,
@@ -117,6 +119,12 @@ export async function buildOrchestrationStatusPayload(env = {}) {
       byStatus: queue.byStatus,
       retryScheduled: queue.retryScheduled,
     },
+    planningMemory: {
+      mode: planningMemory.mode,
+      persistence: planningMemory.persistence,
+      planCount: planningMemory.planCount,
+      byStatus: planningMemory.byStatus,
+    },
     pipeline: [
       'mobile capture',
       'idea inbox',
@@ -128,6 +136,7 @@ export async function buildOrchestrationStatusPayload(env = {}) {
       'tool/MCP safety registry',
       'agent orchestration registry',
       'persistent task queue',
+      'structured planning memory',
       'vault memory',
       'Cursor/Codex prompt generation',
     ],

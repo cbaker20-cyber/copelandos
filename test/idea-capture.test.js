@@ -272,6 +272,7 @@ test('brain and orchestration status endpoints are honest scaffolds', async () =
   assert.equal(orchestration.persistence, 'memory');
   assert.ok(orchestration.pipeline.includes('agent orchestration registry'));
   assert.ok(orchestration.pipeline.includes('persistent task queue'));
+  assert.ok(orchestration.pipeline.includes('structured planning memory'));
   assert.ok(orchestration.taskQueue);
   assert.ok(orchestration.agents.length >= 6);
 });

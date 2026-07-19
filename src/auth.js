@@ -7,8 +7,9 @@ const IDEA_CONVERT_PATTERN = /^\/api\/ideas\/[^/]+\/convert$/;
 const CAPTURE_PATH = '/api/capture/idea';
 const AGENT_ACTION_PATTERN = /^\/api\/agents\/[^/]+\/(heartbeat|runs|block|unblock)$/;
 const TASK_ACTION_PATTERN = /^\/api\/tasks\/[^/]+\/(claim|start|complete|fail|cancel|retry)$/;
+const PLANNING_ACTION_PATTERN = /^\/api\/planning-memory\/[^/]+\/(history|decisions|dependencies|executions)$/;
 
-export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation', 'task_mutation'];
+export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation', 'task_mutation', 'planning_mutation'];
 
 export function isAgentMutationRoute(path, method) {
   if (path === '/api/agents' && method === 'POST') return true;
@@ -20,6 +21,13 @@ export function isAgentMutationRoute(path, method) {
 export function isTaskMutationRoute(path, method) {
   if (path === '/api/tasks' && method === 'POST') return true;
   if (method === 'POST' && TASK_ACTION_PATTERN.test(path)) return true;
+  return false;
+}
+
+export function isPlanningMemoryMutationRoute(path, method) {
+  if (path === '/api/planning-memory' && method === 'POST') return true;
+  if (method === 'PATCH' && /^\/api\/planning-memory\/[^/]+$/.test(path)) return true;
+  if (method === 'POST' && PLANNING_ACTION_PATTERN.test(path)) return true;
   return false;
 }
 
@@ -79,7 +87,7 @@ export function isApiAuthorized(request, env, path = new URL(request.url).pathna
 
 export function checkApiAccess(request, env) {
   const path = new URL(request.url).pathname;
-  if (!isProtectedRoute(path) && !isAgentMutationRoute(path, request.method) && !isTaskMutationRoute(path, request.method)) {
+  if (!isProtectedRoute(path) && !isAgentMutationRoute(path, request.method) && !isTaskMutationRoute(path, request.method) && !isPlanningMemoryMutationRoute(path, request.method)) {
     return { ok: true };
   }
   const auth = isApiAuthorized(request, env);

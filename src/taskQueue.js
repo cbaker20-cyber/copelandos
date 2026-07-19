@@ -7,6 +7,7 @@
 
 import queueConfig from '../config/task-queue.json' with { type: 'json' };
 import { getAgent, recordAgentRun } from './agentOrchestration.js';
+import { syncTaskExecutionToPlanningMemory } from './planningMemory.js';
 import { getTaskQueueStorage, resetTaskQueueStorageForTests } from './taskQueueStorage.js';
 
 const VALID_STATUSES = new Set([
@@ -260,9 +261,14 @@ export async function completeTask(env, taskId, payload = {}) {
     await recordAgentRun(env, task.assignedAgentId, {
       status: 'success',
       summary: `Task ${task.id} completed`,
-      metadata: { taskId: task.id, taskType: task.taskType },
+      metadata: { taskId: task.id, taskType: task.taskType, planningMemoryId: task.metadata?.planningMemoryId || null },
     });
   }
+
+  await syncTaskExecutionToPlanningMemory(env, task, {
+    status: 'success',
+    summary: task.result?.summary || `Task ${task.id} completed`,
+  });
 
   return { ok: true, task: saved };
 }
@@ -295,9 +301,15 @@ export async function failTask(env, taskId, payload = {}) {
       status: 'failure',
       summary: `Task ${task.id} failed`,
       error: errorMessage,
-      metadata: { taskId: task.id, taskType: task.taskType, attempts: task.attempts },
+      metadata: { taskId: task.id, taskType: task.taskType, attempts: task.attempts, planningMemoryId: task.metadata?.planningMemoryId || null },
     });
   }
+
+  await syncTaskExecutionToPlanningMemory(env, task, {
+    status: 'failure',
+    summary: `Task ${task.id} failed`,
+    error: errorMessage,
+  });
 
   return { ok: true, task: saved, willRetry: task.status === 'failed' };
 }
