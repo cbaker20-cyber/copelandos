@@ -100,7 +100,7 @@ export async function handleIdeaRequest({ path, request, body, env, json }) {
   if (path === '/api/orchestration/status') {
     const guard = methodGuard(request, ['GET'], json);
     if (guard) return guard;
-    const payload = buildOrchestrationStatusPayload();
+    const payload = await buildOrchestrationStatusPayload(env);
     return json({
       ...payload,
       queues: getProjectQueues(),

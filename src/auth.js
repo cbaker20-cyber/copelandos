@@ -6,13 +6,20 @@ const PROVIDER_EXACT = new Set(['/api/ai', '/api/search', '/api/hermes/route', '
 const IDEA_CONVERT_PATTERN = /^\/api\/ideas\/[^/]+\/convert$/;
 const CAPTURE_PATH = '/api/capture/idea';
 const AGENT_ACTION_PATTERN = /^\/api\/agents\/[^/]+\/(heartbeat|runs|block|unblock)$/;
+const TASK_ACTION_PATTERN = /^\/api\/tasks\/[^/]+\/(claim|start|complete|fail|cancel|retry)$/;
 
-export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation'];
+export const PROTECTED_CLASSES = ['gmail', 'vault_write', 'provider', 'agent_mutation', 'task_mutation'];
 
 export function isAgentMutationRoute(path, method) {
   if (path === '/api/agents' && method === 'POST') return true;
   if (method === 'PATCH' && /^\/api\/agents\/[^/]+$/.test(path)) return true;
   if (method === 'POST' && AGENT_ACTION_PATTERN.test(path)) return true;
+  return false;
+}
+
+export function isTaskMutationRoute(path, method) {
+  if (path === '/api/tasks' && method === 'POST') return true;
+  if (method === 'POST' && TASK_ACTION_PATTERN.test(path)) return true;
   return false;
 }
 
@@ -72,7 +79,7 @@ export function isApiAuthorized(request, env, path = new URL(request.url).pathna
 
 export function checkApiAccess(request, env) {
   const path = new URL(request.url).pathname;
-  if (!isProtectedRoute(path) && !isAgentMutationRoute(path, request.method)) {
+  if (!isProtectedRoute(path) && !isAgentMutationRoute(path, request.method) && !isTaskMutationRoute(path, request.method)) {
     return { ok: true };
   }
   const auth = isApiAuthorized(request, env);

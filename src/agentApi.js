@@ -14,6 +14,7 @@ import {
   getOrchestrationSnapshot,
   listAgentTypes,
 } from './agentOrchestration.js';
+import { buildTaskQueueStatusSummary } from './taskQueueApi.js';
 
 function methodGuard(request, allowed, json) {
   if (!allowed.includes(request.method)) {
@@ -97,8 +98,9 @@ export async function handleAgentRequest({ path, request, body, json }) {
   return null;
 }
 
-export function buildOrchestrationStatusPayload() {
+export async function buildOrchestrationStatusPayload(env = {}) {
   const snapshot = getOrchestrationSnapshot();
+  const queue = await buildTaskQueueStatusSummary(env);
   return {
     ok: true,
     mode: snapshot.mode,
@@ -107,6 +109,13 @@ export function buildOrchestrationStatusPayload() {
     blockedCount: snapshot.blockedCount,
     staleHeartbeatCount: snapshot.staleHeartbeatCount,
     byStatus: snapshot.byStatus,
+    taskQueue: {
+      mode: queue.mode,
+      persistence: queue.persistence,
+      taskCount: queue.taskCount,
+      byStatus: queue.byStatus,
+      retryScheduled: queue.retryScheduled,
+    },
     pipeline: [
       'mobile capture',
       'idea inbox',
@@ -117,6 +126,7 @@ export function buildOrchestrationStatusPayload() {
       'provider router',
       'tool/MCP safety registry',
       'agent orchestration registry',
+      'persistent task queue',
       'vault memory',
       'Cursor/Codex prompt generation',
     ],

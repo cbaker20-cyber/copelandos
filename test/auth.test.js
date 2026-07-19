@@ -7,6 +7,7 @@ import {
   getProtectedRouteClasses,
   isProtectedRoute,
   isAgentMutationRoute,
+  isTaskMutationRoute,
   isApiAuthorized,
 } from '../src/auth.js';
 import worker from '../worker.js';
@@ -124,4 +125,12 @@ test('checkApiAccess requires auth for agent mutations', () => {
   assert.equal(checkApiAccess(post, { API_AUTH_TOKEN: TEST_TOKEN }).ok, false);
   assert.equal(checkApiAccess(get, {}).ok, true);
   assert.equal(isAgentMutationRoute('/api/agents/agent-copelandos/heartbeat', 'POST'), true);
+});
+
+test('checkApiAccess requires auth for task mutations', () => {
+  const post = new Request('https://worker.example/api/tasks', { method: 'POST' });
+  const get = new Request('https://worker.example/api/tasks', { method: 'GET' });
+  assert.equal(checkApiAccess(post, { API_AUTH_TOKEN: TEST_TOKEN }).ok, false);
+  assert.equal(checkApiAccess(get, {}).ok, true);
+  assert.equal(isTaskMutationRoute('/api/tasks/task-1/complete', 'POST'), true);
 });

@@ -9,7 +9,8 @@ Lead-engineer workflow for autonomous agents working in this repository.
 3. `ROADMAP.md` — approved priorities
 4. `docs/cursor-ready-issues.md` — security queue (complete; work top to bottom)
 5. `docs/agent-orchestration.md` — agent registry and orchestration API
-6. `docs/deployment.md` — production topology
+6. `docs/task-queue.md` — persistent task queue with retries and dead letter
+7. `docs/deployment.md` — production topology
 
 ## Canonical boundaries
 

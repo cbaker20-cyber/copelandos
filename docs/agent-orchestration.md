@@ -95,8 +95,8 @@ Clients that ignore new fields continue to work.
 
 ## Future extension points
 
-1. **Persistent task queue** — durable queue with retries and dead-letter handling (next platform priority).
-2. **KV/D1 persistence** — survive cold starts; optional sync from project registry.
+1. **Persistent task queue** — implemented; see [task-queue.md](task-queue.md). Enable `TASK_QUEUE_KV` for cross-cold-start durability.
+2. **KV/D1 persistence for agents** — survive cold starts for agent registry.
 3. **Dispatch loop** — supervisor agent assigns objectives without hard-coded workflows.
 4. **Structured planning memory** — link agent runs to idea inbox and vault notes.
 5. **Health monitoring** — export heartbeat staleness and failure rates to observability tooling.

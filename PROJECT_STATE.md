@@ -1,6 +1,6 @@
 # CopelandOS Project State
 
-Last updated: 2026-07-18 (agent orchestration)
+Last updated: 2026-07-18 (persistent task queue)
 
 ## Architecture summary
 
@@ -8,7 +8,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 
 | Layer | Status | Notes |
 |---|---|---|
-| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline, agent orchestration |
+| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline, agent orchestration, task queue |
 | Frontend (`frontend/`) | Active | Served via Wrangler `[assets]` from the Worker |
 | Legacy Pages Function (`functions/api/`) | Deprecated | Retained as migration evidence only |
 | Local Windows agent | Skeleton | Localhost + token + allowlist; not auto-connected |
@@ -29,6 +29,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
 - Post-queue security audit: legacy Pages `410` guard, OAuth denial handling, header hardening
 - Agent orchestration registry: project-seeded agents, heartbeat, execution history, block/unblock (`/api/agents`)
+- Persistent task queue: enqueue, claim, retry, dead-letter (`/api/tasks`); KV-backed when `TASK_QUEUE_KV` is bound
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -59,7 +60,8 @@ Security queue: **complete**. Post-queue audit documented in `docs/security-audi
 
 ## Known gaps
 
-- Agent registry is in-memory; cold starts reset state (KV/D1 persistence is next platform priority)
+- Task queue defaults to in-memory per isolate; bind `TASK_QUEUE_KV` for cross-cold-start durability
+- Agent registry is in-memory; cold starts reset agent state (KV/D1 persistence is next platform priority)
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented

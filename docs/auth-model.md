@@ -53,8 +53,9 @@ Query-string tokens are not accepted on protected routes (they leak in logs and 
 
 | Class | Routes | Rationale |
 |---|---|---|
-| **Public** | `/api/health`, `/api/status`, `/api/projects`, `GET /api/agents`, registry reads, permission rules, brain/orchestration status | Capability and registry metadata only; no secret-backed side effects |
+| **Public** | `/api/health`, `/api/status`, `/api/projects`, `GET /api/agents`, `GET /api/tasks`, registry reads, permission rules, brain/orchestration status | Capability and registry metadata only; no secret-backed side effects |
 | **Agent mutation** | `POST /api/agents`, `PATCH /api/agents/:id`, `POST /api/agents/:id/heartbeat`, `runs`, `block`, `unblock` | Updates in-memory agent registry state |
+| **Task mutation** | `POST /api/tasks`, `POST /api/tasks/:id/claim`, `start`, `complete`, `fail`, `cancel`, `retry` | Enqueue and lifecycle changes |
 | **Gmail** | `/api/mail/*`, `/api/email/draft`, `/api/auth/gmail`, `/api/auth/callback`, `/api/auth/enrollment/pickup` | Uses Gmail OAuth refresh token |
 | **Vault write** | `/api/vault/write`, `/api/obsidian/save`, `/api/idea`, `/api/capture/idea`, `/api/ideas/:id/convert` | Creates or updates vault content via GitHub or mock store |
 | **Provider-backed** | `/api/ai`, `/api/search`, `/api/hermes/route`, `/api/automation/route` | Calls external APIs billed to configured keys |
