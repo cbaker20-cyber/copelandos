@@ -95,8 +95,10 @@ const AUTOMATION_INTEGRATIONS = Object.freeze([
 export function listAutomationIntegrations(env = {}) {
   return AUTOMATION_INTEGRATIONS.map((integration) => ({
     ...integration,
-    connected: getConnectionKeys(integration.id).some((key) => Boolean(env[key])),
+    configured: getConnectionKeys(integration.id).some((key) => Boolean(env[key])),
+    connected: false,
     requiredEnv: getConnectionKeys(integration.id),
+    honestStatus: 'Configuration alone does not prove a live external connection.',
   }));
 }
 

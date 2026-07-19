@@ -54,12 +54,14 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 - Local-agent skeleton and allowlist
 - Jarvis dashboard with honest connection states and push-to-talk voice
 - Tests and architecture/security documentation
+- Read-only integration roadmap registry and dashboard overnight-loop panel (scaffold/status only)
 
 ## Later
 
 - School calendar/assignment connectors with privacy review
 - Research library ingestion with citations
 - JazzBackend practice helpers
+- Live integration probes for the scaffolded mobile, vault, PR-status, and morning-report routes
 - Optional voice synthesis and wake-free push-to-talk improvements
 - Automation schedules only after duplicate-work and permission controls exist
 

@@ -1,4 +1,8 @@
+import { getControlLoop } from './integrationRegistry.js';
+
 export function renderCommandCenterHtml() {
+  const controlLoopRows = renderControlLoopRows();
+
   return `<!doctype html>
 <html lang="en" data-theme="lunar">
 <head>
@@ -29,7 +33,7 @@ export function renderCommandCenterHtml() {
   <main class="shell">
     <header class="topbar">
       <div class="brand"><div class="brand-left"><span class="mark" aria-hidden="true"></span><div><h1>COPELANDOS</h1><div class="subline">Mobile control surface</div></div></div><div class="switch"><button id="theme-lunar" type="button">Moon</button><button id="theme-solar" type="button">Sun</button></div></div>
-      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#system">System</a></nav>
+      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#system">System</a><a class="tab" href="#loop">Overnight loop</a></nav>
     </header>
 
     <section id="home" class="section">
@@ -59,9 +63,13 @@ export function renderCommandCenterHtml() {
       <article class="panel"><div class="head"><div><div class="title">Rainmeter pairing</div><div class="muted">Keep Rainmeter light: clock, capture URL, launcher. No animated dashboard.</div></div></div><div class="form"><div class="code">C:\AI\Ops\rainmeter\copelandos-phone.ini</div><button id="copy-rainmeter-note" type="button">Copy Rainmeter plan</button><div class="mini">Use Rainmeter only as a desktop skin that opens this page and displays the Shortcut URL. The Worker stays the brain.</div></div></article>
       <article class="panel wide"><div class="head"><div><div class="title">Activity</div><div class="muted">Local response log.</div></div><button id="clear-log" type="button">Clear</button></div><div class="form"><div class="log" id="activity-log"></div></div></article>
     </section>
+
+    <section id="loop" class="section grid">
+      <article class="panel wide"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Capture, classify, plan, route, remember, queue work, and report back without automatic execution.</div></div><button id="refresh-loop" type="button">Refresh loop</button></div><div class="form"><div class="log" id="loop-log">${controlLoopRows}</div><div class="mini">External integrations stay disconnected until a future reviewed connector includes a real probe and tests.</div></div></article>
+    </section>
   </main>
 
-  <nav class="dock" aria-label="Quick dock"><a href="#home" title="Home">⌂</a><a href="#phone" title="Phone">▣</a><a href="#capture" title="Capture">✎</a><a href="#plan" title="Plan">☑</a><a href="#system" title="System">⚙</a><a href="/api/health" title="Health">✓</a></nav>
+  <nav class="dock" aria-label="Quick dock"><a href="#home" title="Home">⌂</a><a href="#phone" title="Phone">▣</a><a href="#capture" title="Capture">✎</a><a href="#plan" title="Plan">☑</a><a href="#system" title="System">⚙</a><a href="#loop" title="Loop">↻</a><a href="/api/health" title="Health">✓</a></nav>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -102,7 +110,21 @@ export function renderCommandCenterHtml() {
         log('Status failed: ' + error.message);
       }
     }
+    async function refreshLoop(){
+      try{
+        const data = await api('/api/integrations/control-loop');
+        $('loop-log').textContent = (data.loop || []).map(step => {
+          const state = step.integration && step.integration.ready ? 'ready' : ((step.integration && step.integration.status) || 'planned');
+          return step.step + '. ' + step.name + ' [' + state + ']\\n   ' + step.from + ' -> ' + step.to;
+        }).join('\\n\\n');
+        log('Control loop refreshed', { steps:(data.loop || []).length, delivery:data.morningReport && data.morningReport.delivery });
+      }catch(error){
+        $('loop-log').textContent = error.message;
+        log('Control loop failed: ' + error.message);
+      }
+    }
     $('refresh-status').onclick = refreshStatus;
+    $('refresh-loop').onclick = refreshLoop;
     $('test-get-capture').onclick = async () => {
       const url = shortcutUrl($('shortcut-test').value);
       try { const data = await api(url.replace(location.origin,'')); log('GET capture ok', data); } catch(error){ log('GET capture failed: ' + error.message); }
@@ -129,7 +151,27 @@ export function renderCommandCenterHtml() {
     });
     refreshUrls();
     refreshStatus();
+    refreshLoop();
   </script>
 </body>
 </html>`;
+}
+
+function renderControlLoopRows() {
+  return getControlLoop({})
+    .map((step) => {
+      const state = step.integration?.ready ? 'ready' : (step.integration?.status || 'planned');
+      return `${escapeHtml(step.step)}. ${escapeHtml(step.name)} [${escapeHtml(state)}]\n   ${escapeHtml(step.from)} -> ${escapeHtml(step.to)}`;
+    })
+    .join('\n\n');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
 }
