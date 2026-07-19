@@ -268,5 +268,9 @@ test('brain and orchestration status endpoints are honest scaffolds', async () =
   const orchestration = await orchestrationResponse.json();
   assert.equal(orchestrationResponse.status, 200);
   assert.equal(orchestration.automaticExecution, false);
-  assert.ok(orchestration.pipeline.includes('provider router'));
+  assert.equal(orchestration.mode, 'orchestration-registry');
+  assert.ok(orchestration.pipeline.includes('agent orchestration registry'));
+  assert.ok(orchestration.pipeline.includes('persistent task queue'));
+  assert.ok(orchestration.taskQueue);
+  assert.ok(orchestration.agents.length >= 6);
 });

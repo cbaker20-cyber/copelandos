@@ -45,3 +45,9 @@ directory = "./frontend"
 # [[kv_namespaces]]
 # binding = "CACHE"
 # id = "your-kv-id-here"
+
+# KV namespace for durable task queue (optional; without it the queue is in-memory per isolate)
+# Create with: wrangler kv namespace create TASK_QUEUE
+# [[kv_namespaces]]
+# binding = "TASK_QUEUE_KV"
+# id = "your-task-queue-kv-id-here"
