@@ -17,6 +17,8 @@ test('Worker root serves the usable CopelandOS console', async () => {
   assert.match(html, /Rainmeter pairing/);
   assert.match(html, /Overnight control loop/);
   assert.match(html, /api\/integrations\/control-loop/);
+  assert.match(html, /1\. Capture \[scaffold-only\]/);
+  assert.match(html, /10\. Report Back \[scaffold-only\]/);
 });
 
 test('Hermes routes Mimo-style learning without tool execution', async () => {

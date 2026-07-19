@@ -1,4 +1,8 @@
+import { getControlLoop } from './integrationRegistry.js';
+
 export function renderCommandCenterHtml() {
+  const controlLoopRows = renderControlLoopRows();
+
   return `<!doctype html>
 <html lang="en" data-theme="lunar">
 <head>
@@ -61,7 +65,7 @@ export function renderCommandCenterHtml() {
     </section>
 
     <section id="loop" class="section grid">
-      <article class="panel wide"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Capture, classify, plan, route, remember, queue work, and report back without automatic execution.</div></div><button id="refresh-loop" type="button">Refresh loop</button></div><div class="form"><div class="log" id="loop-log">Loading...</div><div class="mini">External integrations stay disconnected until a future reviewed connector includes a real probe and tests.</div></div></article>
+      <article class="panel wide"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Capture, classify, plan, route, remember, queue work, and report back without automatic execution.</div></div><button id="refresh-loop" type="button">Refresh loop</button></div><div class="form"><div class="log" id="loop-log">${controlLoopRows}</div><div class="mini">External integrations stay disconnected until a future reviewed connector includes a real probe and tests.</div></div></article>
     </section>
   </main>
 
@@ -151,4 +155,23 @@ export function renderCommandCenterHtml() {
   </script>
 </body>
 </html>`;
+}
+
+function renderControlLoopRows() {
+  return getControlLoop({})
+    .map((step) => {
+      const state = step.integration?.ready ? 'ready' : (step.integration?.status || 'planned');
+      return `${escapeHtml(step.step)}. ${escapeHtml(step.name)} [${escapeHtml(state)}]\n   ${escapeHtml(step.from)} -> ${escapeHtml(step.to)}`;
+    })
+    .join('\n\n');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
 }
