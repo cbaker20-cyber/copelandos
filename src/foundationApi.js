@@ -4,6 +4,8 @@ import { listProviderStatuses, routeModel } from './modelRouter.js';
 import { getProject, listProjects, publicProjectSummary } from './projects.js';
 import { routeHermesTask } from './hermesAgent.js';
 import { getAutomationIntegration, listAutomationIntegrations, routeAutomationTask } from './automationIntegrations.js';
+import { getOrchestrationSnapshot } from './agentOrchestration.js';
+import { getQueueSnapshot } from './taskQueue.js';
 import {
   buildObsidianDailyUri,
   buildObsidianNewUri,
@@ -71,6 +73,8 @@ export async function handleFoundationRequest({
     if (request.method !== 'GET') return methodNotAllowed(json, 'GET');
     const providerStatuses = listProviderStatuses(env, modelConfig);
     const integrations = listAutomationIntegrations(env);
+    const orchestration = await getOrchestrationSnapshot(env);
+    const taskQueue = await getQueueSnapshot(env);
     return json({
       ok: true,
       system: 'CopelandOS',
@@ -79,6 +83,21 @@ export async function handleFoundationRequest({
       canonicalBackend: 'worker.js',
       modules: {
         projects: { connected: true, count: projectRegistry.projects?.length || 0 },
+        orchestration: {
+          connected: true,
+          mode: orchestration.mode,
+          persistence: orchestration.persistence,
+          endpoint: '/api/orchestration/status',
+          agentCount: orchestration.agentCount,
+          blockedCount: orchestration.blockedCount,
+        },
+        taskQueue: {
+          connected: true,
+          mode: taskQueue.mode,
+          persistence: taskQueue.persistence,
+          endpoint: '/api/tasks/queue/status',
+          taskCount: taskQueue.taskCount,
+        },
         hermes: { connected: true, mode: 'router-only', endpoint: '/api/hermes/route' },
         automations: { connected: true, endpoint: '/api/automation/integrations', count: integrations.length, configured: integrations.filter((item) => item.connected).map((item) => item.id) },
         modelRouter: { connected: providerStatuses.some((item) => item.configured), providers: providerStatuses },

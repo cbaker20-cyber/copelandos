@@ -1,6 +1,6 @@
 # CopelandOS Project State
 
-Last updated: 2026-07-18 (security audit)
+Last updated: 2026-07-18 (agent state persistence)
 
 ## Architecture summary
 
@@ -8,7 +8,7 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 
 | Layer | Status | Notes |
 |---|---|---|
-| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline |
+| Canonical Worker (`worker.js`) | Active | All `/api/*` routes, Gmail OAuth, vault, brain pipeline, agent orchestration, task queue |
 | Frontend (`frontend/`) | Active | Served via Wrangler `[assets]` from the Worker |
 | Legacy Pages Function (`functions/api/`) | Deprecated | Retained as migration evidence only |
 | Local Windows agent | Skeleton | Localhost + token + allowlist; not auto-connected |
@@ -28,6 +28,8 @@ CopelandOS is a personal operations foundation: a Jarvis-style dashboard backed 
 - Request body limits, field validation, provider rate limiting, and security headers
 - Gmail OAuth with signed `state`, secure refresh-token pickup, and least-privilege scopes
 - Post-queue security audit: legacy Pages `410` guard, OAuth denial handling, header hardening
+- Agent orchestration registry: durable state via KV adapter (`AGENT_STATE_KV`); heartbeat, execution history, block/unblock (`/api/agents`)
+- Persistent task queue: enqueue, claim, retry, dead-letter (`/api/tasks`); KV-backed when `TASK_QUEUE_KV` is bound
 - CI: `npm test` + syntax checks on `main`
 
 ## Production topology
@@ -58,6 +60,8 @@ Security queue: **complete**. Post-queue audit documented in `docs/security-audi
 
 ## Known gaps
 
+- Agent registry defaults to in-memory per isolate; bind `AGENT_STATE_KV` for cross-cold-start durability
+- Task queue defaults to in-memory per isolate; bind `TASK_QUEUE_KV` for cross-cold-start durability
 - Dashboard and scripts must send `Authorization: Bearer <API_AUTH_TOKEN>` on protected routes
 - GitHub project supervisor not connected
 - Local-agent pairing/encrypted transport not implemented
