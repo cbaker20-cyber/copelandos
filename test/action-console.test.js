@@ -38,9 +38,10 @@ test('Hermes routes Mimo-style learning without tool execution', async () => {
 });
 
 test('Automation registry includes Mimo, Ornith, and review-first automators', async () => {
-  const response = await worker.fetch(new Request('https://worker.example/api/automation/integrations'), {}, {});
+  const response = await worker.fetch(new Request('https://worker.example/api/automation/integrations'), { N8N_API_KEY: 'configured-only' }, {});
   const result = await response.json();
   const ids = result.integrations.map((item) => item.id);
+  const n8n = result.integrations.find((item) => item.id === 'n8n');
 
   assert.equal(response.status, 200);
   assert.equal(result.ok, true);
@@ -50,6 +51,8 @@ test('Automation registry includes Mimo, Ornith, and review-first automators', a
   assert.ok(ids.includes('zapier'));
   assert.ok(ids.includes('make'));
   assert.ok(result.integrations.every((item) => Array.isArray(item.blockedActions)));
+  assert.equal(n8n.configured, true);
+  assert.equal(n8n.connected, false);
 });
 
 test('Hermes routes Ornith and webhook automation as approval-first plans', async () => {
