@@ -29,7 +29,7 @@ export function renderCommandCenterHtml() {
   <main class="shell">
     <header class="topbar">
       <div class="brand"><div class="brand-left"><span class="mark" aria-hidden="true"></span><div><h1>COPELANDOS</h1><div class="subline">Mobile control surface</div></div></div><div class="switch"><button id="theme-lunar" type="button">Moon</button><button id="theme-solar" type="button">Sun</button></div></div>
-      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#system">System</a></nav>
+      <nav class="nav" aria-label="Sections"><a class="tab" href="#home">Home</a><a class="tab" href="#phone">Phone</a><a class="tab" href="#capture">Capture</a><a class="tab" href="#plan">Plan</a><a class="tab" href="#system">System</a><a class="tab" href="#loop">Loop</a></nav>
     </header>
 
     <section id="home" class="section">
@@ -57,6 +57,7 @@ export function renderCommandCenterHtml() {
     <section id="system" class="section grid">
       <article class="panel"><div class="head"><div><div class="title">System status</div><div class="muted">Worker capabilities and phone-readiness.</div></div></div><div class="form"><div class="log" id="status-log">Loading...</div></div></article>
       <article class="panel"><div class="head"><div><div class="title">Rainmeter pairing</div><div class="muted">Keep Rainmeter light: clock, capture URL, launcher. No animated dashboard.</div></div></div><div class="form"><div class="code">C:\AI\Ops\rainmeter\copelandos-phone.ini</div><button id="copy-rainmeter-note" type="button">Copy Rainmeter plan</button><div class="mini">Use Rainmeter only as a desktop skin that opens this page and displays the Shortcut URL. The Worker stays the brain.</div></div></article>
+      <article class="panel wide" id="loop"><div class="head"><div><div class="title">Overnight control loop</div><div class="muted">Read-only map: capture, classify, plan, route, remember, queue, report.</div></div><span class="badge warn">scaffold</span></div><div class="form"><div class="log" id="loop-log">Loading...</div><div class="mini">This panel reads /api/integrations/control-loop. It does not run tasks, send email, merge PRs, deploy, or claim external systems are connected.</div></div></article>
       <article class="panel wide"><div class="head"><div><div class="title">Activity</div><div class="muted">Local response log.</div></div><button id="clear-log" type="button">Clear</button></div><div class="form"><div class="log" id="activity-log"></div></div></article>
     </section>
   </main>
@@ -102,6 +103,23 @@ export function renderCommandCenterHtml() {
         log('Status failed: ' + error.message);
       }
     }
+    function renderLoop(data){
+      const loop = data.loop || [];
+      $('loop-log').textContent = loop.length ? loop.map((step) => {
+        const state = step.integration && step.integration.ready ? 'ready' : (step.integration && step.integration.status) || 'planned';
+        return step.step + '. ' + step.name + ' [' + state + ']\\n   ' + step.from + ' -> ' + step.to;
+      }).join('\\n\\n') : 'No control-loop steps returned.';
+    }
+    async function refreshLoop(){
+      try{
+        const data = await api('/api/integrations/control-loop');
+        renderLoop(data);
+        log('Control loop refreshed', { steps: (data.loop || []).length, delivery: data.morningReport && data.morningReport.delivery });
+      }catch(error){
+        $('loop-log').textContent = error.message;
+        log('Control loop failed: ' + error.message);
+      }
+    }
     $('refresh-status').onclick = refreshStatus;
     $('test-get-capture').onclick = async () => {
       const url = shortcutUrl($('shortcut-test').value);
@@ -129,6 +147,7 @@ export function renderCommandCenterHtml() {
     });
     refreshUrls();
     refreshStatus();
+    refreshLoop();
   </script>
 </body>
 </html>`;
