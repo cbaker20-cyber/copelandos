@@ -53,6 +53,7 @@ All four tasks in `docs/cursor-ready-issues.md` are complete. See `docs/security
 - Canonical Worker route foundation
 - Local-agent skeleton and allowlist
 - Jarvis dashboard with honest connection states and push-to-talk voice
+- Read-only integration roadmap and overnight control-loop scaffold
 - Tests and architecture/security documentation
 
 ## Later

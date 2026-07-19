@@ -23,6 +23,7 @@ See [architecture](docs/architecture.md), [deployment](docs/deployment.md), [sec
 - GitHub-backed or mock-mode Obsidian vault document creation with path and secret checks.
 - Draft-only Gmail routes with explicit medium-risk confirmation.
 - Foundation API routes for status, projects, commands, vault notes, prompts, remote status, and provider routing.
+- Read-only integration roadmap routes for honest control-loop and connector status.
 - Local Windows-agent skeleton for allowlisted status, launches, exact tests, and vault writes.
 - Push-to-talk browser voice input with visible state; no always-on microphone.
 
